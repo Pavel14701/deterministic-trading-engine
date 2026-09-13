@@ -1,0 +1,53 @@
+# STATUS — what is implemented vs what is needed
+
+Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done · ⬜ not started ·
+⬜=spec only. Full per-task detail: `dev_docs/tz/TZ-00-roadmap.md`.
+
+## Implemented ✅ / core 🔨
+
+| Module | Status | Tested/verified |
+|--------|--------|-----------------|
+| `ta/` indicator library | ✅ 84 indicators in DSL (TZ-03 wave 2) | 1975 tests |
+| `dsl/` trading DSL | ✅ TZ-01 | 154 tests |
+| `strategies/` strategy layer | ✅ TZ-02 | 25 tests |
+| `backtest/` backtest | ✅ core; risk-gate ✅ TZ-04 | 34 + 12 integration |
+| `risk/` risk engine | ✅ config-driven TZ-11 | 22 + 12 integration |
+| `ai/` model | 🔨 core, untrained artifacts | 71 tests |
+| `infer/` CLI | ✅ TZ-05 | 9 tests |
+| `rag/` RAG | 🔨 core; pass@1 unmeasured | 47 tests |
+| `main/` DI+bridge+REST+PG | 🔨 core; e2e on in-memory broker + SQLite | 12 REST + 10 db + e2e |
+| `okx/` venue | ⬜ spec only (TZ-15) | — |
+
+**Status of the deterministic path:** complete end-to-end on **synthetic** data:
+`ta → DSL → signals → Risk Engine → backtest with reject-audit`.
+
+## Not implemented / remaining ⬜
+
+1. **Live production backends never wired** — in-memory RabbitMQ / SQLite / mocked Ollama only;
+   `docker compose up` with real RabbitMQ/PG/Qdrant/Ollama is untested.
+2. **Local backtest runner in `main/`** — cmd.backtest returns "failed: no runner" stub.
+3. **Model not trained** — no artifacts; `--ml` needs a bundle; **baseline gate not passed**
+   (keeps the live contour closed, TZ-00 §5).
+4. **pass@1 ≥ 70%** (RAG criterion) — implemented, not measured on a live LLM.
+5. **OKX venue (TZ-15)** — spec only, no code.
+6. Manual T-Invest run (TZ-05); aiogram bot, JWT, TLS/tokens, lag metrics (TZ-09/TZ-10).
+7. **AI**: OB-encoder batching, <5 ms measurement, real-data training, SIV run.
+8. **TZ-12 final**: ±10% reruns, TA-Lib optional CI job.
+
+## Remaining work order (from TZ-00 §3.2)
+
+1. Local backtest-runner in `main/` + TZ-04 msgspec report contracts
+2. TZ-07 pass@1 eval (live Ollama) + `rag_integration` marker (live Qdrant/Ollama)
+3. TZ-10 finish: aiogram bot, JWT, live PG in CI
+4. TZ-09 finish: live RabbitMQ, TLS/tokens, lag metrics
+5. TZ-04/TZ-06 on real data: SIV run, training, baseline gate; OB batching, <5 ms
+6. TZ-12 final: ±10% reruns, TA-Lib CI job
+7. TZ-15 OKX implementation (spec → code)
+
+## Quality gates
+
+- Full suite: **2425 passed / 120 skipped / 0 warnings**; ruff + mypy clean
+  (only accepted tech-debt: docstrings in `ta/src/overlap/mama.py`).
+- **Baseline gate** (TZ-04 §4.6.1) is the project's main filter: nothing is valid without
+  passing comparison vs Buy & Hold / logistic regression / RF/XGBoost.
+- RAG success: **pass@1 ≥ 70%** (valid DSL ≤ 2 repair iterations).

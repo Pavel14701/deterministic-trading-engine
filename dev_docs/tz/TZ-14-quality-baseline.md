@@ -1,82 +1,76 @@
-# TZ-14. Нулевой этап: типизация, линтеры, порядок в тестах, языковая дисциплина
+# TZ-14. Null stage: typing, linters, test hygiene, language discipline
 
-> **Статус: ✅ выполнен — EN-only, ruff clean, mypy clean, тесты зелёные.**
-> Волна 1: ruff — единый линтер, корневая pytest-конфигурация, service-маркеры,
-> тесты «рядом со src», pandas/pandas_ta удалены, варны 1886 -> 0.
-> Волна 2: setup.cfg + flake8/isort ликвидированы; mypy `risk` strict (0);
-> маркеры unit=241/integration=30/slow=4/deprecated=69.
-> Волна 3: mypy infer -> 0 (было 15); параметризация wma/hilo/midprice/midpoint.
-> Волна 4: 0 кириллицы и 0 не-ASCII в .py (127 строк, 141 файл); E701 (120);
-> B905 (40); RUF069 (70 noqa IEEE); F841/RUF046/RUF029 закрыты.
-> Волна 5: E501 (73 -> 0); D* докстринги (89); E741 (32); RUF059 (72);
-> B017/B028/RUF007/RUF043/RUF012 (10). Ruff: 4146 -> 0.
-> Волна 6: mypy ai strict -> 0 (было 3: Subset cast + None-union + assert);
-> ta atrs ma_mode union -> assert. Тесты исключены из mypy (покрываются pytest).
-> Итого mypy workspace: 0 ошибок.
-> Остаётся: CI TZ-13 (ruff+mypy+pytest matrix).
+> **Status: ✅ done — EN-only, ruff clean, mypy clean, tests green.**
+> Wave 1: ruff as the single linter, root pytest config, service markers, tests "next to src",
+> pandas/pandas_ta removed, warnings 1886 → 0.
+> Wave 2: setup.cfg + flake8/isort eliminated; mypy `risk` strict (0); markers
+> unit=241/integration=30/slow=4/deprecated=69.
+> Wave 3: mypy infer → 0 (was 15); parametrize wma/hilo/midprice/midpoint.
+> Wave 4: 0 Cyrillic / 0 non-ASCII in .py (127 lines, 141 files); E701 (120); B905 (40);
+> RUF069 (70 noqa IEEE); F841/RUF046/RUF029 closed.
+> Wave 5: E501 (73 → 0); D* docstrings (89); E741 (32); RUF059 (72); B017/B028/RUF007/RUF043/
+> RUF012 (10). Ruff: 4146 → 0.
+> Wave 6: mypy ai strict → 0 (was 3: Subset cast + None-union + assert); ta atrs ma_mode union →
+> assert. Tests excluded from mypy (covered by pytest). Total mypy workspace: 0 errors.
+> Remaining: CI TZ-13 (ruff+mypy+pytest matrix).
 
-# TZ-14. Нулевой этап: типизация, линтеры, порядок в тестах, языковая дисциплина
+## 1. Context
 
-## 1. Контекст
+The project was consolidated into a monorepo (TZ-00 §1.1), but code-base quality is uneven: mypy is
+formally wired (`ignore_missing_imports`, no strictness), linters have a **dual configuration**
+(ruff in `pyproject.toml` + flake8 in `setup.cfg` with diverging ignores), tests are a zoo: three
+different `conftest.py` files with different fixtures, five `pytest.ini` with different
+`addopts`/markers, varying import styles and test naming. All of this blocks TZ-02+ refactoring:
+edits without typing and ordered tests cannot be safely verified.
 
-Проект прошёл свёртку в монорепозиторий (TZ-00 п.1.1), но качество кодовой базы
-неоднородно: mypy формально подключён (`ignore_missing_imports`, без строгости),
-линтеры имеют **двойную конфигурацию** (ruff в `pyproject.toml` + flake8 в `setup.cfg`
-с расходящимися исключениями), тесты — зоопарк: три разных `conftest.py`
-с разными фикстурами, пять `pytest.ini` с разными `addopts`/маркерами, разные
-стили импортов и нейминга тестов. Всё это мешает рефакторингу TZ-02+: правки без
-типизации и упорядоченных тестов не поддаются безопасной проверке.
+## 2. Requirements
 
-## 2. Требования
+### 2.1. Unified language standard (blocker)
 
-### 2.1. Единый языковой стандарт (blocker)
+1. **Code, identifiers, docstrings, comments — English only.** Russian stays in docs (`*.md`) and
+   UI/CLI user messages. The strictness motivation: Numba/LLVM and part of the toolchain silently
+   degrade or crash on non-ASCII characters in sources — Cyrillic must never appear in `.py`.
+2. Autofix: existing code checked — no Cyrillic in `.py`; pin it with a ruff rule
+   (e.g. `RUF002/003/004` — ambiguous-unicode) in blocking mode.
+3. CI gate: a grep invariant `[А-Яа-яЁё]` in `*.py` = fail (TZ-13 job).
 
-1. **Код, идентификаторы, докстринги, комментарии — только английский.**
-   Русский остаётся в документации (`*.md`) и сообщениях пользователю UI/CLI.
-   Мотивация жёсткости: Numba/LLVM и часть тулчейна молча деградируют или падают
-   на не-ASCII символах в исходниках — нельзя позволить кириллице появляться в
-   `.py` вообще.
-2. Автофиксация: existing-код проверен — кириллицы в `.py` нет; закрепить правило
-   ruff-правилом (например, `RUF002/003/004` — ambiguous-unicode) в блокирующем режиме.
-3. CI-гейт: grep-инвариант `[А-Яа-яЁё]` в `*.py` = fail (TZ-13 job).
+### 2.2. Unified linter configuration
 
-### 2.2. Единая конфигурация линтеров
+1. **Ruff is the single source of truth**; `setup.cfg` (flake8, isort, pycodestyle) is eliminated,
+   flake8 deps removed from the dev group. Ruff rules widened: `E,F,Q,D,N` + `RUF002-004`
+   (language) + `I` (isort replacement), `B` (bugbear).
+2. mypy in stages (not "strict everything at once"): `ai` and `infer` strict first (critical
+   modules), then `dsl`, then `ta`/`strategies`/`rag`/`main`. A module's lag is recorded in
+   `pyproject.toml` (`[tool.mypy.<module>]`) with a planned catch-up date — "endless deferral"
+   is forbidden.
+3. Formatting: `ruff format` instead of isort/black; the `isort` dep is removed.
 
-1. **Ruff — единственный источник правды**; `setup.cfg` (flake8, isort, pycodestyle)
-   ликвидируется, flake8-зависимости выпиливаются из dev-группы. Правила ruff
-   расширяются: `E,F,Q,D,N` + `RUF002-004` (язык) + `I` (isort-замена), `B` (bugbear).
-2. mypy поэтапно (не « strict всё сразу»): `ai` и `infer` — строгий режим первым
-   (критические модули), затем `dsl`, затем `ta`/`strategies`/`rag`/`main`.
-   Отставание модуля фиксируется в `pyproject.toml` (`[tool.mypy.<module>]`)
-   с датой планового подтягивания — «вечная отсрочка» запрещена.
-3. Форматирование: `ruff format` вместо isort/black; `isort`-зависимость удаляется.
+### 2.3. Test hygiene
 
-### 2.3. Порядок в тестах
+1. Test convention: `dev_docs/testing_convention.md` (mandatory reading before touching any test).
+   Existing tests are brought into line.
+2. One `pytest.ini` template for all workspace members (same `addopts`, `--strict-markers`, marker
+   set); only `testpaths` differs.
+3. Consolidate `conftest.py`: fixtures duplicated between packages (synthetic OHLC series, mock DSL
+   providers) move to a shared location, per-package `conftest.py` keeps only its own, duplicates
+   removed.
+4. Classify ~2200 existing tests with markers (`unit`, `integration`, `slow`, `deprecated`) —
+   deprecated are marked, not removed.
+5. Forbidden: tests without asserts (smoke-check via `pass`), sleep tests, network dependence
+   (except `integration`-marked, skipif without a token).
 
-1. Конвенция тестов: `dev_docs/testing_convention.md` (обязательна к прочтению
-   до правки любого теста). Текущие тесты приводятся к ней.
-2. Единый шаблон `pytest.ini` на всех членов workspace (одинаковые `addopts`,
-   `--strict-markers`, набор маркеров); различие только в `testpaths`.
-3. Консолидация `conftest.py`: fixtures, дублирующиеся между пакетами
-   (синтетические OHLC-ряды, mock-провайдеры DSL), выносятся в общий
-   `dev_docs/`-не место, а в per-package `conftest.py` — дубликаты удаляются.
-4. Классификация существующих ~2200 тестов: помечить маркерами
-   (`unit`, `integration`, `slow`, `deprecated`) — deprecated помечаются, не удаляются.
-5. Запрещается: тесты без assert (smoke-check через `pass`), sleep-тесты,
-   зависимость от сети (кроме помеченных `integration` и skipif-без токена).
+### 2.4. Package verification
 
-### 2.4. Верификация пакета
+- `uv run --package dte-<x> pytest <tests>` — green;
+- `ruff check` + `ruff format --check` — clean;
+- `mypy <module>` — per the §2.2 agreed mode.
 
-- `uv run --package dte-<x> pytest <tests>` — зелёный;
-- `ruff check` + `ruff format --check` — чисто;
-- `mypy <module>` — в согласованном п.2.2 режиме.
+## 3. Acceptance criteria
 
-## 3. Критерии приёмки
-
-- `setup.cfg` удалён, ruff-конфиг расширен и применяется ко всем пакетам.
-- mypy: ai/infer строгие, остальные — минимум `disallow_untyped_defs` для public API
-  (докстринги + аннотации).
-- Все `pytest.ini` унифицированы; маркеры классифицированы; отчёт о классификации
-  (сколько unit/integration/slow/deprecated) приложен к PR.
-- Кириллица в `.py` невозможна: проверка в CI (TZ-13) зелёная.
-- Полный прогон: ~2200 тестов зелёные без семантических изменений.
+- `setup.cfg` removed, the ruff config widened and applied to all packages.
+- mypy: ai/infer strict, the rest — at least `disallow_untyped_defs` for public API
+  (docstrings + annotations).
+- All `pytest.ini` unified; markers classified; a classification report
+  (how many unit/integration/slow/deprecated) attached to the PR.
+- Cyrillic impossible in `.py`: the CI (TZ-13) check green.
+- Full run: ~2200 tests green without semantic changes.

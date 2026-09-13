@@ -1,78 +1,72 @@
-> **Статус: 🔨 транспорт готов (11 тестов моста + 14 контрактов).**
-> ✅ msgspec-структуры (Candle, OhlcvBatch, AggBar, SignalEvent, ReportEvent,
+# TZ-09. API bridge: public contour ↔ local GPU node
+
+> **Status: 🔨 transport ready (11 bridge tests + 14 contract tests).**
+> ✅ msgspec structures (Candle, OhlcvBatch, AggBar, SignalEvent, ReportEvent,
 > BacktestCommand, TrainCommand); QueueName enum + topology; ACL
-> (can_publish/can_consume per node); инвариант «нет команды изменения
-> риск-лимитов» (тест).
-> ✅ волна 2: main/src/bridge.py — WhiteBridge (паблиш md.*/cmd.* с ACL-проверкой,
-> консьюмеры evt.report/evt.signals → WhiteAPI-сторы), LocalBridge (консьюмеры
-> md.ohlcv/cmd.backtest с schema-version tolerance, паблиш evt.*), ReconnectPolicy
-> (экспоненциальный backoff с капом), HeartbeatMonitor (last-seen per queue,
-> stale_queues для мониторинга lag). Тесты: сквозной прогон cmd.backtest →
-> мок-локаль → evt.report → отчёт в WhiteAPI через TestRabbitBroker (in-memory,
-> без RabbitMQ), идемпотентность md.ohlcv, ACL-инварианты.
-> Осталось: живой RabbitMQ (docker-compose), TLS/токены, lag-метрики в Prometheus.
+> (can_publish/can_consume per node); the "no change-risk-limits command" invariant (test).
+> ✅ wave 2: main/src/bridge.py — WhiteBridge (publishes md.*/cmd.* with ACL check,
+> consumers evt.report/evt.signals → WhiteAPI stores), LocalBridge (consumers
+> md.ohlcv/cmd.backtest with schema-version tolerance, publishes evt.*), ReconnectPolicy
+> (exponential backoff with cap), HeartbeatMonitor (last-seen per queue, stale_queues for lag
+> monitoring). Tests: end-to-end cmd.backtest → mock-local → evt.report → report in WhiteAPI via
+> TestRabbitBroker (in-memory, no RabbitMQ), md.ohlcv idempotency, ACL invariants.
+> Remaining: live RabbitMQ (docker-compose), TLS/tokens, lag metrics in Prometheus.
 
-# TZ-09. API-мост: публичный контур ↔ локальный GPU-узел
+## 1. Context
 
-## 1. Контекст
+The system splits into two contours:
+- **Public (white) API**: ingest exchange data, REST for web/bot, report storage. No GPU deps —
+  requirements have no torch.
+- **Local GPU node**: training, model inference, Ollama, Qdrant, RAG, backtest.
 
-Система делится на два контура:
-- **Публичный (white) API**: приём биржевых данных, REST для веба/бота, хранение отчётов.
-  GPU-зависимостей нет — requirements не содержат torch.
-- **Локальный GPU-узел**: обучение, инференс модели, Ollama, Qdrant, RAG, бэктест.
+From the white API we accept exchange data and "do something"; heavy execution happens on the local.
 
-Из white API мы принимаем данные с бирж и «что-то делаем», тяжёлое исполняется на локали.
+## 2. Why this way
 
-## 2. Почему именно так
+### 2.1. Connection direction: local → broker, never the reverse
+The GPU node is the most valuable and vulnerable part (models, datasets). It must not have open
+inbound ports: the local node keeps a persistent outbound connection to the public contour's
+broker; the white API "knocks" the local only through the command queue.
+**Rejected alternative** (HTTP tunnel white → local): an open inbound port + a custom
+retry/buffering mechanism — RabbitMQ provides all of that out of the box.
 
-### 2.1. Направление соединения: локаль → брокер, никогда наоборот
-GPU-узел — самая ценная и уязвимая часть (модели, датасеты). Он не должен иметь открытых
-входящих портов: локальный узел держит постоянное исходящее соединение к брокеру
-публичного контура; white API «стучится» в локаль только через очередь команд.
-**Отвергнутая альтернатива** (HTTP-туннель white → local): открытый входящий порт + свой
-механизм ретраев/буферизации — всё это RabbitMQ даёт из коробки.
+### 2.2. Transport — RabbitMQ (FastStream + aio-pika)
+Already a dependency and in docker-compose: zero new infrastructure. Queues give buffering
+(tick-rate ≠ training speed), ack semantics, retries, break resilience. TLS at the transport level.
 
-### 2.2. Транспорт — RabbitMQ (FastStream + aio-pika)
-Уже в зависимостях и в docker-compose: нулевая новая инфраструктура. Очереди дают
-буферизацию (тик-поток ≠ скорость обучения), ack-семантику, ретраи, устойчивость к
-разрывам. TLS на транспортном уровне.
-
-### 2.3. Очереди и контракты (msgspec из api.md)
+### 2.3. Queues and contracts (msgspec from api.md)
 ```
-md.ohlcv        white → local   свечи/тики (Candle)
-md.agg          white → local   агрегированные бары
-cmd.backtest    white → local   запрос бэктеста (BacktestConfig)
-cmd.train       white → local   запрос обучения (опционально, защищён ACL)
-evt.report      local → white   BacktestReport / метрики обучения
-evt.signals     local → white   сигналы + P(win) (PredictionContract)
+md.ohlcv        white → local   candles/ticks (Candle)
+md.agg          white → local   aggregated bars
+cmd.backtest    white → local   backtest request (BacktestConfig)
+cmd.train       white → local   training request (optional, ACL-protected)
+evt.report      local → white   BacktestReport / training metrics
+evt.signals     local → white   signals + P(win) (PredictionContract)
 ```
-**Ключевое ограничение протокола:** в cmd.* физически нет команд «изменить риск-лимиты»,
-«выдать данные риск-модуля» — сквозной принцип №1 enforced на уровне схемы сообщений.
+**Key protocol constraint:** cmd.* physically has no "change risk limits" / "read risk data"
+commands — cross-cutting principle #1 enforced at the message-schema level.
 
-### 2.4. P(win) пересекает границу как число
-Модель не выполняется на white-узле; Risk Engine получает уже посчитанную вероятность.
-**Почему:** GPU-стек не уезжает в публичный контур, а контур решений остаётся
-детерминированным.
+### 2.4. P(win) crosses the boundary as a number
+The model is not executed on the white node; the Risk Engine receives an already-computed
+probability. **Why:** the GPU stack does not travel to the public contour, and the decision path
+stays deterministic.
 
-### 2.5. Безопасность
-- mTLS или long-lived токен + ACL per-queue (локальный узел пишет только в evt.*, читает
-  только md.*/cmd.*).
-- Идемпотентность ingest: ключ (ticker, ts) — повторная доставка после ретрая не дублирует
-  свечи.
-- Веб/бот аутентифицируется на white API; до очередей веб не доходит.
+### 2.5. Security
+- mTLS or long-lived token + per-queue ACL (the local node writes only evt.*, reads only md.*/cmd.*).
+- Ingestion idempotency: key (ticker, ts) — redelivery after a retry does not duplicate candles.
+- Web/bot authenticate against the white API; the web never reaches the queues.
 
-## 3. Требования
+## 3. Requirements
 
-1. Топология и направления очередей по п.2.1/2.3; msgspec-структуры сообщений — из
-   `contracts/` (TZ-08), не локальные копии.
-2. Reconnect/backoff у локального потребителя; потеря связи не теряет данные (durable queues).
-3. ACL: white-паблишер не имеет прав на evt.*; локаль — на cmd.* publish кроме
-   разрешённых.
-4. Версионирование схем сообщений (поле `schema_version`) — очереди живут дольше деплоев.
-5. Мониторинг: lag очередей, возраст последнего сообщения, heartbeat локального узла.
+1. Queue topology and directions per §2.1/§2.3; msgspec message structures from `contracts/`
+   (TZ-08), not local copies.
+2. Reconnect/backoff for the local consumer; a disconnection loses no data (durable queues).
+3. ACL: the white publisher has no rights to evt.*; the local to cmd.* publish except allowed ones.
+4. Message-schema versioning (`schema_version` field) — queues outlive deploys.
+5. Monitoring: queue lag, last-message age, local-node heartbeat.
 
-## 4. Критерии приёмки
+## 4. Acceptance criteria
 
-- Тест: обрыв соединения локали → восстановление → ни одно сообщение не потеряно/не продублировано.
-- Тест: white-паблишер не может отправить команду вне белого списка (ACL).
-- Идемпотентность: дубль md.ohlcv не создаёт дубль свечи.
+- Test: local disconnection → recovery → no message lost/duplicated.
+- Test: the white publisher cannot send a command outside the whitelist (ACL).
+- Idempotency: a duplicate md.ohlcv does not create a duplicate candle.

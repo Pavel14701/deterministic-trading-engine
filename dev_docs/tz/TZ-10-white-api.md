@@ -1,81 +1,78 @@
-# TZ-10. White API: каркас публичного сервиса
+# TZ-10. White API: public service skeleton
 
-> **Статус: 🔨 ядро + PostgreSQL готовы (12 REST/store-тестов + 10 db-тестов).**
-> ✅ main/src/api.py: WhiteAPI — CandleStore (идемпотентный ingest по
-> (inst_id, ts), дубль не дублирует — тест), JobStore (202 + job_id pattern),
-> SignalStore (latest N), ACL-проверка на submit_backtest.
-> ✅ main/src/rest.py: REST по карте п.2.2 на aiohttp (без новых зависимостей —
-> aiohttp уже идёт с aiogram): POST /ingest/candles, GET /strategies,
-> GET /strategies/{id}, POST /backtests (202), GET /backtests/{job_id},
-> GET /signals?ticker=, POST /rag/generate (503 без rag-контура).
-> Валидация входов msgspec-структурами из contracts/, 400 на битый JSON.
-> ✅ волна 2: PostgreSQL-слой — main/src/db.py (SQLAlchemy 2.0 модели candles/
-> strategies/backtest_jobs/signals, переносимая схема: JSON в TEXT, sqlite
-> для тестов), main/src/pgstores.py (PgCandleStore/PgJobStore/PgSignalStore —
-> те же интерфейсы, что in-memory; WhiteAPI принимает любую реализацию),
-> Alembic: migrations/env.py (DATABASE_URL > alembic.ini, psycopg-драйвер) +
-> 0001_initial (4 таблицы + 2 индекса; upgrade/downgrade проверены тестом
-> на sqlite). DI: DatabaseProvider/DatabasePort в api-контуре (без DATABASE_URL
-> → sessions=None → in-memory fallback).
-> ✅ волна 2 (склейка): main/src/service.py — make_pg_white_api (WhiteAPI над
-> тремя PG-сторами), candle_saver (md.ohlcv → PG, asyncio.to_thread), 
-> make_local_bridge/make_white_bridge (cmd.backtest → инъекция runner'а, 
-> дефолт — stub с failed-отчётом, никогда не молчит); e2e-тесты над
-> TestRabbitBroker: ohlcv → PG идемпотентно, cmd → evt.report → PG job completed.
-> ⬜ Реальный локальный runner (DSL→сигналы→backtest+risk) для cmd.backtest.
-> ⬜ aiogram-бот поверх тех же контрактов; JWT-аутентификация.
-> ⬜ Живой PostgreSQL в CI (service-контейнер) для pgstores.
+> **Status: 🔨 core + PostgreSQL ready (12 REST/store tests + 10 db tests).**
+> ✅ main/src/api.py: WhiteAPI — CandleStore (idempotent ingest by (inst_id, ts), a duplicate
+> does not duplicate — test), JobStore (202 + job_id pattern), SignalStore (latest N),
+> ACL check on submit_backtest.
+> ✅ main/src/rest.py: REST per the §2.2 map on aiohttp (no new deps — aiohttp comes with aiogram):
+> POST /ingest/candles, GET /strategies, GET /strategies/{id}, POST /backtests (202),
+> GET /backtests/{job_id}, GET /signals?ticker=, POST /rag/generate (503 without the rag contour).
+> Input validation via msgspec structures from contracts/, 400 on broken JSON.
+> ✅ wave 2: PostgreSQL layer — main/src/db.py (SQLAlchemy 2.0 models candles/strategies/
+> backtest_jobs/signals, portable schema: JSON in TEXT, sqlite for tests), main/src/pgstores.py
+> (PgCandleStore/PgJobStore/PgSignalStore — same interfaces as in-memory; WhiteAPI accepts any
+> implementation), Alembic: migrations/env.py (DATABASE_URL > alembic.ini, psycopg driver) +
+> 0001_initial (4 tables + 2 indexes; upgrade/downgrade tested on sqlite). DI:
+> DatabaseProvider/DatabasePort in the api contour (no DATABASE_URL → sessions=None →
+> in-memory fallback).
+> ✅ wave 2 (glue): main/src/service.py — make_pg_white_api (WhiteAPI over three PG stores),
+> candle_saver (md.ohlcv → PG, asyncio.to_thread), make_local_bridge/make_white_bridge
+> (cmd.backtest → injected runner, default a stub with a failed report, never silent); e2e tests
+> over TestRabbitBroker: ohlcv → PG idempotent, cmd → evt.report → PG job completed.
+> ⬜ Real local runner (DSL→signals→backtest+risk) for cmd.backtest.
+> ⬜ aiogram bot over the same contracts; JWT auth.
+> ⬜ Live PostgreSQL in CI (service container) for pgstores.
 
-## 1. Контекст
+## 1. Context
 
-`main/src` — сейчас скрипт к T-Invest API. Нужен каркас публичного контура: ingest биржевых
-данных + REST для веба и aiogram-бота. Не host'ит GPU/ML — только транспорт и хранение.
+`main/src` is currently a T-Invest script. Needed: a public-contour skeleton — exchange-data
+ingest + REST for web and the aiogram bot. It does not host GPU/ML — only transport and storage.
 
-## 2. Почему именно так
+## 2. Why this way
 
-### 2.1. FastStream как основа
-FastStream (с RabbitMQ) уже в зависимостях — он же используется в TZ-09; ingest-хендлеры
-очередей и publish идут через один фреймворк. **Отвергнутые альтернативы:** чистый aio-pika
-(boilerplate), самописный asyncio-цикл (нет retry/ack/сериализации).
+### 2.1. FastStream as the base
+FastStream (with RabbitMQ) is already a dependency — the same one used in TZ-09; queue ingest
+handlers and publish go through one framework. **Rejected alternatives:** bare aio-pika
+(boilerplate), a hand-written asyncio loop (no retry/ack/serialization).
 
-### 2.2. Endpoint-карта (v1)
+### 2.2. Endpoint map (v1)
 ```
-POST /ingest/candles        # приём данных бирж (или internal: consume md.* напрямую)
-GET  /strategies            # реестр стратегий (read-only)
-GET  /strategies/{id}       # + DSL-текст, AST (JSON), метрики
-POST /backtests             # запрос бэктеста → cmd.backtest, 202 + job_id
-GET  /backtests/{job_id}    # статус/отчёт из evt.report
-GET  /signals?ticker=...    # последние сигналы + P(win)
-POST /rag/generate          # RAG-генерация DSL (валидация внутри rag-контура)
+POST /ingest/candles        # exchange data ingest (or internal: consume md.* directly)
+GET  /strategies            # strategy registry (read-only)
+GET  /strategies/{id}       # + DSL text, AST (JSON), metrics
+POST /backtests             # backtest request → cmd.backtest, 202 + job_id
+GET  /backtests/{job_id}    # status/report from evt.report
+GET  /signals?ticker=...    # latest signals + P(win)
+POST /rag/generate          # RAG DSL generation (validation inside the rag contour)
 POST /telegram/webhook      # aiogram
 ```
-**Почему бэктест асинхронный (202 + job):** он исполняется на локали через очередь;
-синхронный HTTP на минуты работы — анти-паттерн.
+**Why asynchronous backtest (202 + job):** it runs on the local via a queue; synchronous HTTP for
+minute-long work is an anti-pattern.
 
-### 2.3. Чего нет в API и почему
-- Нет эндпоинтов изменения риск-лимитов, позиций, исполнения ордеров — их нет в протоколе
-  очередей (TZ-09 п.2.3), значит их не может быть и здесь.
-- Нет прямого доступа к Qdrant/Ollama — только через RAG-контур локали.
-- ML-обучение запускается только командой cmd.train (ACL), статусы — через evt.report.
+### 2.3. What is absent from the API and why
+- No endpoints to change risk limits, positions, or execute orders — they do not exist in the
+  queue protocol (TZ-09 §2.3), so they cannot exist here.
+- No direct Qdrant/Ollama access — only through the local rag contour.
+- ML training is launched only by the cmd.train command (ACL); statuses via evt.report.
 
-### 2.4. Хранение
-PostgreSQL (уже в compose, Alembic настроен): стратегии, отчёты бэктестов, сигналы, jobs.
-Рыночные данные — тоже в PG (timescale-совместимая схема позже; сначала простая таблица
-candles с уникальным индексом (ticker, ts) — идемпотентность ingest).
+### 2.4. Storage
+PostgreSQL (already in compose, Alembic configured): strategies, backtest reports, signals, jobs.
+Market data also in PG (timescale-compatible schema later; first a simple candles table with a
+unique index (ticker, ts) — ingest idempotency).
 
-### 2.5. Аутентификация
-Веб/бот — JWT против white API; сервисный токен — для ingest от биржевых коннекторов.
+### 2.5. Authentication
+Web/bot — JWT against the white API; a service token for ingest from exchange connectors.
 
-## 3. Требования
+## 3. Requirements
 
-1. Каркас FastStream-приложения: consumers md.* → запись в PG, publishers cmd.*.
-2. REST по карте п.2.2 (FastAPI поверх, если потребуется; сначала FastStream + минимальный HTTP).
-3. aiogram-бот: те же данные через те же контракты (не отдельная логика).
-4. Миграции Alembic для таблиц strategies/backtest_jobs/signals/candles.
-5. Валидация всех входов msgspec-структурами из contracts/ (TZ-08).
+1. FastStream app skeleton: consumers md.* → write to PG, publishers cmd.*.
+2. REST per the §2.2 map (FastAPI on top if needed; first FastStream + minimal HTTP).
+3. aiogram bot: the same data through the same contracts (not separate logic).
+4. Alembic migrations for tables strategies/backtest_jobs/signals/candles.
+5. Input validation via msgspec structures from contracts/ (TZ-08).
 
-## 4. Критерии приёмки
+## 4. Acceptance criteria
 
-- Ingest: идемпотентная запись свечей (дубль не дублирует), retry-safe.
-- POST /backtests → cmd.backtest → (мок локали) → evt.report → GET возвращает отчёт.
-- Схемы ответов полностью из contracts/, без локальных дубликатов.
+- Ingest: idempotent candle write (a duplicate does not duplicate), retry-safe.
+- POST /backtests → cmd.backtest → (mock local) → evt.report → GET returns the report.
+- Response schemas fully from contracts/, no local duplicates.

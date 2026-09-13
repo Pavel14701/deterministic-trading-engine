@@ -1,17 +1,22 @@
-# Полная алгоритмическая стратегия "Структура + Импульс + Волатильность" (SIV)
+# Strategy "Structure + Impulse + Volatility" (SIV) — reference integration scenario
 
-> **ВЕРИФИКАЦИЯ (проверка по коду, обновить при изменении ta/strategies):**
-> Все индикаторы из этого документа существуют в коде. Расхождения путей,
-> указанных в разделе «Используемые файлы», с фактическим расположением:
-> - `supertrend.py` — в `ta/src/overlap/`, а не `/trend`;
-> - `bbands.py` — в `ta/src/volatility/`, а не `/overlap`;
-> - `avsl.py`/`avsr` — `ta/src/custom/avsl.py` + `strategies/src/infrastructure/indicators/avsl_avsr.py` (отдельного `avsr.py` в ta нет);
-> - `order_block.py` — в `strategies/src/infrastructure/indicators/`, не в ta;
-> - `zscore.py` (не «Z-Score»-модуль) — `ta/src/statistics/`.
-> Подтверждено: `ott_ind` возвращает кортеж (ma, long_stop, short_stop, **direction**, ott) —
-> атрибут `ott.direction` для Этапа 1 доступен через multi-output биндинг (TZ-03).
-> Правило «минимум 3 из 4 трендовых условий» (Этап 1) и order-block-логика (Этап 2)
-> не выражаются текущим DSL — реализуются Python-хелперами движка (TZ-04 п.4.3).
+> **Status: ✅ reference.** The SIV strategy is the golden integration scenario for TZ-03 (indicators
+> into the DSL) and TZ-04 (backtest). All indicators referenced below exist in code (verification
+> block follows).
+>
+> **Verification (from code — update when ta/strategies change):** path corrections in "Used files":
+> - `supertrend.py` — in `ta/src/overlap/`, not `/trend`;
+> - `bbands.py` — in `ta/src/volatility/`, not `/overlap`;
+> - `avsl.py`/`avsr` — `ta/src/custom/avsl.py` + `strategies/src/infrastructure/indicators/avsl_avsr.py`
+>   (no standalone `avsr.py` in ta);
+> - `order_block.py` — in `strategies/src/infrastructure/indicators/`, not in ta;
+> - `zscore.py` — in `ta/src/statistics/`.
+> Confirmed: `ott_ind` returns a tuple (ma, long_stop, short_stop, **direction**, ott) — `ott.direction`
+> for Stage 1 is reachable via multi-output binding (TZ-03).
+> The "at least 3 of 4 trend conditions" rule (Stage 1) and order-block logic (Stage 2) are not
+> expressible in the current DSL — implemented as python engine helpers (TZ-04 §4.3).
+
+# (original RU content: Полная алгоритмическая стратегия "Структура + Импульс + Волатильность" (SIV))
 
 
 Ниже — **полная многоуровневая стратегия**, которая использует **все лучшие индикаторы** из твоего арсенала, но строго разделяет их по функциям.

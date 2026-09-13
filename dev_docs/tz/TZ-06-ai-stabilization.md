@@ -1,147 +1,124 @@
-# TZ-06. Стабилизация ai/ (EntryExitTransformer)
+# TZ-06. Stabilizing `ai/` (EntryExitTransformer)
 
-## 1. Контекст
+> **Status: 🔨 core done; remaining items listed in acceptance.**
+> ✅ torch explicit, temporal split (no validation leak), self-training isolation with rollback,
+> model bundle + loader, `predict_p_win` inference contract, bisect OB index, package `ai`
+> identity + doc cleanup, tests (68 passed), logging instead of print, YAML config
+> (`configs/ai.yaml` + `ai/src/config.py`), compute backends (`ai/src/device.py`,
+> CUDA/CPU training; ONNX DirectML/Vulkan-path inference).
+> ⬜ OB-encoder batching in forward (no measurements yet); ⬜ predict_p_win < 5 ms on window 128.
 
-`ai/` — самодостаточный, но изолированный «островной» модуль (~3.5k строк): не знает про
-dsl/ta/strategies, привязан к концепции order blocks, которой больше нигде нет. Ядро
-(transformer, losses, self-training, contracts) качественное, но интеграции мешают
-проблемы ниже. Порядок в roadmap — сразу после TZ-01, до TZ-02/03: torch и утечка
-валидации блокируют любое использование модели.
+## 1. Context
 
-## 2. Проблемы и обоснование решений
+`ai/` is self-contained but an isolated "island" module (~3.5k lines): it does not know about
+dsl/ta/strategies and is tied to the order-block concept that exists nowhere else. The core
+(transformer, losses, self-training, contracts) is quality, but integration is blocked by the
+problems below. Roadmap order: right after TZ-01, before TZ-02/03 — torch and the validation leak
+block any model use.
 
-### 2.1. torch отсутствует в зависимостях (критично)
-`pyproject.toml` не содержит torch — он приходит транзитивно через sentence-transformers.
-Версия и вариант (CPU/CUDA) не зафиксированы. **Решение:** добавить torch явно
-с индекс-конфигурацией. **Почему нельзя оставить транзитивным:** uv-lock не управляет
-им напрямую; обновление sentence-transformers молча сменит torch.
+## 2. Problems and rationale
 
-### 2.2. Утечка валидации через random-сплит (критично)
-`_split_train_val` перемешивает, а окна seq_len=128 перекрываются на 127 баров — один и
-тот же кусок рынка в train и val, метрики завышены. Совпадает с п.5 quant_checklist.
-**Решение:** хронологический сплит по диапазонам баров (train < T_val ≤ val) без
-перекрытия окон на границе. **Почему не K-fold:** временная структура данных — валидация
-«из будущего» бессмысленна для трейдинга.
+### 2.1. torch absent from dependencies (critical)
+`pyproject.toml` has no torch — it comes transitively via sentence-transformers. Version and
+variant (CPU/CUDA) are unpinned. **Decision:** add torch explicitly with index configuration.
+**Why not keep transitive:** uv-lock does not manage it directly; a sentence-transformers update
+silently swaps torch.
 
-### 2.3. Self-training деструктивно мутирует датасет
-`_update_labels_parquet` перезаписывает labels.parquet псевдо-лейблами без пометки
-происхождения → накопление ошибок необратимо. **Решение:** отдельный файл/колонка
-`is_pseudo`, бэкап предыдущего состояния, откат раунда. **Почему важно:** self-training —
-итеративный процесс; без возможности отката первый неудачный раунд портит датасет навсегда.
+### 2.2. Validation leak via random split (critical)
+`_split_train_val` shuffles, and seq_len=128 windows overlap by 127 bars — the same market slice
+in train and val, inflated metrics. Matches checklist item 5.
+**Decision:** chronological split by bar ranges (train < T_val ≤ val) without window overlap at the
+boundary. **Why not K-fold:** the temporal structure — "from the future" validation is meaningless
+for trading.
 
-### 2.4. Model bundle (критично для инференса)
-`torch.save(state_dict)` без seq_len, списка колонок, atr_global, нормировочных статистик —
-модель нельзя корректно загрузить. **Решение:** bundle
-`{state_dict, config, feature_columns, seq_len, atr_global, norm_stats}` + загрузчик.
-Без bundle TZ-05 (`--ml`) невозможен технически.
+### 2.3. Self-training destructively mutates the dataset
+`_update_labels_parquet` overwrites labels.parquet with pseudo-labels without a provenance marker
+→ error accumulation is irreversible. **Decision:** a separate file/column `is_pseudo`, backup of
+the previous state, round rollback. **Why:** self-training is iterative; without rollback the first
+bad round poisons the dataset forever.
 
-### 2.5. Инференс-контракт
-Функция `predict_p_win(model, bundle, window, ...) -> float` — единственная точка
-взаимодействия Risk Engine и скрипта инференса с моделью. Сейчас её нет: forward отдаёт
-per-bar logits батчами. Требование ТЗ «< 1 мс на сделку» не достижимо ещё и потому, что
-forward перебирает order blocks питоновским циклом с созданием тензора на каждый —
-нужна батчеризация OB-энкодера.
+### 2.4. Model bundle (critical for inference)
+`torch.save(state_dict)` without seq_len, column list, atr_global, normalization stats — the model
+cannot be reloaded correctly. **Decision:** bundle
+`{state_dict, config, feature_columns, seq_len, atr_global, norm_stats}` + loader. Without a
+bundle, TZ-05 (`--ml`) is technically impossible.
 
-### 2.6. O(окна × OB) сканирование
-`TradingDataset.__getitem__` линейно проходит все блоки на каждый сэмпл. На реальных
-объёмах — часы. **Решение:** индекс OB по бару (sorted + bisect).
+### 2.5. Inference contract
+A function `predict_p_win(model, bundle, window, ...) -> float` — the only interaction point of the
+Risk Engine and the inference script with the model. Currently absent: forward returns per-bar
+logits in batches. The "< 1 ms per trade" requirement is additionally unattainable because forward
+loops over order blocks in Python creating a tensor each — the OB encoder needs batching.
 
-### 2.7. Пакет-идентификация
-Докстринги/примеры ссылаются на `trading.*`; `quickstart.py` импортирует из
-`trading.quickstart` (битый путь). Фиксируется имя пакета `ai`, чистится документация
-(включая мифический Lark-парсер из `ai/docs/README.md` — см. TZ-01 п.2.7).
+### 2.6. O(windows × OB) scanning
+`TradingDataset.__getitem__` linearly scans all blocks per sample. On real volumes — hours.
+**Decision:** an OB index by bar (sorted + bisect).
 
-### 2.8. Нет ни одного теста
-dsl и ta покрыты, ai — нет, хотя ai принимает самое дорогое решение. Минимальный набор:
-лейбл-генератор (look-ahead-тесты: лейбл на баре t не зависит от баров > t), лоссы,
-сплит-утечка, паритет лейблов с движком TZ-04 (golden-тест).
+### 2.7. Package identity
+Docstrings/examples reference `trading.*`; `quickstart.py` imports from `trading.quickstart`
+(broken path). Fix the package name `ai`, clean the docs (including the mythical Lark parser in
+`ai/docs/README.md` — see TZ-01 §2.7).
 
-### 2.9. Мелочи
-`contracts.py` печатает предупреждения через print (включая «Batch validation passed.»
-на каждый батч) → logging; `quickstart` хардкодит `close_idx=3`; `compute_atr` — питоновский
-цикл (есть numba); pattern-head объявлен, но «unused in training» — реализовать данные или
-убрать из доков.
+### 2.8. No tests at all
+`dsl` and `ta` are covered, `ai` is not — although ai makes the most expensive decision. Minimal
+set: label generator (look-ahead: a label at bar t independent of bars > t), losses,
+split-leak, label parity with the TZ-04 engine (golden test).
 
-## 3. Требования (сводно)
+### 2.9. Misc
+`contracts.py` prints warnings via print (including "Batch validation passed." every batch) →
+logging; `quickstart` hardcodes `close_idx=3`; `compute_atr` is a Python loop (numba exists);
+## 3. Requirements (summarized)
 
-1. ✅ torch в pyproject (п.2.1) — объявлен явно (`torch>=2.4.1`), не только
-   через [gpu]-экстры; uv.lock закрепляет 2.4.1 (win) / 2.10.0.
-2. ✅ Хронологический train/val сплит (п.2.2) — `_split_train_val` отдаёт
-   валидации **самые последние** окна и усекает train до границы
-   (`val_start - (seq_len - 1)`), т.е. ни одно окно train не пересекается
-   по барам с val. Тест: `test_split_train_val_no_window_overlap`.
-3. ✅ Self-training: is_pseudo + бэкап + откат (п.2.3) —
-   `_update_labels_parquet(labels_path, pseudo, mode, round_idx)`:
-   пер-раундный бэкап `<path>.bak_roundN.parquet`, булева колонка
-   `is_pseudo`, уже-псевдо бары не перезаписываются; `_rollback_labels`
-   восстанавливает бэкап (FileNotFoundError без него). Тесты:
-   `test_update_labels_adds_is_pseudo_and_backup`,
-   `test_update_labels_never_overwrites_pseudo`,
-   `test_rollback_labels_restores_backup`,
-   `test_rollback_labels_missing_backup_raises`.
-4. ✅ Model bundle + загрузчик (п.2.4) — `ai/src/bundle.py`:
-   `ModelBundle{state_dict, model_config, feature_columns, seq_len,
-   atr_global, norm_stats, version}`, `build_bundle / save_bundle /
-   load_bundle / rebuild_model`. ONNX-экспорт — в `device.py`
-   (`export_onnx` с dynamic_axes), дубль из bundle удалён.
-5. ✅ `predict_p_win` — контракт инференса (п.2.5) —
-   `EntryExitPredictor(bundle).predict_proba(...) -> {p_entry, p_exit,
-   p_win}` и `predict_p_win(...) -> float` (последний бар окна,
-   `torch.inference_mode`). Пороговые потребители (Risk Engine, TZ-05)
-   никогда не касаются тензоров напрямую.
-6. ✅ OB-индекс (bisect) (п.2.6) — `TradingDataset.__getitem__` ищет
-   блоки через `np.searchsorted` по отсортированным `end_idx`
-   (префикс + фильтр по `start_bar`) вместо полного прохода.
-   Батчеризация OB-энкодера в forward — ⬜ остаётся (профилировать
-   на реальном объёме; текущий тестовый объём мал).
-7. ✅ Имя пакета `ai`, чистка доков (п.2.7) — пакет `ai`, относительные
-   импорты в тестах, Lark-легенда убрана (см. TZ-01 п.2.7).
-8. ✅ Тесты (п.2.8) — `ai/src/tests/`: look-ahead лейблов
-   (`test_features`, `test_label_generation`), лоссы (`test_losses`),
-   утечка сплита + self-training изоляция (`test_stabilization`),
-   bundle/предикт (`test_bundle`). Итог набора: **68 passed**.
-9. ✅ logging вместо print (п.2.9) — `training.py` и `contracts.py`
-   используют модульный `logger` (warning для контрактов, info для
-   прогресса обучения; 'Batch validation passed.' → debug).
-10. ✅ **Конфигурация (YAML)** — реализовано: `configs/ai.yaml` + `ai/src/config.py`
-    (секции risk/model/training/compute, `seed`, дефолты = прежние хардкоды,
-    конфиг протаскивается аргументами, глобального состояния нет; `risk_kwargs()`
-    мапит RiskConfig на генератор лейблов).
-11. **Compute backends** — реализовано: `ai/src/device.py`.
-    - Обучение: **только CUDA или CPU** (не-CUDA обучение отброшено);
-      `train_backend: auto | cuda | cpu`, неверный бэкенд = ValueError.
-    - Инференс: `infer_backend: auto | cuda | cpu | onnx_directml | vulkan`;
-      `vulkan` — алиас `onnx_directml` (DX12: AMD/Intel/NVIDIA).
-    - Чистый Vulkan и GGUF **отвергнуты**: backward-pass на Vulkan не существует;
-      GGUF — формат llama.cpp под конкретные LLM-архитектуры, кастомный
-      EntryExitTransformer конвертером не покрывается; переписывание forward на
-      GGML несоразмерно задаче.
-    - Путь не-CUDA-инференса: `export_onnx()` → ONNX Runtime DirectML EP;
-      optional-группа `[gpu]` (torch-directml, onnxruntime-directml, Windows).
-    - Smoke-тест для non-CUDA бэкендов обязателен (риск тихих NaN).
+1. ✅ torch in pyproject (§2.1) — declared explicitly (`torch>=2.4.1`), with index configuration.
+2. ✅ Temporal split (§2.2) — `_split_train_val` by bar ranges, no overlap across the boundary.
+3. ✅ Self-training isolation (§2.3) — `is_pseudo` flag + backup + rollback.
+4. ✅ Model bundle (§2.4) — `save_bundle` / `load_bundle` / `rebuild_model`. ONNX export in
+   `device.py` (`export_onnx` with dynamic_axes); duplicate removed from bundle.
+5. ✅ `predict_p_win` contract (§2.5) — `EntryExitPredictor(bundle).predict_proba(...) -> {p_entry,
+   p_exit, p_win}` and `predict_p_win(...) -> float` (last bar of window, `torch.inference_mode`).
+   Threshold consumers (Risk Engine, TZ-05) never touch tensors directly.
+6. ✅ OB index (bisect) (§2.6) — `TradingDataset.__getitem__` finds blocks via `np.searchsorted`
+   over sorted `end_idx` (prefix + `start_bar` filter) instead of a full scan. OB-encoder batching
+   in forward — ⬜ remains (profile on real volume; current test volume is small).
+7. ✅ Package identity `ai`, doc cleanup (§2.7) — package `ai`, relative test imports, Lark legend
+   removed (see TZ-01 §2.7).
+8. ✅ Tests (§2.8) — `ai/src/tests/`: label look-ahead (`test_features`, `test_label_generation`),
+   losses (`test_losses`), split-leak + self-training isolation (`test_stabilization`),
+   bundle/predict (`test_bundle`). Total: **68 passed**.
+9. ✅ logging instead of print (§2.9) — `training.py` and `contracts.py` use a module `logger`
+   (warning for contracts, info for training progress; 'Batch validation passed.' → debug).
+10. ✅ **Configuration (YAML)** — `configs/ai.yaml` + `ai/src/config.py`
+    (sections risk/model/training/compute, `seed`, defaults = previous hardcodes, config threaded
+    via args, no global state; `risk_kwargs()` maps RiskConfig to the label generator).
+11. **Compute backends** — `ai/src/device.py`.
+    - Training: **CUDA or CPU only** (non-CUDA training dropped); `train_backend: auto | cuda | cpu`,
+      wrong backend = ValueError.
+    - Inference: `infer_backend: auto | cuda | cpu | onnx_directml | vulkan`;
+      `vulkan` is an alias for `onnx_directml` (DX12: AMD/Intel/NVIDIA).
+    - Pure Vulkan and GGUF **rejected**: there is no Vulkan backward-pass; GGUF is a llama.cpp
+      format for specific LLM architectures, a custom EntryExitTransformer is not covered by a
+      converter; rewriting forward in GGML is disproportionate.
+    - Non-CUDA inference path: `export_onnx()` → ONNX Runtime DirectML EP; optional `[gpu]`
+      group (torch-directml, onnxruntime-directml, Windows).
+    - A smoke test for non-CUDA backends is mandatory (risk of silent NaN).
 
-## 4. Критерии приёмки
+## 4. Acceptance criteria
 
-- ✅ Набор ai-тестов зелёный: **68 passed, 3 skipped** (skips —
-  платформозависимые DirectML-тесты без `[gpu]`).
-- ✅ `quick_train` end-to-end на синтетических данных
-  (`test_quickstart`).
-- ⬜ predict_p_win < 5 мс на окне 128 (CPU) — замерить при первом
-  прогоне на реальном железе; тест-инвариант корректности есть.
-- ✅ Тест-инвариант лейблов и сплита зелёные.
-- ✅ Повторный запуск с тем же seed — идентичные метрики
-  (`set_seed` в конфиге; `test_config` проверяет seed).
+- ✅ ai test set green: **68 passed, 3 skipped** (skips — platform-dependent DirectML without `[gpu]`).
+- ✅ `quick_train` end-to-end on synthetic data (`test_quickstart`).
+- ⬜ predict_p_win < 5 ms on window 128 (CPU) — measure on first run on real hardware; a
+  correctness test invariant exists.
+- ✅ label and split invariants green.
+- ✅ Rerun with the same seed → identical metrics (`set_seed` in config; `test_config` checks seed).
 
-## 5. Сверка с quant_checklist
+## 5. Checklist reconciliation
 
-Пункты чек-листа, закрываемые этим ТЗ:
-
-| Пункт чек-листа | Статус | Где |
+| Checklist item | Status | Where |
 |---|---|---|
-| п.5: валидация только по времени (без перемешивания) | ✅ | `_split_train_val`, тест на отсутствие перекрытия окон |
-| п.5: TP/SL из данных ≤ t (ATR предыдущих баров) | ✅ (было) | `features.compute_tp_sl` |
-| п.6: воспроизводимость (seed, конфиг) | ✅ | `configs/ai.yaml`, `set_seed` |
-| п.4: метрика max drawdown в валидации | ⬜ | TZ-04 (бэктест), не ai |
-| п.1: онлайн-ZigZag / фиксированные OB | ⬜ | TZ-04 п.4.3 |
-| п.2: исполнение open[t+1], комиссии | ✅ (было) | `features.py` (переносится в TZ-04 движок) |
-| п.3: базлайны RF/XGBoost | ⬜ | TZ-04 п.4.6 |
+| item 5: time-only validation (no shuffle) | ✅ | `_split_train_val`, window-overlap test |
+| item 5: TP/SL from data ≤ t (prior ATR) | ✅ (was) | `features.compute_tp_sl` |
+| item 6: reproducibility (seed, config) | ✅ | `configs/ai.yaml`, `set_seed` |
+| item 4: max-drawdown metric in validation | ⬜ | TZ-04 (backtest), not ai |
+| item 1: online ZigZag / fixed OB | ⬜ | TZ-04 §4.3 |
+| item 2: execution open[t+1], commissions | ✅ (was) | `features.py` (moved to the TZ-04 engine) |
+| item 3: RF/XGBoost baselines | ⬜ | TZ-04 §4.6 |
+the pattern-head is declared but "unused in training" — implement data or remove from docs.

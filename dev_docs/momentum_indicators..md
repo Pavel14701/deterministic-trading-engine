@@ -1,4 +1,9 @@
-# Перспективные индикаторы момента — практическое руководство
+# Momentum indicators — practical guide
+
+> **Status: ✅ reference.** Momentum oscillators (RSI, MACD, Stoch…); best combined with trend
+> filters and price confirmation. Reference for `ta/src/momentum/` modules.
+
+# (original RU content: Перспективные индикаторы момента — практическое руководство)
 
 Отобрано на основе бэктестов, исследований эффективности и рыночной практики.  
 **Важно**: моментум-индикаторы работают лучше всего в сочетании с фильтрами тренда и подтверждением ценой.

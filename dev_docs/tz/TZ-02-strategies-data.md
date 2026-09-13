@@ -1,75 +1,72 @@
-> **Статус: ✅ реализован (ядро: единая схема + Strategy + валидация + реестр + AST).**
-> Реализовано: единая OHLC-схема (`open/high/low/close`) с legacy-маппингом
-> `*__price` в `PriceDataFramePolars`; `Strategy` + `Metrics` (frozen dataclass);
+# TZ-02. Strategy layer and unified data schema
+
+> **Status: ✅ core done** (unified schema + Strategy + validation + registry + AST + label generator).
+> Implemented: unified OHLC schema (`open/high/low/close`) with legacy `*__price` mapping in
+> `PriceDataFramePolars`; `Strategy` + `Metrics` (frozen dataclass);
 > `validate_strategy(s, manifest)` = parse + indicator-manifest check;
-> `StrategyRegistry` (JSON-файлы в `strategies/data/`, auto-pins manifest_hash);
-> `indicators_used(expr)` через рекурсивный walk AST to_dict;
-> 25 тестов зелёные. Лейбл-генератор реализован: labels.py -> generate_labels() ->
-> action/outcome массивы для ai/src/dataset.py (вход close > open -> сигнал через
-> TaProvider -> backtest engine -> action=1/2 + R-multiple). Look-ahead инвариант зелёный.
+> `StrategyRegistry` (JSON files in `strategies/data/`, auto-pinned manifest_hash);
+> `indicators_used(expr)` via recursive AST to_dict walk;
+> 25 tests green. Label generator implemented: labels.py -> generate_labels() ->
+> action/outcome arrays for ai/src/dataset.py. Look-ahead invariant green.
 
-# TZ-02. Слой стратегий и единая схема данных
+## 1. Context
 
-## 1. Контекст
+`strategies/` is a skeleton: `PriceDataFramePolars` + indicator functions. No strategy format,
+registry or validation. A data-schema conflict was found at the same time: `PriceDataFramePolars`
+requires `open_price, close_price, high_price, low_price`, while `ai/` and the polars `ta/`
+functions use `open, high, low, close`. Two canonical OHLC schemas in one project = an adapter at
+every seam, and one of them will eventually miss.
 
-`strategies/` — каркас: `PriceDataFramePolars` и функции индикаторов. Нет формата стратегии,
-реестра и валидации. Одновременно выявлен конфликт схем данных: `PriceDataFramePolars`
-требует `open_price, close_price, high_price, low_price`, а `ai/` и polars-функции `ta/`
-работают с `open, high, low, close`. Две канонические схемы OHLC в одном проекте — на
-каждом стыке понадобится адаптер, и один из них рано или поздно промахнётся.
+## 2. Why this way
 
-## 2. Почему именно так
+### 2.1. Unified OHLC schema: `open, high, low, close, volume`
+**Why these names:** (a) `ai/` is fully written for them (features, quickstart, contract);
+(b) `ta` functions `*_polars` default to `close_col='close'`; (c) `dev_docs/api.md` and exchanges
+use short names. Renaming `PriceDataFramePolars` is cheaper than adapters in all consumers.
+**Rejected alternative** (adapter layer): three consumers × N modules = O(N) error points vs one.
 
-### 2.1. Единая OHLC-схема: `open, high, low, close, volume`
-**Почему эти имена:** (а) `ai/` целиком написан под них (features, quickstart, contract);
-(б) `ta`-функции `*_pololars` по умолчанию читают `close_col='close'`; (в) `dev_docs/api.md`
-и биржи используют короткие имена. Переименование `PriceDataFramePolars` дешевле, чем
-адаптеры во всех потребителях. **Отвергнутая альтернатива** (адаптер-слой): три consumers
-× N модулей = O(N) точек ошибки вместо одной.
-
-### 2.2. Формат Strategy с manifest_hash
+### 2.2. Strategy format with manifest_hash
 ```python
 @dataclass(frozen=True)
 class Strategy:
     id: str
     name: str
     description: str
-    dsl_entry: str            # выражение DSL на вход
-    dsl_exit: str | None      # выражение DSL на выход (None = только SL/TP)
-    params: dict              # константы для провайдера/фильтров
-    manifest_hash: str        # хэш манифеста, с которым валидировалось
+    dsl_entry: str            # DSL expression for entry
+    dsl_exit: str | None      # DSL expression for exit (None = SL/TP only)
+    params: dict              # constants for the provider/filters
+    manifest_hash: str        # hash of the manifest it was validated against
     created_at: datetime
-    metrics: Metrics | None   # заполняет backtest
+    metrics: Metrics | None   # filled by backtest
 ```
-**Почему manifest_hash обязателен:** стратегия ссылается на индикаторы конкретной версии
-манифеста. При добавлении новых индикаторов старые стратегии в RAG-примерах (few-shot)
-могут подсунуть LLM несуществующую схему. Payload-фильтр по актуальному хэшу решает это
-на этапе retrieval (TZ-07).
+**Why manifest_hash is mandatory:** a strategy references indicators of a specific manifest
+version. When new indicators are added, old strategies in RAG few-shot examples may feed the LLM a
+nonexistent schema. A payload filter by the current hash solves this at retrieval (TZ-07).
 
-### 2.3. Валидация как единственный вход в реестр
-`validate_strategy(s, manifest) -> list[str]` = parse обоих выражений + ManifestValidator.
-Ничего не сохраняется без прохождения. **Почему:** DSL — машинно-проверяемый артефакт;
-пропуск невалидной стратегии ломает сразу бэктест, RAG-примеры и инференс.
+### 2.3. Validation is the only entrance to the registry
+`validate_strategy(s, manifest) -> list[str]` = parse of both expressions + ManifestValidator.
+Nothing is saved without passing. **Why:** a DSL is a machine-checkable artifact; an invalid
+strategy breaks backtest, RAG examples and inference at once.
 
-### 2.4. Лейбл-генератор живёт здесь
-`strategies/src/application/labels.py`: «DSL-сигнал → сделка → outcome» с fill-логикой из
-`ai/src/features.py` (вход по open[i+1], комиссия, слиппедж), но поверх движка исполнения
-TZ-04 (см. TZ-04 п.0). **Почему:** сейчас лейблы ai/ описывают только order-block-сетапы —
-P(win) учится предсказывать исходы чужой торговли. Нужен мост «сигнал стратегии → исход».
+### 2.4. The label generator lives here
+`strategies/src/application/labels.py`: "DSL signal → trade → outcome" with fill logic from
+`ai/src/features.py` (entry at open[i+1], commission, slippage), but on top of the TZ-04 execution
+engine (see TZ-04 §0). **Why:** current ai/ labels describe only order-block setups — P(win) learns
+the outcomes of someone else's trading. A "strategy signal → outcome" bridge is needed.
 
-## 3. Требования
+## 3. Requirements
 
-1. Переименовать колонки `PriceDataFramePolars` в единую схему (п.2.1), обновить consumers.
-2. `Strategy` + `validate_strategy` + реестр (JSON-файлы в `strategies/data/`; миграция в
-   PostgreSQL через Alembic — позже, когда появится main-сервис).
-3. Лейбл-генератор (п.2.4) на движке TZ-04; контракт результата = `action/outcome` массивы,
-   совместимые с `ai/src/dataset.py`.
-4. Экспорт AST-метаданных: список используемых индикаторов обходом AST (`to_dict` уже есть) —
-   для фич ai/ и payload RAG.
+1. Rename `PriceDataFramePolars` columns to the unified schema (§2.1), update consumers.
+2. `Strategy` + `validate_strategy` + registry (JSON files in `strategies/data/`; migration to
+   PostgreSQL via Alembic later, when the main service exists).
+3. Label generator (§2.4) on the TZ-04 engine; result contract = `action/outcome` arrays
+   compatible with `ai/src/dataset.py`.
+4. AST metadata export: list of used indicators via AST walk (`to_dict` already exists) — for
+   ai/ features and RAG payload.
 
-## 4. Критерии приёмки
+## 4. Acceptance criteria
 
-- Эталонная стратегия (`let r = rsi(period=14) in r.value < 30 and rising(close, 5)`)
-  проходит validate → бэктест-дым на синтетике → корректные action/outcome массивы.
-- Тест-инвариант лейблов: лейбл на баре t не меняется при подмене баров > t (look-ahead).
-- `uv run pytest strategies` зелёный.
+- Reference strategy (`let r = rsi(period=14) in r.value < 30 and rising(close, 5)`) goes through
+  validate → backtest smoke on synthetic → correct action/outcome arrays.
+- Label look-ahead invariant: a label at bar t does not change when bars > t are replaced.
+- `uv run pytest strategies` green.

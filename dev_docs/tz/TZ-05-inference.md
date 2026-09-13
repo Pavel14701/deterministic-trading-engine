@@ -1,68 +1,58 @@
-# TZ-05. Скрипт инференса
+# TZ-05. Inference script
 
-## 1. Контекст
+## 1. Context
 
-Единая точка «стратегия + данные → сигналы (опц. P(win))». Это «бэктест на живом хвосте
-данных»: тот же контур сигналов, что и в TZ-04, без симуляции сделок.
+A single point "strategy + data → signals (optionally P(win))". This is "backtest on a live tail":
+the same signal path as TZ-04, without trade simulation.
 
-## 2. Почему именно так
+## 2. Why this way
 
-### 2.1. CLI, а не API/сервис
-Сейчас нет основного сервиса (main/ — каркас). CLI даёт проверяемый артефакт для
-отладки контура и основу для будущих HTTP-эндпоинтов TZ-10. **Отвергнутая альтернатива**
-(сразу REST): контракт сигналов ещё не стабилен; фиксировать его в API до бэктеста —
-гарантированные ломки.
+### 2.1. CLI, not an API/service
+There is no main service yet (`main/` is a skeleton). A CLI gives a verifiable artifact for
+debugging the path and a base for the future HTTP endpoints of TZ-10. **Rejected alternative**
+(straight REST): the signal contract is not stable yet; fixing it in an API before backtest
+guarantees breaking changes.
 
-### 2.2. P(win) только через predict_p_win
-ML-инференс доступен строго через контракт TZ-06 п.7 (`predict_p_win(model, bundle,
-window, ...) -> float`) и только при наличии model bundle. Без bundle флаг `--ml`
-недоступен. **Почему:** требование ТЗ «модель < 1 мс на сделку» не проверяемо, пока
-нет инференс-функции; а state_dict без конфига (сейчас) вообще нельзя загрузить.
+### 2.2. P(win) only via predict_p_win
+ML inference is strictly through the TZ-06 §7 contract (`predict_p_win(model, bundle, window, ...)
+-> float`) and only when a model bundle is present. Without a bundle the `--ml` flag is
+unavailable. **Why:** the "model < 1 ms per trade" requirement is not verifiable without an
+inference function; and a state_dict without config (currently) cannot even be loaded.
 
-### 2.3. Источники данных
-T-Invest (`t_tech.invest`, как в `main/src/main.py`) — основной; yfinance — dev-фолбэк;
-Parquet — для тестов. Данные проходят через `PriceDataFramePolars` (единая схема TZ-02).
+### 2.3. Data sources
+T-Invest (`t_tech.invest`, as in `main/src/main.py`) — primary; yfinance — dev fallback;
+Parquet — for tests. Data goes through `PriceDataFramePolars` (unified TZ-02 schema).
 
-## 3. Требования
+## 3. Requirements
 
 1. ✅ CLI: `infer.cli` — `--source {synthetic|parquet|yfinance|tinvest}`,
-   `--entry/--exit` или `--strategy-file` (JSON `{dsl_entry, dsl_exit}` —
-   заготовка формата Strategy TZ-02), `--ml <bundle>` + `--p-threshold`,
-   `--output` (csv/parquet по расширению).
-2. ✅ Конвейер: загрузка свечей → `BarSeriesProvider` (compute-once + кэш,
-   каузальные ema/sma/rsi/atr + серии цен) → parse один раз, Interpreter
-   на бар → серии сигналов → `--ml`: окна → `predict_p_win_at` (контракт
-   TZ-06) → фильтр по порогу.
-   - Кэш валидации `_CachedContext` (манифест-валидатор не гоняется
-     на каждом обращении);
-   - Interpreter переиспользуется, если в AST нет `let` (безопасность
-     `_locals`, TZ-01 п.3);
-   - фикс попутный (TZ-01 п.1, частично): `Context.get_value` больше не
-     глотает исходный `ProviderError` провайдера — раньше он маскировал
-     `WarmupNotReady` безликим «No provider found».
-3. ✅ Выход: `{date, entry_signal, exit_signal, p_win}` + сводка
-   `summary()` (bars/entry/exit/warmup_skips/ml_filtered/time) и список
-   provider-ошибок. Никакой торговли — модуль read-only.
-4. ✅ Производительность: тёплый прогон 5000 баров × 2 выражения
-   (`ema+rsi` / `sma`) — **~180 мс** (цель < 1 с). Первый прогон в
-   процессе включает numba-JIT (~1.4 с) — одноразово.
-5. ✅ Никаких обращений к брокерским ордерам.
+   `--entry/--exit` or `--strategy-file` (JSON `{dsl_entry, dsl_exit}` — raw Strategy format of
+   TZ-02), `--ml <bundle>` + `--p-threshold`, `--output` (csv/parquet by extension).
+2. ✅ Pipeline: candles load → `BarSeriesProvider` (compute-once + cache, causal
+   ema/sma/rsi/atr + price series) → parse once, Interpreter per bar → signal series → `--ml`:
+   windows → `predict_p_win_at` (TZ-06 contract) → threshold filter.
+   - Validation cache `_CachedContext` (manifest validator not run on every call);
+   - Interpreter reused if the AST has no `let` (`_locals` safety, TZ-01 §3);
+   - incidental fix (TZ-01 §1, partial): `Context.get_value` no longer swallows the provider's
+     original `ProviderError` — it used to mask `WarmupNotReady` with a bland "No provider found".
+3. ✅ Output: `{date, entry_signal, exit_signal, p_win}` + `summary()` (bars/entry/exit/
+   warmup_skips/ml_filtered/time) and the list of provider errors. No trading — read-only module.
+4. ✅ Performance: warm run 5000 bars × 2 expressions (`ema+rsi` / `sma`) — **~180 ms**
+   (target < 1 s). First in-process run includes numba-JIT (~1.4 s) — one-off.
+5. ✅ No broker order access.
 
-Ограничения (честно зафиксированы):
-- ML-окно: indicators/signals/tp/sl — нули (полный фичевый конвейер
-  появится в TZ-02/TZ-04); размерности сверяются с bundle.
-- Набор индикаторов провайдера пока минимальный (ema/sma/rsi/atr +
-  цены/volume); расширение до полного реестра ta — TZ-03.
-- T-Invest-загрузчик требует `INVEST_TOKEN`; yfinance — dev-фолбэк.
+Honest limitations:
+- ML window: indicators/signals/tp/sl are zeros (the full feature pipeline arrives in TZ-02/TZ-04);
+  dimensions verified against the bundle.
+- Provider indicator set is minimal (ema/sma/rsi/atr + prices/volume); widening to full ta is TZ-03.
+- T-Invest loader requires `INVEST_TOKEN`; yfinance is the dev fallback.
 
-## 4. Критерии приёмки
+## 4. Acceptance criteria
 
-- ✅ Смоук на синтетическом ряде: 8 тестов `infer/tests/` — паритет
-  resolve с прямыми ta-функциями, offset-семантика (`[n]` = n баров
-  назад), warmup-исключения, нормализация legacy-схемы, end-to-end
-  сигналы+сводка, ранняя ошибка parse, CLI-смоук с записью CSV.
-- ⬜ Ручной прогон на реальных свечах T-Invest (нужен `INVEST_TOKEN`).
-- ✅ Контракт `--ml`: P(win) в [0,1] на сигнальных барах через
-  `EntryExitPredictor.predict_p_win` (проверено тестами TZ-06);
-  латентность — замерить на реальном железе.
-- Полный набор: 302 passed, 7 skipped (infer + dsl + ai), ruff чист.
+- ✅ Smoke on a synthetic series: 8 tests in `infer/tests/` — resolve parity with direct ta
+  functions, offset semantics (`[n]` = n bars back), warmup exceptions, legacy-schema
+  normalization, end-to-end signals + summary, early parse error, CLI smoke writing CSV.
+- ⬜ Manual run on real T-Invest candles (needs `INVEST_TOKEN`).
+- ✅ `--ml` contract: P(win) in [0,1] on signal bars via `EntryExitPredictor.predict_p_win`
+  (verified by TZ-06 tests); latency to measure on real hardware.
+- Full set: 302 passed, 7 skipped (infer + dsl + ai), ruff clean.

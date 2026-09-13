@@ -1,4 +1,9 @@
-# Трендовые индикаторы – практическое руководство
+# Trend indicators — practical guide
+
+> **Status: ✅ reference.** Trend strength/direction and market-structure visualization. Reference
+> for `ta/src/trend/` modules (ADX, SuperTrend, ZigZag).
+
+# (original RU content: Трендовые индикаторы – практическое руководство)
 
 В этой папке собраны индикаторы для оценки **силы и направления тренда**, а также для визуализации структуры рынка.  
 Они решают разные задачи, поэтому используйте их в комбинации.

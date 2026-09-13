@@ -1,103 +1,95 @@
-> **Статус: 🔨 ядро RAG готово (47 тестов зелёные).**
-> ✅ LLM-слой (per-request роутинг, 15 тестов).
-> ✅ ingestion.py: chunk_markdown (по заголовкам, max_chunk_chars), ingest_docs (white-list),
-> render_manifest_text (для промпта), strategy_to_case (для retrieval).
-> ✅ generation.py: GENERATION_PROMPT (манифест + доки + few-shot + task),
-> REPAIR_PROMPT, generate_dsl() с repair-loop ≤ 2, markdown fence stripping,
-> mocked LLM transport для тестов.
-> ✅ волна 2: vectorstore.py (VectorStore protocol, InMemoryVectorStore с cosine +
-> payload-фильтром + идемпотентным upsert, QdrantVectorStore с ленивым импортом
-> qdrant-client, query_points API); embeddings.py (EmbeddingFunction protocol,
-> MockEmbedding — детерминированный sha256-хеш, unit-norm, dim=64; OllamaEmbedding —
-> bge-m3, dim=1024); retrieval.py (Retriever, коллекции dsl_docs/strategy_cases);
-> pipeline.py (RAGPipeline: ingest_docs/ingest_strategies/generate с retrieval→
-> generate_dsl, PipelineMetrics с pass@1/pass@N/failed/avg_iterations, QueryLog).
-> ⬜ pass@1 evaluation-скрипт над query-set (нужен живой LLM).
-> ⬜ rag_integration маркер: живые Qdrant/Ollama (skip без инфраструктуры).
+# TZ-07. RAG contour (ingest, retrieval, DSL generation)
 
-# TZ-07. RAG-контур (инжест, retrieval, генерация DSL)
+> **Status: 🔨 RAG core ready (47 tests green).**
+> ✅ LLM layer (per-request routing, 15 tests).
+> ✅ ingestion.py: chunk_markdown (by headings, max_chunk_chars), ingest_docs (white-list),
+> render_manifest_text (for the prompt), strategy_to_case (for retrieval).
+> ✅ generation.py: GENERATION_PROMPT (manifest + docs + few-shot + task),
+> REPAIR_PROMPT, generate_dsl() with repair-loop ≤ 2, markdown fence stripping,
+> mocked LLM transport for tests.
+> ✅ wave 2: vectorstore.py (VectorStore protocol, InMemoryVectorStore with cosine +
+> payload filter + idempotent upsert, QdrantVectorStore with lazy qdrant-client import,
+> query_points API); embeddings.py (EmbeddingFunction protocol, MockEmbedding — deterministic
+> sha256 hash, unit norm, dim=64; OllamaEmbedding — bge-m3, dim=1024); retrieval.py (Retriever,
+> collections dsl_docs/strategy_cases); pipeline.py (RAGPipeline: ingest_docs/ingest_strategies/
+> generate with retrieval→generate_dsl, PipelineMetrics with pass@1/pass@N/failed/avg_iterations,
+> QueryLog).
+> ⬜ pass@1 evaluation script over a query-set (needs a live LLM).
+> ⬜ rag_integration marker: live Qdrant/Ollama (skip without infra).
 
-## 1. Контекст
+## 1. Context
 
-Инфраструктура выбрана (Qdrant, Ollama, LlamaIndex, sentence-transformers — в
-pyproject/compose), прикладного слоя нет. RAG нужен ровно для одного: подсунуть LLM
-релевантный контекст (спецификация DSL, доки индикаторов, похожие стратегии, бэктесты),
-чтобы модель не галлюцинировала несуществующие индикаторы. Риск-лимиты в индекс не
-попадают по построению (сквозной принцип №1).
+The infrastructure is chosen (Qdrant, Ollama, LlamaIndex, sentence-transformers — in
+pyproject/compose); the application layer is missing. RAG exists for exactly one purpose: feed the
+LLM relevant context (DSL spec, indicator docs, similar strategies, backtests) so the model does
+not hallucinate nonexistent indicators. Risk limits never enter the index by construction
+(cross-cutting principle #1).
 
-## 2. Почему именно так
+## 2. Why this way
 
-### 2.1. Гибрид «детерминированный манифест + retrieval + few-shot» — главный рычаг
-- **Манифест рендерится в промпт программно** (`Manifest.to_dict()` → текст), а не
-  эмбеддится: векторизация `{"type": "integer", "min": 2}` бессмысленна и врёт в retrieval.
-  Отвечает за синтаксическую корректность.
-- **Retrieval по `dsl/docs/*.md` и `dev_docs/`** — за семантику («как писать трендовые
-  условия»). Чанки по заголовкам, 400–800 токенов, перекрытие ~15%.
-- **Few-shot прецеденты**: «найди 2–3 похожие валидированные стратегии и подложи в промпт» —
-  самый эффективный способ заставить 8B-модель писать валидный DSL. Одна стратегия = один
-  point, без чанкирования.
+### 2.1. The "deterministic manifest + retrieval + few-shot" hybrid is the main lever
+- **The manifest is rendered into the prompt programmatically** (`Manifest.to_dict()` → text),
+  not embedded: vectorizing `{"type": "integer", "min": 2}` is meaningless and lies in retrieval.
+  It answers for syntactic correctness.
+- **Retrieval over `dsl/docs/*.md` and `dev_docs/`** — for semantics ("how to write trend
+  conditions"). Chunks by heading, 400–800 tokens, ~15% overlap.
+- **Few-shot precedents**: "find 2–3 similar validated strategies and put them in the prompt" —
+  the most effective way to make an 8B model write valid DSL. One strategy = one point, no chunking.
 
-### 2.2. Две коллекции Qdrant, не одна
-`dsl_docs` (чанки статических документов, payload `{source, heading, doc_type, lang}`) и
-`strategy_cases` (одна стратегия = один point, payload `{dsl_entry, dsl_exit,
-indicators_used, metrics, manifest_hash}`). **Почему:** это принципиально разные данные
-с разным жизненным циклом (доки обновляются по git hash; стратегии — по результатам
-бэктестов) и разным поиском (семантический vs поиск прецедентов).
+### 2.2. Two Qdrant collections, not one
+`dsl_docs` (static-doc chunks, payload `{source, heading, doc_type, lang}`) and `strategy_cases`
+(one strategy = one point, payload `{dsl_entry, dsl_exit, indicators_used, metrics, manifest_hash}`).
+**Why:** fundamentally different data with different lifecycles (docs update by git hash;
+strategies — by backtest results) and different search (semantic vs precedent).
 
-### 2.3. `indicators_used` — обход AST, не regex
-AST-сериализация (`to_dict`) уже есть. Regex по тексту DSL промахивается на let-биндингах
-и алиасах.
+### 2.3. `indicators_used` — AST walk, not regex
+AST serialization (`to_dict`) already exists. Regex over DSL text misses let bindings and aliases.
 
-### 2.4. White-list инжеста — enforcement, а не просьба
-Инжест-пайплайн принимает явную конфигурацию путей (`dsl/docs/**`, `dev_docs/**` минус
-риск-документация). Риск-лимиты не могут попасть в коллекцию, потому что для них нет
-ingestion-маршрута. **Почему не «попросим LLM не использовать»:** единственная
-архитектурная защита — физическое отсутствие данных в контексте.
+### 2.4. White-list ingestion — enforcement, not a request
+The ingest pipeline accepts an explicit path config (`dsl/docs/**`, `dev_docs/**` minus
+risk docs). Risk limits cannot enter the collection because there is no ingest route for them.
+**Why not "ask the LLM not to use":** the only architectural defense is the physical absence of
+the data in the context.
 
-### 2.5. Repair-loop через собственный парсер
-Выход LLM машинно-проверяем: parse → ManifestValidator → при ошибке текст ошибки + манифест
-возвращаются модели (макс. 2 итерации; далее `status: failed`). **Почему 2, а не 5:**
-после 2 итераций 8B-модель начинает деградировать и «чинить» работающий код.
-Контракт результата: `{status, dsl, errors[], iterations, chunks_used[]}` — failed
-не покидает rag-слой.
+### 2.5. Repair loop through our own parser
+LLM output is machine-checkable: parse → ManifestValidator → on error, the error text + manifest
+are returned to the model (max 2 iterations; then `status: failed`). **Why 2, not 5:** after 2
+iterations an 8B model starts degrading and "fixing" working code. Result contract:
+`{status, dsl, errors[], iterations, chunks_used[]}` — failed does not leave the rag layer.
 
-### 2.6. Эмбеддинги через Ollama, не sentence-transformers в процессе
-sentence-transformers тянет PyTorch (~1–2 ГБ RAM) в процесс. Для локального GPU-узла
-это ок, но правильнее единая точка эмбеддингов Ollama (`/api/embeddings`) — модель
-(bge-m3 или мультиязычная) в контейнере. **Языковой нюанс:** запросы будут на русском,
-`dsl/docs` — на английском; берём мультиязычную модель и/или англ. аннотации к
-русскоязычным чанкам при инжесте.
+### 2.6. Embeddings via Ollama, not sentence-transformers in-process
+sentence-transformers pulls PyTorch (~1–2 GB RAM) into the process. Fine for a local GPU node,
+but the correct approach is a single Ollama embedding point (`/api/embeddings`) — the model
+(bge-m3 or multilingual) in a container. **Language nuance:** queries will be Russian, `dsl/docs`
+English; use a multilingual model and/or English annotations on Russian chunks at ingest.
 
-### 2.7. Idempotent-инжест
-Повторный запуск не дублирует точки: ключ = hash(chunk) / strategy.id; старые точки
-с устаревшим git-hash удаляются.
+### 2.7. Idempotent ingest
+Repeated runs do not duplicate points: key = hash(chunk) / strategy.id; stale points with an old
+git hash are deleted.
 
-## 3. Требования
+## 3. Requirements
 
-0. **LLM-слой с per-request роутингом — ✅ реализован** (`rag/llm.py`):
-   `LLM_PROVIDER` из env задаёт только провайдера **по умолчанию** для воркера;
-   каждый запрос может переопределить и провайдера (`router.complete(prompt,
-   provider=...)`), и модель (`CompletionOptions(model=...)`). Для Ollama и
-   OpenAI-compatible бэкендов `model` — поле запроса, поэтому один воркер
-   обслуживает несколько моделей одновременно — мультитенантные сценарии
-   поддержаны. Транспорты инъектируются → тесты без сети (11 тестов
-   `rag/tests/test_llm.py`). Проект лицензируется под **MIT** (файл `LICENSE`,
-   поля `license`/`license-files` в pyproject).
+0. **LLM layer with per-request routing — ✅ done** (`rag/llm.py`): `LLM_PROVIDER` from env sets
+   only the **default** provider for the worker; each request can override both the provider
+   (`router.complete(prompt, provider=...)`) and the model (`CompletionOptions(model=...)`). For
+   Ollama and OpenAI-compatible backends `model` is a request field, so one worker serves multiple
+   models simultaneously — multi-tenant scenarios supported. Transports are injected → tests run
+   without network (11 tests `rag/tests/test_llm.py`). The project is licensed **MIT** (`LICENSE`,
+   `license`/`license-files` in pyproject).
+1. `rag/ingestion`: chunker + white-list paths + manifest render + two collections.
+2. `rag/retrieval`: docs top-k (5–8) + cases top-k (2–3, filtered by the current manifest_hash
+   from TZ-02).
+3. `rag/generation`: prompt templates (brief DSL grammar, ban on inventing indicators,
+   temperature ≤ 0.3) → Ollama DeepSeek-R1:8b → validate_strategy → repair-loop ≤ 2.
+4. pass@1 metric (share OK on the first attempt) with query/chunks/iterations/status logging —
+   simultaneously a retrieval-quality metric (repaired queries reference indicators whose docs
+   were absent from context → retrieval is at fault).
+5. Cross-check: before indexing `ai/docs`, sync with reality (TZ-06 §2.7), otherwise a fabricated
+   spec gets indexed.
 
-1. `rag/ingestion`: чанкер + white-list путей + рендер манифеста + две коллекции.
-2. `rag/retrieval`: docs top-k (5–8) + cases top-k (2–3, фильтр по актуальному
-   manifest_hash из TZ-02).
-3. `rag/generation`: промпт-шаблоны (краткая грамматика DSL, запрет выдумывать индикаторы,
-   температура ≤ 0.3) → Ollama DeepSeek-R1:8b → validate_strategy → repair-loop ≤ 2.
-4. Метрика pass@1 (доля ок с первой попытки) с логированием query/chunks/iterations/status —
-   это одновременно метрика качества retrieval (repaired-запросы ссылаются на индикаторы,
-   чьих доков не было в контексте → retrieval виноват).
-5. Кросс-проверка: перед индексацией `ai/docs` синхронизировать с реальностью (TZ-06 п.2.7),
-   иначе проиндексируется выдуманная спецификация.
+## 4. Acceptance criteria
 
-## 4. Критерии приёмки
-
-- Инжест идемпотентен (повторный запуск не дублирует точки).
-- По запросу «перепроданность с подтверждением тренда» в контексте — доки RSI/rising.
-- ≥ 70% запросов из эталонного набора из 10 фраз → валидный DSL ≤ 2 итераций.
-- В коллекциях отсутствуют чанки, содержащие риск-лимиты (тест по white-list).
+- Ingest is idempotent (rerun does not duplicate points).
+- For "oversold with trend confirmation" the context contains the RSI/rising docs.
+- ≥ 70% of queries from a reference set of 10 phrases → valid DSL within ≤ 2 iterations.
+- Collections contain no chunks with risk limits (white-list test).
