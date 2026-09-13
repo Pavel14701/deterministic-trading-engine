@@ -1,35 +1,47 @@
-# Quant Researcher – Чек-лист проекта
+# Quant Researcher — Project Checklist
 
-> **СТАТУСЫ (добавлены при сведение с ТЗ, исходный текст ниже не изменён).**
-> Легенда: ⬜ не начато · 🔨 включено в ТЗ · ✅ уже реализовано в коде.
-> Связка пунктов с ТЗ (`dev_docs/tz/`):
+> **STATUSES (added while reconciling with the TZs; the original text below is unchanged).**
+> Legend: ⬜ not started · 🔨 in a TZ · ✅ already implemented in code.
+> Mapping to TZs (`dev_docs/tz/`):
 >
-> - **Раздел 1** (look-ahead/ZigZag): онлайн-ZigZag и валидность блоков → 🔨 TZ-04 п.4.3 (SIV) + TZ-03 п.5 (look-ahead-инвариант); ✅ каузальный ATR и TP/SL от ATR(t-1) уже в `ai/src/features.py` (переносится в TZ-04 п.0 как единый движок исполнения).
-> - **Раздел 2** (исполнение): вход по open[t+1], комиссии/слиппедж, динамический TP/SL, минимальный лот → 🔨 TZ-04 п.4.1; ⬜ задержки исполнения — после TZ-10.
-> - **Раздел 3** (базлайны): логрегрессия / Random Forest / XGBoost → 🔨 TZ-04 п.4.6 (отчёт бэктеста обязан содержать сравнение с базлайнами); критерий >5–10% по Sharpe/PF — в критериях приёмки TZ-04.
+> - **Section 1** (look-ahead/ZigZag): online ZigZag and block validity → 🔨 TZ-04 §4.3 (SIV) +
+>   TZ-03 §5 (look-ahead invariant); ✅ causal ATR and TP/SL from ATR(t-1) already in
+>   `ai/src/features.py` (moves to TZ-04 §0 as the single execution engine).
+> - **Section 2** (execution): entry at open[t+1], commissions/slippage, dynamic TP/SL, minimum lot
+>   → 🔨 TZ-04 §4.1; ⬜ execution latency — after TZ-10.
+> - **Section 3** (baselines): logistic regression / Random Forest / XGBoost →
+>   🔨 TZ-04 §4.6 (the backtest report must contain a baseline comparison); the >5–10% on
+>   Sharpe/PF criterion — in the TZ-04 acceptance criteria.
 >
->   ⚠️ **ОСОБОЕ ВНИМАНИЕ — Baseline gate (главный фильтр проекта).** Сравнение с простыми
->   методами — не «один из пунктов», а **обязательный гейт принятия решения**: без него
->   ни одна стратегия и ни одна модель не считается валидной.
->   - Гейт стоит ДО всего остального потребления результатов: RAG-прецеденты, обучение
->     на реальных данных и live-контур не открываются, пока Transformer не сравнён
->     с Buy & Hold, логистической регрессией, RF/XGBoost на одном тестовом периоде.
->   - Правило решения: сложная модель обязана превосходить лучшую простую на
->     **> 5–10% по Sharpe или Profit Factor** (out-of-sample, с комиссиями). Иначе —
->     **упрощение архитектуры / возврат к простой модели**, а не «настройка Transformer».
->   - Почему это важно: сложная модель, не обгоняющая базлайн, = переобучение или утечка,
->     и каждая следующая итерация усложнения только маскирует проблему.
->   - Где реализуется: TZ-04 п.4.6 (движок + отчёт), валидационный контур TZ-06 п.2.2
->     (тот же тестовый период); зашито в критериях приёмки TZ-04 и TZ-00 п.5.
-> - **Раздел 4** (удержание/просадки): штраф за удержание → 🔨 TZ-02 (лейбл-генератор; решение «не в loss» обосновано в TZ-06); MaxDD-стоп → 🔨 TZ-04 п.4.4; серии ошибок и RL (PPO) → ⬜ отложено.
-> - **Раздел 5** (leakage/валидация): TP/SL из данных ≤ t → 🔨 TZ-04 п.4.1.5; временная валидация → 🔨 TZ-06 п.2.2 (дополнительно закрывает утечку через перекрытие окон seq_len=128); Walk-Forward и кросс-актив → 🔨 TZ-04 п.4.6.
-> - **Раздел 6** (воспроизводимость): YAML-конфиг, seed, логи → 🔨 TZ-04 п.4.5–4.7, TZ-06.
-> - **Раздел 7** (production): инференс → 🔨 TZ-05; white API + локальный GPU-узел → 🔨 TZ-09/TZ-10 (GPU-зависимости только на локали); jit/ONNX, дрейф признаков, fallback → ⬜ после соответствующих ТЗ.
+>   ⚠️ **SPECIAL ATTENTION — Baseline gate (the project's main filter).** Comparison with simple
+>   methods is not "one of the items" but a **mandatory decision gate**: without it, no strategy
+>   and no model is considered valid.
+>   - The gate stands BEFORE all other result consumption: RAG precedents, real-data training and
+>     the live contour do not open until the Transformer is compared with Buy & Hold, logistic
+>     regression, RF/XGBoost on one test period.
+>   - Decision rule: the complex model must beat the best simple one by
+>     **> 5–10% on Sharpe or Profit Factor** (out-of-sample, with commissions). Otherwise —
+>     **simplify / return to a simple model**, not "tune the Transformer".
+>   - Why it matters: a complex model not beating a baseline = overfitting or leak, and each next
+>     complexity iteration only masks the problem.
+>   - Where it is implemented: TZ-04 §4.6 (engine + report), the TZ-06 §2.2 validation contour
+>     (same test period); baked into TZ-04 and TZ-00 §5 acceptance.
+> - **Section 4** (holding/drawdown): holding penalty → 🔨 TZ-02 (label generator; the "not in
+>   loss" decision justified in TZ-06); MaxDD stop → 🔨 TZ-04 §4.4; error streaks and RL (PPO) →
+>   ⬜ deferred.
+> - **Section 5** (leakage/validation): TP/SL from data ≤ t → 🔨 TZ-04 §4.1.5; temporal validation
+>   → 🔨 TZ-06 §2.2 (also closes the seq_len=128 window-overlap leak); Walk-Forward and cross-asset
+>   → 🔨 TZ-04 §4.6.
+> - **Section 6** (reproducibility): YAML config, seed, logs → 🔨 TZ-04 §4.5–4.7, TZ-06.
+> - **Section 7** (production): inference → 🔨 TZ-05; white API + local GPU node →
+>   🔨 TZ-09/TZ-10 (GPU deps on the local only); jit/ONNX, feature drift, fallback → ⬜ after the
+>   respective TZs.
 
 ---
 
-Этот чек-лист фиксирует текущие **слабые места** (по сравнению с индустриальным стандартом) и даёт пошаговый план для их устранения.  
-Цель – сделать систему устойчивой к переобучению, реалистичной в исполнении и готовой к живой торговле.
+This checklist records the current **weak points** (vs the industry standard) and a step-by-step
+plan to fix them.
+Goal: make the system resilient to overfitting, realistic in execution, and ready for live trading.
 
 ---
 

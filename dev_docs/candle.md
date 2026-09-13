@@ -1,4 +1,10 @@
-# Перспективные индикаторы для торговли — практическое руководство
+# Candle patterns — practical guide
+
+> **Status: ✅ reference.** Curated from Bulkowski's research (4.7M+ bars) and Quantified Strategies
+> backtests. Patterns are probabilities, not guarantees — always use stop-losses. Reference for
+> `ta/src/candle/` modules and TZ-12 smoke correctness.
+
+# (original RU content: Перспективные индикаторы для торговли — практическое руководство)
 
 Отобрано на основе исследований Томаса Булковски (более 4,7 млн баров) и бэктестов Quantified Strategies.
 **Важно**: паттерны — это вероятности, а не гарантии. Всегда используйте стоп-лоссы.

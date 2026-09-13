@@ -1,81 +1,78 @@
-> **Статус: ✅ выполнен** (DslValidationError, resolve_history/resolve_history_async,
-> маршрутизация по манифесту — подтверждены в коде; парсинг < 1 мс — в тестах).
+# TZ-01. DSL hardening (priority 1)
 
-# TZ-01. Харденинг DSL (приоритет 1)
+> **Status: ✅ done** — `DslValidationError`, `resolve_history`/`resolve_history_async`,
+> manifest routing, NaN contract, strict param typing (verified in code); parsing < 1 ms (tests).
 
-## 1. Контекст
+## 1. Context
 
-DSL (`dsl/`, ~2800 строк: tokenizer → parser → AST → interpreter → context → providers) —
-самый зрелый модуль и ядро системы: через него идут и стратегии, и генерация RAG. Аудит
-выявил проблемы, которые нельзя чинить после появления клиентов (backtest, RAG, inference),
-потому что все они завязываются на текущие контракты.
+The DSL (`dsl/`, ~2800 lines: tokenizer → parser → AST → interpreter → context → providers) is
+the most mature module and the system core: strategies and RAG generation both flow through it.
+The audit found problems that cannot be fixed after clients (backtest, RAG, inference) appear,
+because all of them bind to the current contracts.
 
-## 2. Проблемы и обоснование решений
+## 2. Problems and rationale
 
-### 2.1. Маршрутизация провайдеров по манифесту (вместо getattr)
-**Сейчас:** `Context.get_value` использует `if getattr(provider, 'resolve'):` — метод класса
-всегда truthy; проверяется наличие атрибута, а не «знает ли провайдер этот индикатор».
-Первый провайдер перехватывает любой запрос; fallback работает только через исключение.
-**Почему менять:** в системе будет ≥ 2 провайдера (ta-индикаторы + price-данные). Отбор
-кандидата: `indicator in provider.manifest.indicators` — O(1), детерминировано, без
-исключений для управления потоком.
-**Отвергнутая альтернатива** («оставить как есть, искать по ProviderError»): невозможно
-различить «не знаю индикатор» и «ошибка данных на этом баре».
+### 2.1. Provider routing by manifest (instead of getattr)
+**Now:** `Context.get_value` uses `if getattr(provider, 'resolve'):` — a method is always truthy;
+it checks attribute presence, not "does this provider know this indicator". The first provider
+swallows any request; fallback only works via exception.
+**Why change:** there will be ≥2 providers (ta indicators + price data). Selection:
+`indicator in provider.manifest.indicators` — O(1), deterministic, no exception-based control flow.
+**Rejected alternative** ("keep as is, search by ProviderError"): cannot distinguish "unknown
+indicator" from "data error at this bar".
 
-### 2.2. Единый контракт исключений
-**Сейчас:** `Context._validate` бросает голый `ValueError`, хотя есть иерархия `DSLError`.
-**Почему менять:** RAG repair-loop (TZ-07) ловит ошибки DSL одним контрактом и возвращает
-сообщение модели на исправление. Дырявый контракт = часть ошибок уйдёт необработанными.
-Вводится `DslValidationError(DSLError)` с человекочитаемым текстом из
-`ManifestValidator.validate()` (готовые формулировки `Unknown indicator: X`,
-`Invalid parameter 'Y'` — это почти идеальные repair-подсказки).
+### 2.2. Unified exception contract
+**Now:** `Context._validate` throws a bare `ValueError` though a `DSLError` hierarchy exists.
+**Why change:** the RAG repair loop (TZ-07) catches DSL errors by one contract and returns the
+message to the model. A leaky contract = some errors go unhandled. `DslValidationError(DSLError)`
+with human-readable text from `ManifestValidator.validate()` (ready messages `Unknown indicator: X`,
+`Invalid parameter 'Y'` — almost perfect repair hints).
 
-### 2.3. Реентерабельность интерпретатора
-**Сейчас:** `Interpreter._locals` — mutable-состояние, общее на все visit().
-**Почему менять:** в async-режиме параллельная оценка одной стратегии по нескольким
-барам/инструментам даст гонку let-биндингов. `_locals` переносится в локальное состояние
-visit-стека. Отвергнутая альтернатива «задокументировать один-visit-на-поток»: ошибка
-проявится как редкий неверный сигнал — худший тип бага в трейдинге.
+### 2.3. Interpreter re-entrancy
+**Now:** `Interpreter._locals` is mutable state shared across all visit().
+**Why change:** in async mode, evaluating one strategy over several bars/instruments in parallel
+races let bindings. `_locals` moves into the local visit-stack state. Rejected alternative
+"document one-visit-per-thread": it surfaces as rare wrong signals — the worst bug class in trading.
 
-### 2.4. resolve_history как первоклассный метод провайдера
-**Сейчас:** fallback `get_history` делает O(n) отдельных вызовов `get_value` с повторной
-валидацией; `rising(close, 50)` = 50 полных ресолвов.
-**Почему менять:** бэктест (TZ-04) делает миллионы обращений к истории. В абстрактный
-`IndicatorProvider` добавляется `resolve_history(ind, params, attrs, n)`; InProcess
-переопределяет срезом кэша, HTTP — одним батч-запросом.
+### 2.4. resolve_history as a first-class provider method
+**Now:** the `get_history` fallback makes O(n) separate `get_value` calls with re-validation;
+`rising(close, 50)` = 50 full resolves.
+**Why change:** backtest (TZ-04) makes millions of history lookups. Add
+`resolve_history(ind, params, attrs, n)` to the abstract `IndicatorProvider`; InProcess overrides
+with a cache slice, HTTP with one batch request.
 
-### 2.5. NaN-контракт (сквозной принцип №5)
-**Сейчас:** `rising/falling` молча возвращают False при нехватке истории; сравнения с NaN
-дают False. Поведение осмысленное, но не зафиксированное → «стратегия не торгует» первые
-N баров незаметно.
-**Решение:** warm-up (< min_bars) = `NotReady` (False + счётчик пропусков в отчёте);
-NaN после прогрева = `EvaluationError`. Документируется в dsl/docs как часть семантики —
-иначе RAG будет объяснять сигналы неверно.
+### 2.5. NaN contract (cross-cutting principle #5)
+**Now:** `rising/falling` silently return False on insufficient history; NaN comparisons give
+False. Behavior is sensible but unspecified → "the strategy does not trade" for the first N bars
+goes unnoticed.
+**Decision:** warm-up (< min_bars) = `NotReady` (False + skip counter in the report); NaN after
+warm-up = `EvaluationError`. Documented in dsl/docs as part of semantics — otherwise RAG explains
+signals wrongly.
 
-### 2.6. Строгая типизация параметров
-**Сейчас:** `validate_parameter` молча пропускает нечисловое значение для integer/float-типа.
-**Почему менять:** RAG-генерация будет подсовывать кривые параметры; тихий проход означает
-NaN где-то в вычислениях вместо понятной ошибки валидации.
+### 2.6. Strict parameter typing
+**Now:** `validate_parameter` silently passes a non-numeric value for integer/float types.
+**Why change:** RAG generation will feed malformed params; silent pass = NaN somewhere in
+computations instead of a clear validation error.
 
-### 2.7. Легаси-документация
-`ai/docs/README.md` описывает несуществующий Lark-парсер (`dsl/grammar.lark`) и пакеты
-`trading.*`; импорт в `ai/src/quickstart.py` битый. Чинится в TZ-06, но фиксируется здесь:
-RAG-инжест не должен проиндексировать выдуманную спецификацию.
+### 2.7. Legacy docs
+`ai/docs/README.md` describes a nonexistent Lark parser (`dsl/grammar.lark`) and `trading.*`
+packages; the import in `ai/src/quickstart.py` is broken. Fixed in TZ-06, recorded here: RAG
+ingestion must not index a fabricated spec.
 
-## 3. Требования
+## 3. Requirements
 
-1. Маршрутизация по манифесту провайдера (п.2.1).
-2. `DslValidationError(DSLError)` вместо ValueError; сохранить тексты ошибок (их парсит RAG).
-3. `_locals` — локально для visit-стека; потокобезопасность задокументирована.
-4. `resolve_history` в `IndicatorProvider` + default-реализация циклом + переопределения.
-5. NaN-контракт п.2.5, единый с TZ-03 п.4.
-6. Строгая типизация параметров (п.2.6).
-7. Публичный API (`evaluate_dsl`, `parse`, `Interpreter.visit`) не меняет сигнатуры.
+1. Provider routing by manifest (§2.1).
+2. `DslValidationError(DSLError)` instead of ValueError; keep error texts (RAG parses them).
+3. `_locals` local to the visit stack; thread-safety documented.
+4. `resolve_history` in `IndicatorProvider` + default loop implementation + overrides.
+5. NaN contract §2.5, unified with TZ-03 §4.
+6. Strict param typing (§2.6).
+7. Public API (`evaluate_dsl`, `parse`, `Interpreter.visit`) keeps signatures.
 
-## 4. Критерии приёмки
+## 4. Acceptance criteria
 
-- Все существующие тесты зелёные без изменения семантики.
-- Новые тесты: маршрутизация (2 провайдера, пересекающиеся манифесты), контракт исключений,
-  параллельная async-оценка с let (нет гонки), warm-up/NaN, resolve_history == цикл по resolve.
-- Парсинг типового выражения (< 50 символов) < 1 мс (требование из dsl_requires.md,
-  ранее не проверявшееся).
+- All existing tests green without semantics change.
+- New tests: routing (2 providers, overlapping manifests), exception contract,
+  parallel async evaluation with let (no race), warm-up/NaN, resolve_history == loop over resolve.
+- Parsing a typical expression (< 50 chars) < 1 ms (requirement from dsl_requires.md,
+  previously unverified).

@@ -1,4 +1,14 @@
-# Техническое задание
+# Technical Requirements Specification
+
+> **Status: ✅ normative.** All models are declared as **dataclasses** from msgspec with the
+> `@msgspec.struct` decorator — strict typing, optional validation, instant JSON
+> serialization/deserialization.
+>
+> Transport layer is niquests; strict validation and retries with console logs everywhere
+> (as a parameter, not global).
+>
+> This file defines the OKX venue API contracts. It is cross-referenced by the rest of the system:
+> the unified OHLC schema, queue transports (TZ-09), and quantization (TZ-04 §4.1.6).
 
 Все модели описаны как **dataclasses** от msgspec с декоратором `@msgspec.struct`. Это даёт строгую типизацию, валидацию (опционально), и мгновенную сериализацию/десериализацию в JSON.
 

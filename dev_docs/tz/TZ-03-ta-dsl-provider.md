@@ -1,88 +1,84 @@
-> **Статус: ✅ реализован (волна 1 + волна 2).**
-> Волна 1: IndicatorBinding + реестр golden-якорей (ema, sma, rsi, atr, ...);
-> build_manifest();
-> TaProvider(IndicatorProvider): compute-once кэш, DSL-offset = cache index,
-> WarmupNotReady контракт, look-ahead инвариант, performance < 1s/5000 баров.
-> Волна 2 (✅): универсальный маппер `ta/src/registry.py` — авто-биндинги из
-> сигнатур `*_ind`, **84 индикатора в манифесте/DSL**, multi-output
-> (NAMED_OUTPUTS: macd/ppo/fisher/brar/kst), fix cache-key (покрывает все params),
-> 1975 тестов ta (ruff 0, mypy 0). SMOKE_SKIP: ott (numba dispatch), SKIP:
-> ichimoku/scrsi/zigzag/tos_stdevall (непригодны для движка).
+# TZ-03. TaProvider: exposing ta through the DSL
 
-# TZ-03. TaProvider: прокидывание ta через DSL
+> **Status: ✅ done (wave 1 + wave 2).**
+> Wave 1: `IndicatorBinding` + golden-anchor registry (ema, sma, rsi, atr, ...); `build_manifest()`;
+> `TaProvider(IndicatorProvider)`: compute-once cache, DSL-offset = cache index,
+> `WarmupNotReady` contract, look-ahead invariant, performance < 1 s / 5000 bars.
+> Wave 2 (✅): universal mapper `ta/src/registry.py` — auto-bindings from `*_ind` signatures,
+> **84 indicators in the manifest/DSL**, multi-output (NAMED_OUTPUTS: macd/ppo/fisher/brar/kst),
+> cache-key fix (covers all params), 1975 ta tests (ruff 0, mypy 0). SMOKE_SKIP: ott
+> (numba dispatch); SKIP: ichimoku/scrsi/zigzag/tos_stdevall (not engine-usable).
 
-## 1. Контекст
+## 1. Context
 
-Контракт `ta` единый: каждый модуль имеет триплет `x_numpy / x_ind / x_polars`;
-`x_ind` принимает `np.ndarray | pl.Series`; общие параметры `offset, fillna,
-nan_policy, trim`; дисциплина IEEE 754 (Inf→NaN, NaN propagates); TA-Lib только при
-точном совпадении семантики. Примеры по группам: `rsi_ind(close, length, ...)`,
-`atr_ind(high, low, close, length, mamode, ...)`, `adx_ind` (multi-output),
-`entropy_ind`, `vwma_ind(close, volume, ...)`, `ott_ind` → кортеж 5 массивов
-(ma, long_stop, short_stop, **direction**, ott).
+The `ta` contract is uniform: every module has a triplet `x_numpy / x_ind / x_polars`;
+`x_ind` accepts `np.ndarray | pl.Series`; common params `offset, fillna, nan_policy, trim`;
+IEEE 754 discipline (Inf→NaN, NaN propagates); TA-Lib only on exact semantics match. Examples by
+group: `rsi_ind(close, length, ...)`, `atr_ind(high, low, close, length, mamode, ...)`,
+`adx_ind` (multi-output), `entropy_ind`, `vwma_ind(close, volume, ...)`, `ott_ind` → tuple of 5
+arrays (ma, long_stop, short_stop, **direction**, ott).
 
-DSL-резолвер же ожидает `(indicator, params, attributes, offset) -> float`. Задача —
-мост без четырёх классов ошибок (Т1–Т4 ниже).
+The DSL resolver, however, expects `(indicator, params, attributes, offset) -> float`. The task is
+a bridge without the four error classes (T1–T4 below).
 
-## 2. Почему именно так
+## 2. Why this way
 
-### Т1. Семантика offset — ложный друг
-`offset` в ta — сдвиг выходного ряда (для отрисовки). DSL `rsi.value[3]` — «3 бара назад».
-**Правило: DSL-offset никогда не передаётся в ta** — реализуется индексацией кэша
-`arr[t - offset]`. Иначе — тихо сдвинутые сигналы. Отвергнутая альтернатива
-(использовать ta-offset «потому что удобно») даёт неявную зависимость между двумя
-разными семантиками одного слова.
+### T1. Offset semantics — a false friend
+In ta, `offset` shifts the output series (for plotting). DSL `rsi.value[3]` means "3 bars back".
+**Rule: DSL-offset is never passed to ta** — implemented as cache indexing `arr[t - offset]`.
+Otherwise signals silently shift. Rejected alternative (using ta-offset "because convenient")
+creates an implicit dependency between two different meanings of the same word.
 
-### Т2. Compute-once + кэш (бар-за-баром пересчитывать нельзя)
-Наивный resolve с полным пересчётом RSI на каждый бар — O(n²) на бэктесте.
-**Модель:** один раз вычислить ряд на доступном срезе → кэш по ключу
+### T2. Compute-once + cache (no per-bar recompute)
+A naive resolve recomputing RSI each bar is O(n²) on backtest.
+**Model:** compute the series once over the available slice → cache by key
 `(dsl_name, frozenset(params.items()), slice_end)` → `resolve(offset)` = O(1),
-`resolve_history(n)` = срез кэша. Numba-ядра уже с `cache=True`, полный пересчёт ряда
-5000 баров — миллисекунды, но не 5000 раз. В live кэш инвалидируется на новом баре.
+`resolve_history(n)` = cache slice. Numba cores already `cache=True`; a full 5000-bar series
+recompute is milliseconds — but not 5000 times. In live, the cache invalidates on a new bar.
 
-### Т3. Multi-output через IndicatorBinding
-DSL-атрибуты (`rsi.value`, `ott.direction`, adx/plus_di/minus_di) требуют явной карты
-«атрибут → выход». OTT-direction живёт в отдельной нумба-функции — без адаптера он в DSL
-не попадёт, а эталонная стратегия SIV (`dev_docs/strategy.md`) требует `ott.direction == 1`.
+### T3. Multi-output via IndicatorBinding
+DSL attributes (`rsi.value`, `ott.direction`, adx/plus_di/minus_di) need an explicit
+"attribute → output" map. OTT-direction lives in a separate numba function — without an adapter it
+never reaches the DSL, yet the SIV reference strategy (`dev_docs/strategy.md`) requires
+`ott.direction == 1`.
 
-**Реестр биндингов** (ядро дизайна, не хардкод резолверов):
+**Binding registry** (design core, not hardcoded resolvers):
 ```python
 @dataclass(frozen=True)
 class IndicatorBinding:
     dsl_name: str                     # 'rsi'
     func: Callable[..., np.ndarray]   # rsi_ind
     params: dict[str, ParamSpec]      # length: int(1..), ...
-    outputs: dict[str, OutputSpec]    # 'value' -> выход 0; 'direction' -> выход 3
+    outputs: dict[str, OutputSpec]    # 'value' -> output 0; 'direction' -> output 3
     sources: tuple[str, ...]          # ('close',) | ('high','low','close') | ('close','volume')
-    min_bars: Callable[[dict], int]   # warm-up как функция параметров
+    min_bars: Callable[[dict], int]   # warm-up as a function of params
 ```
-Манифест генерируется из биндингов (`build_manifest`) → `ManifestValidator` работает
-бесплатно, и RAG (TZ-07) рендерит из него детерминированный контекст. Реестр собирается
-из групповых `__all__` + явной таблицы одобренных индикаторов (не всё ta экспонируем).
+The manifest is generated from bindings (`build_manifest`) → `ManifestValidator` works for free,
+and RAG (TZ-07) renders deterministic context from it. The registry is assembled from group
+`__all__` + an explicit table of approved indicators (not all ta is exposed).
 
-### Т4. Warm-up/NaN — контракт, а не поведение по умолчанию
-Внутри провайдера `nan_policy='ignore'` (не 'raise' — иначе прогрев убьёт всё), но:
-- `t < min_bars(params)` → NotReady: сигнал False + счётчик warmup-пропусков в отчёте;
-- NaN после прогрева → `EvaluationError` (аномалия данных).
-Единый контракт с TZ-01 п.5. Отвергнутая альтернатива (fillna нулями) искажает значения
-индикаторов в первые бары — сигналы на прогреве будут мусорными.
+### T4. Warm-up/NaN — a contract, not default behavior
+Inside the provider `nan_policy='ignore'` (not 'raise' — otherwise warm-up kills everything), but:
+- `t < min_bars(params)` → NotReady: signal False + warmup-skip counter in the report;
+- NaN after warm-up → `EvaluationError` (data anomaly).
+Unified with TZ-01 §5. Rejected alternative (fillna with zeros) distorts indicator values in the
+first bars — warm-up signals would be garbage.
 
-## 3. Требования
+## 3. Requirements
 
-1. `IndicatorBinding` + реестр по 7 группам (по 1–2 индикатора на группу сначала).
+1. `IndicatorBinding` + registry per 7 groups (1–2 indicators per group first).
 2. `build_manifest(bindings) -> Manifest`.
-3. `TaProvider(IndicatorProvider)`: compute-once/кэш/offset-индексация/multi-output/
-   NotReady-контракт; батчевый `resolve_history` (переопределение из TZ-01 п.4).
-4. Look-ahead-безопасность наследуется от движка (срез `[:t+1]`); тест-инвариант:
-   подмена «будущих» баров мусором не меняет ни одного resolve(t).
-5. Все индикаторы из AST вычисляются батчево один раз до прогона (обход AST уже возможен
-   через `to_dict`).
+3. `TaProvider(IndicatorProvider)`: compute-once/cache/offset-indexing/multi-output/
+   NotReady contract; batched `resolve_history` (override from TZ-01 §4).
+4. Look-ahead safety inherited from the engine (slice `[:t+1]`); test invariant: replacing
+   "future" bars with garbage does not change any resolve(t).
+5. All AST indicators computed batched once before the run (AST walk via `to_dict` is available).
 
-## 4. Критерии приёмки
+## 4. Acceptance criteria
 
-- **Паритет**: `evaluate_dsl("rsi(period=14).value[2] < 30")` на баре t ==
-  `rsi_ind(close, 14)[t-2]` — для представителя каждой из 7 групп.
-- Warm-up: ровно `min_bars` баров NotReady, дальше значения.
-- Multi-output: `ott.direction` совпадает с `_compute_trend_direction_numba`.
-- Offset: `x[3] == arr[t-3]` (не ta-сдвиг).
-- Перформанс: 2 выражения × 5000 баров < 1 с.
+- **Parity**: `evaluate_dsl("rsi(period=14).value[2] < 30")` at bar t ==
+  `rsi_ind(close, 14)[t-2]` — for a representative of each of the 7 groups.
+- Warm-up: exactly `min_bars` NotReady bars, then values.
+- Multi-output: `ott.direction` == `_compute_trend_direction_numba`.
+- Offset: `x[3] == arr[t-3]` (not ta-shift).
+- Performance: 2 expressions × 5000 bars < 1 s.

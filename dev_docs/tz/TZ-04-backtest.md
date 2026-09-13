@@ -1,142 +1,134 @@
-> **Статус: ✅ реализовано ядро (34 теста зелёные).**
-> execution.py: fill open[t+1], slippage, пессимистический SL-first, ATR-динамические TP/SL.
-> portfolio.py: TP1 (50%) + TP2, trailing callback, max_bars_hold, equity + unrealised PnL.
-> engine.py: бар-за-баром цикл, look-ahead safe, reproducibility.
-> metrics.py: PF, Sharpe (годовой), MaxDD, win_rate, avg_hold.
+# TZ-04. Backtest module `backtest/`
+
+> **Status: ✅ core done (34 tests green).**
+> execution.py: fill at open[t+1], slippage, pessimistic SL-first, ATR-dynamic TP/SL.
+> portfolio.py: TP1 (50%) + TP2, trailing callback, max_bars_hold, equity + unrealized PnL.
+> engine.py: bar-by-bar loop, look-ahead safe, reproducibility.
+> metrics.py: PF, Sharpe (annual), MaxDD, win_rate, avg_hold.
 > validation.py: temporal split, walk-forward folds, baseline gate (pass/fail/simplify),
-> report validator (обязательные: B&H, LR, RF, XGBoost + gate status).
-> ✅ волна 2: risk-gate интеграция (TZ-11 п.4.5) — run_backtest(risk_config=...)
-> прогоняет каждый вход через risk.engine.check(); reject'ы хранятся в
-> metrics.risk_rejects (bar_idx, rule, reason, params-снапшот) — 12 тестов
-> в test_risk_integration.py (config-driven e2e, инвариант «пермиссивный gate
-> == бейслайн», audit trail).
-> Осталось: SIV интеграционный прогон, msgspec-контракты, live-контур.
+> report validator (mandatory: B&H, LR, RF, XGBoost + gate status).
+> ✅ wave 2: risk-gate integration (TZ-11 §4.5) — `run_backtest(risk_config=...)` runs every
+> entry through `risk.engine.check()`; rejects stored in `metrics.risk_rejects`
+> (bar_idx, rule, reason, params snapshot) — 12 tests in test_risk_integration.py
+> (config-driven e2e, "permissive gate == baseline" invariant, audit trail).
+> Remaining: SIV integration run, msgspec contracts, live contour.
 
-# TZ-04. Модуль бэктестирования `backtest/`
+## 1. Context
 
-## 1. Контекст
+Backtest is the judge of the whole system: strategy metrics fill RAG precedents, validate the
+P(win) model and are the only "trade / don't trade" argument. Requirements are collected from
+`dev_docs/quant_checklist.md` (look-ahead, execution, leaks, reproducibility, target metrics) and
+`dev_docs/strategy.md` (partial takes, trailing by SuperTrend).
 
-Бэктест — судья всей системы: метрики стратегий наполняют RAG-прецеденты, валидируют
-P(win) модели и являются единственным доводом «торговать/не торговать». Требования
-собраны из `dev_docs/quant_checklist.md` (look-ahead, исполнение, утечки, воспроизводимость,
-целевые метрики) и `dev_docs/strategy.md` (частичные тейки, трейлинг по Supertrend).
-
-## 2. Пункт 0 — главный принцип: один движок исполнения, три потребителя
+## 2. Point 0 — main principle: one execution engine, three consumers
 
 ```
-backtest/execution.py  ← единственная реализация правил исполнения
+backtest/execution.py  ← the only implementation of execution rules
         ▲                        ▲                      ▲
-ai/ (лейблы)          backtest/ (бэктест)      live (future)
+ai/ (labels)          backtest/ (backtest)      live (future)
 ```
 
-**Почему:** в `ai/src/features.py` уже реализованы fill по open[i+1], комиссия, слиппедж,
-пессимистический SL — если бэктест напишет свои правила, P(win) будет предсказывать исходы
-сделок, которых бэктест не совершает. Перенос `_process_exit`/`_effective_entry_price`
-в `backtest/execution.py` закрывает п.1–2 чеклиста одним изменением и делает семантику
-единой по определению, а не по дисциплине разработчиков.
+**Why:** `ai/src/features.py` already implements fill at open[i+1], commission, slippage,
+pessimistic SL — if backtest writes its own rules, P(win) predicts the outcomes of trades backtest
+does not take. Moving `_process_exit`/`_effective_entry_price` into `backtest/execution.py` closes
+checklist items 1–2 with one change and makes semantics unified by definition, not by developer
+discipline.
 
-## 3. Структура пакета
+## 3. Package structure
 
 ```
 backtest/
 ├── contracts.py    # msgspec: BacktestConfig, Trade, EquityPoint, BacktestReport
-├── data.py         # Candle (по api.md), источники: T-Invest, yfinance, синтетика, Parquet
-├── execution.py    # правила исполнения (перенос из ai/features.py)
-├── portfolio.py    # позиции, частичные тейки, трейлинг, equity-кривая
-├── risk.py         # лимиты (детерминированно, будущий Risk Engine)
-├── engine.py       # событийный бар-за-баром цикл
-├── metrics.py      # PF, Sharpe, MaxDD, win_rate, exposure, риск разорения
-├── validation.py   # walk-forward, временной OOS-сплит
-├── config.py       # YAML-конфиг + seed
+├── data.py         # Candle (per api.md), sources: T-Invest, yfinance, synthetic, Parquet
+├── execution.py    # execution rules (moved from ai/features.py)
+├── portfolio.py    # positions, partial takes, trailing, equity curve
+├── risk.py         # limits (deterministic, future Risk Engine)
+├── engine.py       # event-driven bar-by-bar loop
+├── metrics.py      # PF, Sharpe, MaxDD, win_rate, exposure, risk of ruin
+├── validation.py   # walk-forward, temporal OOS split
+├── config.py       # YAML config + seed
 └── tests/
 ```
 
-## 4. Требования с обоснованием
+## 4. Requirements with rationale
 
-### 4.1. Исполнение (execution.py) — закрывает п.2 чеклиста
-1. Сигнал на баре t → fill по `open[t+1]`. Никогда по close текущего бара (невозможно вживую).
-2. Выход проверяется с бара t+1.
-3. `commission_pct` (0.1%/сторона) + `slippage_pct` (0.05%) вычитаются на входе и выходе.
-4. TP/SL внутри одного бара: первым считается SL (пессимизм; уже реализовано в ai/).
-5. Динамические TP/SL: `entry ± n × ATR(14)` — уровни фиксируются на момент решения
-   из данных ≤ t (замена фиксированных процентов из чеклиста).
-6. Минимальный лот и квантование: `tick_sz, lot_sz, min_sz` из `Instrument` (api.md);
-   сделка < min_sz не открывается. **Почему:** без квантования результаты невоспроизводимы
-   на реальном биржевом стакане.
+### 4.1. Execution (execution.py) — closes checklist item 2
+1. Signal at bar t → fill at `open[t+1]`. Never at the current bar's close (impossible live).
+2. Exit is checked from bar t+1.
+3. `commission_pct` (0.1%/side) + `slippage_pct` (0.05%) deducted on entry and exit.
+4. TP/SL within one bar: SL is checked first (pessimism; already in ai/).
+5. Dynamic TP/SL: `entry ± n × ATR(14)` — levels fixed at decision time from data ≤ t
+   (replaces the fixed percentages from the checklist).
+6. Minimum lot and quantization: `tick_sz, lot_sz, min_sz` from `Instrument` (api.md);
+   a trade < min_sz is not opened. **Why:** without quantization results are not reproducible on a
+   real exchange book.
 
-### 4.2. Портфель (portfolio.py) — требования strategy.md (SIV)
-- Частичные тейки: TP1 (50%) + TP2 (остаток) — учёт на уровне позиции.
-- Трейлинг-стоп по индикатору: правило «бар → новый стоп» как callback (SIV трейлит
-  по Supertrend). **Почему callback:** фиксированный трейлинг-процент не выражает
-  индикаторный трейлинг, а SIV — эталонный интеграционный сценарий.
-- `max_bars_hold` (перенос из ai/), equity-кривая с нереализованным PnL (нужна для MaxDD).
+### 4.2. Portfolio (portfolio.py) — SIV strategy.md requirements
+- Partial takes: TP1 (50%) + TP2 (rest) — tracked at position level.
+- Optional trailing: callback by SuperTrend (SIV); `max_bars_hold`.
+- Equity curve: cumulative PnL with unrealized PnL (MTM) by position; used for MaxDD.
 
-### 4.3. Сигнальный контур (engine.py)
-На каждом баре: `[ta на срезе :t+1] → [DSL entry/exit] → [опц. P(win) ≥ threshold] →
-[risk] → [execution]`. Look-ahead-защита по построению (провайдер физически не видит
-будущее) + тест-инвариант подмены будущих баров мусором.
-**SIV — обязательный интеграционный прогон:** её 4 уровня фильтров (Entropy/ADX/Z-Score →
-тренд → OB-зона → импульс) частично выражаются в DSL, частично — Python-хелперами
-(«3 из 4 трендовых условий», order blocks). Если SIV не выражается — фиксируем пробелы
-DSL как честный результат (кандидат: кворы вида «N из M условий»).
+### 4.3. Signals can come from python helpers, not only DSL
+SIV needs "at least N of M conditions", which the DSL cannot express. The engine accepts
+python-filter callables alongside the DSL entry/exit. Contract: `list[bool]` per-bar (for the
+whole history) — must be look-ahead safe like the DSL path. Marked SIV-specific.
 
-### 4.4. Риск (risk.py)
-Риск на сделку ≤ 1–2% (`RiskCapital = капитал × 1% / стоп_в_пунктах`), лимит одновременных
-позиций, стоп по MaxDD, white-list инструментов, max_bars_hold. Всё детерминированно,
-без LLM — станет будущим Risk Engine как есть.
+### 4.4. Risk (risk.py)
+Risk per trade ≤ 1–2% (`RiskCapital = capital × 1% / stop_in_points`), concurrent-position limit,
+MaxDD stop, instrument white-list, max_bars_hold. All deterministic, no LLM — this becomes the
+future Risk Engine as is.
 
-### 4.5. Метрики и воспроизводимость (п.6 чеклиста)
-`profit_factor, sharpe (годовой), max_drawdown, win_rate, num_trades, exposure,
-avg_hold_bars, risk_of_ruin`. `BacktestReport` (msgspec) всегда содержит полный конфиг +
-seed + git hash + хэш данных. Тест: повторный запуск = идентичный отчёт.
+### 4.5. Metrics and reproducibility (checklist item 6)
+`profit_factor, sharpe (annual), max_drawdown, win_rate, num_trades, exposure,
+avg_hold_bars, risk_of_ruin`. `BacktestReport` (msgspec) always contains the full config +
+### 4.6. Validation (validation.py) — checklist item 5
+- Temporal split only (train ≤ 2023 → test 2024+), no shuffling.
+- Walk-forward: rolling windows + stability map across folds.
+- Cross-asset test (train SPY → test QQQ) — optional.
+- Baselines (checklist item 3): Buy & Hold, **logistic regression** on the same features
+  (prices + indicators, action prediction), **Random Forest / XGBoost** on aggregated features
+  (last indicator values); the report must include a comparison with the Transformer
+  (Accuracy, F1, Profit Factor), otherwise results are not accepted. If the complex model does
+  not beat a simple one by > 5–10% on Sharpe/PF — simplify the architecture.
 
-### 4.6. Валидация (validation.py) — п.5 чеклиста
-- Только временной сплит (train ≤ 2023 → test 2024+), никакого перемешивания.
-- Walk-forward: скользящие окна + карта стабильности по фолдам.
-- Кросс-активный тест (train SPY → test QQQ) — опционально.
-- Базлайны (п.3 чеклиста): Buy & Hold, **логистическая регрессия** на тех же признаках
-  (цены + индикаторы, предсказание действия), **Random Forest / XGBoost** на агрегированных
-  признаках (последние значения индикаторов); отчёт обязан содержать сравнение с
-  Transformer (Accuracy, F1, Profit Factor), иначе результат не принимается. Если сложная
-  модель не превосходит простую на > 5–10% по Sharpe/PF — упрощаем архитектуру.
+### 4.6.1. Baseline gate — a mandatory gate (attention, checklist item 3)
 
-### 4.6.1. Baseline gate — обязательный гейт (особое внимание, п.3 чеклиста)
+Blocks all downstream consumption of backtest and model results:
 
-Блокирует всё downstream-потребление результатов бэктеста и модели:
+1. **A backtest report without the baseline table is invalid by construction** — the report
+   validator rejects it with an error (not a warning). Mandatory baselines: Buy & Hold,
+   logistic regression, Random Forest **and** XGBoost (compute all, don't pick the best).
+2. **Pass condition**: the Transformer beats the best simple model by
+   **> 5–10% on Sharpe or Profit Factor** on out-of-sample with commissions.
+   Fail → decide in favor of the simple model / simplify the architecture
+   (recorded in the report as `baseline_gate: pass|fail|simplify`).
+3. **The gate freezes inputs**: feature space of the Transformer and baselines is the same
+   (prices + ta/ indicators, same windows, same test period). If a baseline trains on fewer
+   features, that is recorded in the report.
+4. **Re-gate**: any feature/architecture/period change requires re-running baselines; caching old
+   comparisons is forbidden.
+5. Test: the report without a baseline section fails validation; invariant — Transformer and
+   baseline metrics are computed on the identical §0-engine trades.
 
-1. **Отчёт бэктеста без таблицы базлайнов невалиден по построению** — валидатор отчёта
-   отвергает его с ошибкой (не warning). Базлайны обязательные: Buy & Hold,
-   логистическая регрессия, Random Forest **и** XGBoost (считать все, не выбирать лучший).
-2. **Условие прохождения**: Transformer превосходит лучшую простую модель на
-   **> 5–10% по Sharpe или Profit Factor** на out-of-sample с комиссиями.
-   Не прошёл → решение принимается в пользу простой модели / упрощения архитектуры
-   (зафиксировано в отчёте отдельным полем `baseline_gate: pass|fail|simplify`).
-3. **Гейт замораживает входы**: признаковое пространство Transformer и базлайнов —
-   одно и то же (цены + индикаторы ta/, те же окна, тот же тестовый период). Если
-   базлайн обучается на меньшем множестве признаков — это фиксируется в отчёте.
-4. **Повторный гейт**: любое изменение фич/архитектуры/периода требует повторного
-   прогона базлайнов; кэшировать старые сравнения нельзя.
-5. Тест: unit-тест, что отчёт без baseline-секции не проходит валидацию; инвариант —
-   метрики Transformer и базлайнов считаются на идентичных сделках движка п.0.
-
-### 4.7. Конфиг
-Один YAML: `{data, strategy{dsl_entry/exit, python_filters}, execution{commission,
+### 4.7. Config
+One YAML: `{data, strategy{dsl_entry/exit, python_filters}, execution{commission,
 slippage, lot}, risk, portfolio{tp1, tp2, trailing}, validation{mode, folds}, seed}`.
-Логи в `backtest/runs/{config, report, git_hash, date}`.
+Logs in `backtest/runs/{config, report, git_hash, date}`.
 
-## 5. Стыки
+## 5. Seams
 
-- TZ-02: использует `Strategy`, `TaProvider`; лейбл-генератор ai/ переводится на execution.py.
-- TZ-05: инференс = «бэктест на живом хвосте» — общий data.py и контур сигналов.
-- TZ-06: предикты модели подмешиваются только через predict_p_win.
-- msgspec добавить в pyproject (заявлен в api.md, отсутствует в зависимостях).
-- backtrader/vectorbt (упомянуты в чеклисте) НЕ берём: свой движок нужен из-за DSL, SIV,
-  частичных тейков; библиотеки — только для кросс-чеков.
+- TZ-02: uses `Strategy`, `TaProvider`; the ai/ label generator moves to execution.py.
+- TZ-05: inference = "backtest on a live tail" — shared data.py and signal path.
+- TZ-06: model predictions are mixed in only via predict_p_win.
+- msgspec to be added to pyproject (declared in api.md, missing from deps).
+- backtrader/vectorbt (mentioned in the checklist) are NOT taken: a custom engine is needed for
+  DSL, SIV, partial takes; libraries only for cross-checks.
 
-## 6. Критерии приёмки
+## 6. Acceptance criteria
 
-1. Golden-тест: одинаковые сигналы дают идентичные Trade в лейбл-генераторе ai/ и в бэктесте.
-2. Look-ahead-инвариант: подмена будущих баров не меняет отчёт.
-3. Воспроизводимость: seed + конфиг = идентичный отчёт.
-4. SIV: полный прогон, расхождения DSL зафиксированы списком.
-5. 5000 баров × 2 выражения < 1 с.
+1. Golden test: identical signals give identical Trade in the ai/ label generator and backtest.
+2. Look-ahead invariant: replacing future bars does not change the report.
+3. Reproducibility: seed + config = identical report.
+4. SIV: full run, DSL discrepancies recorded as a list.
+5. 5000 bars × 2 expressions < 1 s.
+seed + git hash + data hash. Test: rerun = identical report.

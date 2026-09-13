@@ -1,4 +1,9 @@
-# Волатильность – практическое руководство
+# Volatility — practical guide
+
+> **Status: ✅ reference.** Measurement of price-movement range/instability; critical for risk
+> management and false-signal filtering. Reference for `ta/src/volatility/` (ATR, BBands).
+
+# (original RU content: Волатильность – практическое руководство)
 
 Эти индикаторы измеряют **размах и нестабильность** ценовых движений.  
 Они не дают сигналов на вход сами по себе, но являются **критическими для управления рисками** и фильтрации ложных сигналов.

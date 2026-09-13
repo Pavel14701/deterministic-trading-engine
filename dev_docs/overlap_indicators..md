@@ -1,4 +1,8 @@
-# Трендовые и скользящие индикаторы — практическое руководство
+# Trend and moving-average indicators — practical guide
+
+> **Status: ✅ reference.** Moving averages and trend tools. Reference for `ta/src/overlap/` modules.
+
+# (original RU content: Трендовые и скользящие индикаторы — практическое руководство)
 
 В этой папке собраны различные скользящие средние и трендовые инструменты.  
 Цель – выбрать несколько самых надёжных для разных рыночных условий.

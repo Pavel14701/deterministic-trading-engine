@@ -1,17 +1,17 @@
-# TZ-00. Roadmap: сведение модулей в единую систему
+# TZ-00. Roadmap: consolidating the modules into one system
 
-## 1. Назначение
+## 1. Purpose
 
-Корневой документ. Каждое ТЗ (TZ-01..TZ-13) самодостаточно, порядок выполнения определён здесь.
-Проект: **Deterministic Trading Engine** (бывш. `t_inv_rag`) — детерминированный торговый
-контур; RAG/LLM — вспомогательный слой вне контура решений.
+Root document. Each TZ (TZ-01..TZ-15) is self-contained; the execution order is defined here.
+Project: **Deterministic Trading Engine** (formerly `t_inv_rag`) — a deterministic trading
+path; RAG/LLM is a supporting layer outside the decision loop.
 
-## 1.1. Монорепозиторий (uv workspaces)
+## 1.1. Monorepo (uv workspaces)
 
-Каждый модуль — член uv workspace с изолированным окружением:
+Each module is a uv workspace member with an isolated environment:
 
-| Пакет | Каталог | Ключевые зависимости | Тесты |
-|-------|---------|----------------------|-------|
+| Package | Dir | Key deps | Tests |
+|---------|-----|----------|-------|
 | `dte-ta` | `ta/` | numba, numpy, scipy | `uv run --package dte-ta pytest ta/tests` |
 | `dte-dsl` | `dsl/` | niquests | `uv run --package dte-dsl pytest dsl/tests` |
 | `dte-strategies` | `strategies/` | polars | `uv run --package dte-strategies pytest strategies/tests` (TZ-02) |
@@ -20,119 +20,114 @@
 | `dte-rag` | `rag/` | llama-index, qdrant, sentence-transformers | `uv run --package dte-rag pytest rag/tests` |
 | `dte-risk` | `risk/` | numpy, pyyaml | `uv run --package dte-risk pytest risk/tests` |
 | `dte-main` | `main/` | dishka, faststream, aiogram, sqlalchemy, alembic | — (TZ-08/10) |
+| `dte-okx` | `okx/` (planned) | niquests, websockets, msgspec, pyyaml | — (TZ-15) |
 
-Принципы монорепозитория:
-1. **Изоляция окружений**: `uv sync --package dte-<x>` поднимает окружение только с
-   зависимостями этого пакета; полный dev-env — `uv sync --all-packages`.
-2. **GPU-зависимости изолированы** (п.4.7): torch существует только в `dte-ai`
-   (и опционально `dte-infer[ml]`); `dte-dsl`/`dte-ta`/`dte-strategies` его не тянут.
-3. **Import-имена неизменны** (`ta`, `dsl`, `ai`, `infer`, `rag`, `main`): упаковка
-   меняется, код и существующие тесты не ломаются. Физический src-layout не вводится
-   до появления вторых потребителей (решение зафиксировано здесь, revisit — TZ-08).
-   Следствие: члены workspace — виртуальные пакеты, поэтому кросс-пакетные
-   зависимости (например, `dte-infer` → niquests/numba/scipy для dsl/ta) объявляются
-   в pyproject члена напрямую, а не как workspace-зависимости.
-4. Каждый член workspace имеет собственный `pyproject.toml` (+ `pytest.ini`),
-   корневой проект — только dev-инструменты и общий тестовый стек.
+Monorepo principles:
+1. **Environment isolation**: `uv sync --package dte-<x>` builds the env with only that
+   package's deps; the full dev env is `uv sync --all-packages`.
+2. **GPU deps isolated** (§4.7): torch exists only in `dte-ai` (and optionally
+   `dte-infer[ml]`); `dte-dsl`/`dte-ta`/`dte-strategies`/`dte-risk` do not pull it.
+3. **Import names unchanged** (`ta`, `dsl`, `ai`, `infer`, `rag`, `main`): packaging changes,
+   code and existing tests do not break. Physical src-layout is not introduced until a second
+   consumer appears (decision fixed here; revisit in TZ-08). Consequence: workspace members are
+   virtual packages, so cross-package deps (e.g. `dte-infer` → niquests/numba/scipy for dsl/ta)
+   are declared directly in the member's pyproject, not as workspace deps.
+4. Each workspace member has its own `pyproject.toml` (+ `pytest.ini`); the root project only
+   carries dev tools and the shared test stack.
 
-## 2. Карта системы
+## 2. System map
 
 ```
-Биржи (T-Invest, OKX) ──► [White API: ingest + REST + aiogram]   (публичный контур, без GPU)
+Exchanges (T-Invest, OKX) ──► [White API: ingest + REST + aiogram]   (public contour, no GPU)
                                   │  RabbitMQ over TLS
-                                  │  соединение инициирует ЛОКАЛЬНЫЙ узел (outbound,
-                                  ▼  входящие порты на локали закрыты)
-                          [Локальный GPU-узел: ai-обучение/инференс,
-                           ta+DSL движок, backtest, RAG, Qdrant, Ollama]
+                                  │  connection initiated by the LOCAL node (outbound,
+                                  ▼  inbound ports on the local are closed)
+                          [Local GPU node: ai training/inference,
+                           ta+DSL engine, backtest, RAG, Qdrant, Ollama]
 ```
 
-Внутри локального узла:
+Inside the local node:
 
 ```
-ta ──(TaProvider, TZ-03)──► dsl ──► backtest (TZ-04) ──► отчёты ──► White API
+ta ──(TaProvider, TZ-03)──► dsl ──► backtest (TZ-04) ──► reports ──► White API
                          ▲                    ▲
               strategies (TZ-02)          ai P(win) (TZ-06)
+## 3. Execution order and statuses
+
+Legend: ✅ done · 🔨 in progress · ⬜ not started (order fixed by TZ-00).
+
+| # | TZ | Status | Why here |
+|---|----|--------|----------|
+| 0 | TZ-14 quality baseline | ✅ (ruff single linter, root pytest config + service markers, EN-only guard, mypy clean repo-wide, 0 warnings; full suite 2425 passed / 120 skipped) | mypy/linters/tests/language discipline (EN-only: Numba degrades silently on non-ASCII) — without a safe base, TZ-02+ refactors are not verifiable |
+| 1 | TZ-01 dsl hardening | ✅ (DslValidationError, resolve_history, manifest routing, NaN contract, strict param typing; parsing < 1 ms) | DSL is the core: strategies and RAG-generation both flow through it; contracts must be fixed before clients appear |
+| 2 | TZ-06 ai stabilization | ✅ (torch explicit, temporal split, model bundle, predict_p_win, device backends; 68 tests) | tor and validation leak block any model use; order justified in the TZ |
+| 3 | TZ-02 strategies + unified OHLC | ✅ (25 tests: unified schema + Strategy + validation + registry + AST + label generator) | Strategy format and data schema — glues ta/dsl/ai; schema conflict blocks everything downstream |
+| 4 | TZ-03 ta-dsl provider | ✅ wave 2 (universal mapper `ta/src/registry.py`, 84 indicators in DSL, multi-output, cache-key fix; wave 1 golden anchors; 1975 tests) | Indicators into the DSL; needs the TZ-02 data format |
+| 5 | TZ-04 backtest | ✅ core (execution + portfolio + engine + metrics + baseline gate + risk gate; 34 + 12 integration tests) | Honest backtest BEFORE RAG and BEFORE ML inference on real data |
+| 6 | TZ-05 inference | ✅ (CLI, pipeline, --ml; manual T-Invest run remains) | Signal script — "backtest on a live tail"; depends on TZ-02/03/04 (strategy format is a stub) |
+| 7 | TZ-07 rag | 🔨 core (47 tests; pipeline + pass@1/pass@N metrics) | pass@1 eval needs a live LLM; integration tests need live Qdrant/Ollama |
+| 8 | TZ-08 contracts + DI | ✅ (contracts via msgspec; dishka 4 contours; DatabaseProvider; 16 tests) | Module gluing; code must not duplicate strategy models or pull heavy deps |
+| 9 | TZ-09 api bridge | ✅ transport core (11 bridge + 14 contract tests; ACL, schema-version, reconnect, heartbeat) | Public contour ↔ local GPU node; protocol is the only boundary |
+| 10 | TZ-10 white API | ✅ core (12 REST/store + 10 db + e2e service tests; PG stores + Alembic + DI) | Public service skeleton; async backtest via queue |
+| 11 | TZ-11 risk engine | ✅ (22 + 12 integration tests; config-driven, rules registry, strict validation) | "Decisions only by deterministic code" is incomplete without risk management; the invariant-gate blocks live |
+| 12 | TZ-12 ta benchmarks | 🔨 runner (2 smoke tests, marker `performance`) | Public measurable proof for README/portfolio |
+| 13 | TZ-13 CI | ✅ (lint + mypy + EN-only guard + 9 pytest matrix jobs — main added) | Prevent monorepo regressions |
+| 14 | TZ-15 okx venue | ⬜ spec only (WS-first, onion, dishka TZ-08 pattern, normalized to T-Invest canon) | Second venue; depends on the deterministic path and DI |
+> Order deviation: TZ-05 was completed before TZ-02/03/04 (synthetic smoke was acceptable;
+> the strategy format in infer stays a stub until TZ-02).
+
+## 3.1. Summary right now
+
+- **Full suite: 2425 passed / 120 skipped / 0 warnings**; ruff and mypy clean repo-wide
+  (only accepted tech-debt: docstrings in `ta/src/overlap/mama.py`).
+- **Deterministic path complete end-to-end on synthetic data**:
+  ta → DSL → signals → **Risk Engine (TZ-11 ✅)** → backtest with reject-audit;
+  the DSL manifest now exposes **84 indicators** (TZ-03 wave 2 ✅: universal mapper
+  `ta/src/registry.py`, auto-bindings from `*_ind` signatures).
+- **Infrastructure**: DI (4 contours), FastStream bridge with ACL, REST, PostgreSQL +
+  Alembic, white/local glue via `service.py` — all with e2e tests on an in-memory broker and
+  SQLite; **live backends (RabbitMQ, PG, Qdrant, Ollama) have NOT been wired up yet**.
+
+## 3.2. Remaining work order
+
+1. **Local backtest-runner in `main/`** (closes TZ-04 live + TZ-09/TZ-10): cmd.backtest →
+   DSL→signals → `run_backtest(risk_config=...)` → evt.report; in parallel add the TZ-04
+   msgspec report contracts.
+2. **TZ-07 final** — pass@1 eval script (needs a live Ollama), `rag_integration` marker for
+   live Qdrant/Ollama (docker compose exists).
+3. **TZ-10 finish** — aiogram bot, JWT, live PostgreSQL in CI (service container).
+4. **TZ-09 finish** — live RabbitMQ, TLS/tokens, lag metrics.
+5. **TZ-04/TZ-06 on real data** — SIV run, model training, baseline gate (opens live),
+   OB batching, <5 ms measurement.
+6. **TZ-12 final** — reproducible ±10% reruns, TA-Lib optional CI job.
+7. **TZ-15 OKX** — implement the spec (adapter, event loop, DI, normalization).
+
+## 4. Cross-cutting principles (mandatory for all TZs)
+
+1. **LLM outside the decision path.** The LLM generates/explains strategies; entry/exit is
+   decided by deterministic code. Risk limits are unreachable by the LLM at every level,
+   including transport: the TZ-09 queue protocol has no "change limits" command.
+2. **One execution engine, three consumers** (ai labels, backtest, live) — TZ-04 §0.
+   Three implementations = trade semantics diverge between P(win), backtest and reality.
+3. **Unified OHLC schema**: `open, high, low, close, volume` (TZ-02 §3).
+4. **Look-ahead invariant**: a function at bar t receives only `[:t+1]`; verified by tests
+   that replace "future" bars with garbage (TZ-03 §5, TZ-04 §5).
+5. **NaN contract**: warm-up = NotReady (signal False + skip counter), NaN after warm-up =
+   data error (TZ-01 §5, TZ-03 §4).
+6. **Reproducibility**: seed (numpy/torch/random) + config + git hash in every report.
+7. **GPU deps only on the local node** (TZ-09): the public contour requirements have no torch.
+
+## 5. Overall success criteria (from quant_checklist.md)
+
+> ⚠️ **Baseline gate — the main filter.** Comparing the model with simple methods
+> (Buy & Hold, logistic regression, RF/XGBoost) is a mandatory gate: without a passed
+> comparison, backtest results are not valid, real-data training and the live contour stay
+> closed. Details — TZ-04 §4.6.1.
+
+- Profit Factor > 1.5 on out-of-sample with commissions; MaxDD ≤ 20%; Sharpe > 1.0.
+- **Gate:** the model beats baselines (logistic regression, RF/XGBoost, Buy & Hold) by
+  **> 5–10% on Sharpe or Profit Factor** on aggregate metrics (Accuracy, F1, Profit Factor,
+  Sharpe) — otherwise simplify / fall back to a simple model.
+- Rerunning with the same seed produces an identical report.
+- RAG: ≥ 70% of queries produce valid DSL within ≤ 2 repair iterations (pass@1).
 ```
-
-## 3. Порядок выполнения и статусы
-
-Легенда: ✅ выполнено · 🔨 в работе · ⬜ не начато (порядок зафиксирован TZ-00).
-
-| # | ТЗ | Статус | Почему именно здесь |
-|---|----|--------|---------------------|
-| 0 | TZ-14 quality baseline | ✅ (ruff единый линтер, корневая pytest-конфигурация + service-маркеры, EN-only guard, mypy clean по всему репо, 0 warnings; полный сюит 2324 passed / 120 skipped) | mypy/линтеры/тесты/языковая дисциплина (EN-only: Numba молча деградирует на не-ASCII) — без безопасной базы рефакторинг TZ-02+ не проверяем |
-| 1 | TZ-01 dsl hardening | ✅ (DslValidationError, resolve_history, манифест-маршрутизация в коде) | Все контракты (исключения, провайдеры) строятся на DSL; чинить после появления клиентов дороже |
-| 2 | TZ-06 ai stabilization | ✅ (bundle, predict_p_win, YAML, device; остаток — батчеризация OB, замер < 5 мс на реальном железе) | torch в зависимостях, утечка валидации, model bundle — до любого использования ai |
-| 3 | TZ-02 strategies + единая OHLC | ✅ (25 тестов: единая схема + Strategy + валидация + реестр + AST + лейбл-генератор) | Формат стратегии и схема данных — склейка ta/dsl/ai; конфликт схем блокирует всё дальше |
-| 4 | TZ-03 ta-dsl provider | ✅ (волна 2: универсальный маппер `ta/src/registry.py` — авто-биндинги из сигнатур `*_ind`, 84 индикатора в манифесте/DSL; multi-output с NAMED_OUTPUTS, батчевый resolve, cache-key по всем params — фикс коллизий; волна 1: 4 golden-якоря; 1975 тестов; SMOKE_SKIP: ott = numba-dispatch) | Прокидывание индикаторов в DSL; нужен формат данных из TZ-02 |
-| 5 | TZ-04 backtest | ✅ ядро (34 + 12 risk-интеграционных теста; risk-gate и reject-аудит ✅; осталось: SIV-прогон, msgspec-контракты отчётов, live-контур) | Честный бэктест ДО RAG и ДО ML-инференса на реальных данных |
-| 6 | TZ-05 inference | ✅ (CLI, конвейер, --ml; остался ручной прогон на T-Invest) | Скрипт сигналов — «бэктест на живом хвосте»; зависит от TZ-02/03/04 (формат стратегии — заготовка) |
-| 7 | TZ-09 api bridge | 🔨 транспорт готов (контракты + ACL + WhiteBridge/LocalBridge, reconnect/backoff, heartbeat, e2e через TestRabbitBroker; осталось: живой RabbitMQ, TLS/токены, lag-метрики в Prometheus) | Транспорт white API ↔ локаль; нужны форматы отчётов (TZ-04) и сигналов (TZ-05) |
-| 8 | TZ-10 white api skeleton | 🔨 (REST + WhiteAPI, PostgreSQL-слой: модели + PgStores + Alembic + DI DatabaseProvider; FastStream↔PG склейка service.py с e2e; осталось: реальный локальный backtest-runner (DSL→сигналы→backtest+risk), aiogram, JWT, живой PG в CI) | Каркас ingest + REST; после контрактов очередей (TZ-09) |
-| 9 | TZ-07 rag | 🔨 ядро готово (LLM-слой, ingestion, vectorstore/embeddings/retrieval, pipeline + pass@1/pass@N метрики, 47 тестов; осталось: pass@1 eval-скрипт над query-set, rag_integration на живом Qdrant/Ollama) | RAG поверх готового формата стратегий и валидатора DSL |
-| 10 | TZ-08 contracts/DI | ✅ (DI собрана: 4 контура + rag/Ollama/Qdrant/bundle/DB-провайдеры с Protocol-ключами, 16 тестов; PostgreSQL provider закрыт) | Финальная склейка; фактически ведётся параллельно с TZ-02 |
-| 11 | TZ-11 risk engine | ✅ (config-driven движок: 5 правил v1 + params-схемы, strict-валидация, env-оверрайды; интеграция в backtest: reject-аудит в отчёте; 22 + 12 тестов; осталось: live-склейка через TZ-10) | Ключевая фича детерминизма; после TZ-04 (движок исполнения) |
-| 12 | TZ-12 ta benchmarks | 🔨 runner готов (7 сценариев × pandas/numpy/TA-Lib базлайны, cold/warm JIT, --save, таблица в README; осталось: воспроизводимость ±10%, TA-Lib/pandas_ta опциональным job в CI, issue на scrsi 0.9x) | Публичное доказательство производительности Numba-ядер |
-| 13 | TZ-13 ci | ✅ (GitHub Actions: lint + format + mypy strict + EN-only + 9 pytest matrix jobs — добавлен main) |
-
-> Отступление от порядка: TZ-05 выполнен до TZ-02/03/04 (смок на синтетике допустим —
-> формат стратегии в infer остаётся заготовкой до TZ-02).
-
-## 3.1. Свода на текущий момент
-
-- Полный сюит: **2425 passed / 120 skipped / 0 warnings**; ruff и mypy чисты
-  по всему репозиторию (единственный принятый tech-debt — докстринги в
-  `ta/src/overlap/mama.py`).
-- Детерминированный контур готов end-to-end на синтетике:
-  ta → DSL → сигналы → **Risk Engine (TZ-11 ✅)** → бэктест с reject-аудитом;
-  DSL-манифест расширен до **84 индикаторов** (TZ-03 волна 2 ✅: универсальный
-  маппер `ta/src/registry.py`, авто-биндинги из сигнатур `*_ind`).
-- Инфраструктура: DI (4 контура), FastStream-мост с ACL, REST, PostgreSQL
-  + Alembic, склейка white/local через `service.py` — всё с e2e-тестами
-  на in-memory брокере и SQLite; прод-бэкенды (RabbitMQ, PG, Qdrant,
-  Ollama) пока не подключались живьём.
-
-## 3.2. Дальнейший порядок работ
-
-1. **Локальный backtest-runner в main** (замыкает TZ-04 live + TZ-09/TZ-10):
-   cmd.backtest → DSL→сигналы → `run_backtest(risk_config=...)` → evt.report;
-   (TZ-03 волна 2 ✅ — маппер 84 индикаторов уже в DSL), параллельно
-   msgspec-контракты отчётов TZ-04.
-2. **TZ-07 финал** — pass@1 eval-скрипт (нужен живой Ollama), маркер
-   `rag_integration` для живых Qdrant/Ollama (docker compose есть).
-3. **TZ-10 добивка** — aiogram-бот, JWT, живой PostgreSQL в CI
-   (service-контейнер).
-4. **TZ-09 добивка** — живой RabbitMQ, TLS/токены, lag-метрики.
-5. **TZ-04/TZ-06 на реальных данных** — SIV-прогон, обучение модели,
-   baseline gate (открывает live), батчеризация OB, замер < 5 мс.
-6. **TZ-12 финал** — повторные прогоны ±10%, TA-Lib опциональным job в CI.
-
-## 4. Сквозные принципы (обязательны для всех ТЗ)
-
-1. **LLM вне контура принятия решений.** LLM генерирует/объясняет стратегии; вход/выход
-   решает детерминированный код. Риск-лимиты недоступны LLM на любом уровне, включая
-   транспорт: в протоколе очередей TZ-09 физически нет команды «изменить лимиты».
-2. **Один движок исполнения на три потребителя** (лейблы ai, бэктест, live) — TZ-04 п.0.
-   Три реализации = расхождение семантики сделок между P(win), бэктестом и реальностью.
-3. **Единая OHLC-схема**: `open, high, low, close, volume` (TZ-02 п.3).
-4. **Look-ahead-инвариант**: функция на баре t получает только `[:t+1]`; проверяется тестом
-   подмены «будущих» баров мусором (TZ-03 п.5, TZ-04 п.5).
-5. **NaN-контракт**: warm-up = NotReady (сигнал False + счётчик пропусков), NaN после
-   прогрева = ошибка данных (TZ-01 п.5, TZ-03 п.4).
-6. **Воспроизводимость**: seed (numpy/torch/random) + конфиг + git hash в каждом отчёте.
-7. **GPU-зависимости только на локальном узле** (TZ-09): requirements публичного контура
-   не содержат torch.
-
-## 5. Критерии общего успеха (из quant_checklist.md)
-
-> ⚠️ **Baseline gate — главный фильтр.** Сравнение модели с простыми методами
-> (Buy & Hold, логрегрессия, RF/XGBoost) — обязательный гейт: без пройденного
-> сравнения результаты бэктеста не считаются валидными, обучение на реальных
-> данных и live-контур не открываются. Детали — TZ-04 п.4.6.1.
-
-- Profit Factor > 1.5 на out-of-sample с комиссиями; MaxDD ≤ 20%; Sharpe > 1.0.
-- **Gate:** модель превосходит базлайны (логистическая регрессия, Random Forest/XGBoost,
-  Buy & Hold) на **> 5–10% по Sharpe или Profit Factor** по совокупным метрикам
-  (Accuracy, F1, Profit Factor, Sharpe) — иначе упрощение архитектуры / возврат к простой модели.
-- Повторный запуск с тем же seed даёт идентичный отчёт.
-- RAG: ≥ 70% запросов дают валидный DSL ≤ 2 repair-итераций (pass@1).

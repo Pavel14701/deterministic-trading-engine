@@ -1,54 +1,53 @@
-> **Статус: 🔨 DI полностью собрана (16 тестов зелёные).**
-> Реализовано: AppConfig (frozen, from_env: database/rabbitmq/ollama/qdrant/
+# TZ-08. Shared contracts and DI (contracts/ + dishka)
+
+> **Status: 🔨 DI fully assembled (16 tests green).**
+> Implemented: AppConfig (frozen, from_env: database/rabbitmq/ollama/qdrant/
 > model_bundle/llm_model), ContourConfig + CONTOURS registry, dishka providers,
-> build_container() для 4 контуров (backtest/inference/rag/api).
-> ✅ волна 2: rag-провайдеры — LLMProviderDishka (OllamaProvider), EmbeddingProvider
-> (OllamaEmbedding bge-m3), VectorStoreProvider (QdrantVectorStore, ленивый клиент);
-> ModelBundleProvider (MODEL_BUNDLE_PATH, без пути → bundle=None, без импорта torch);
-> типизированные DI-ключи LLMPort/EmbeddingsPort/VectorStorePort (Protocol) +
-> ModelBundlePort. api-контур не тянет GPU/rag-зависимости (тест).
-> ✅ DatabaseProvider (волна 2.1): DatabasePort c sessionmaker из DATABASE_URL
-> (psycopg), без URL → None → in-memory fallback. PostgreSQL provider закрыт.
-> Осталось: Alembic-склейка с сервисом (TZ-10, миграции готовы).
+> build_container() for 4 contours (backtest/inference/rag/api).
+> ✅ wave 2: rag providers — LLMProviderDishka (OllamaProvider), EmbeddingProvider
+> (OllamaEmbedding bge-m3), VectorStoreProvider (QdrantVectorStore, lazy client);
+> ModelBundleProvider (MODEL_BUNDLE_PATH; no path → bundle=None, no torch import);
+> typed DI keys LLMPort/EmbeddingsPort/VectorStorePort (Protocol) + ModelBundlePort. The api
+> contour does not pull GPU/rag deps (test).
+> ✅ DatabaseProvider (wave 2.1): DatabasePort with a sessionmaker from DATABASE_URL
+> (psycopg); no URL → None → in-memory fallback. PostgreSQL provider closed.
+> Remaining: Alembic glue with the service (TZ-10, migrations ready).
 
-# TZ-08. Общие контракты и DI (contracts/ + dishka)
+## 1. Context
 
-## 1. Контекст
+By the time of gluing, modules depend on each other: backtest → strategies → dsl → ta,
+rag → dsl + strategies, ai → shared data. Without a dedicated contracts package, dependencies
+become transitive and fragile (an edit to dsl breaks ai through a chain).
 
-К моменту склейки модули будут зависеть друг от друга: backtest → strategies → dsl → ta,
-rag → dsl + strategies, ai → общие данные. Без выделенного пакета контрактов зависимости
-становятся транзитивными и хрупкими (правка dsl ломает ai через цепочку).
+## 2. Why this way
 
-## 2. Почему именно так
+### 2.1. The `contracts/` package — dependencies only on it
+Shared types: `Strategy`, `Signal`, `ValidationResult`, `ManifestHash`, `OHLCVFrame`
+(unified TZ-02 schema), `ModelBundle`, `PredictionContract`, `BacktestReport`.
+**Why dataclasses/msgspec rather than private classes per module:** serialization across the
+white API ↔ local boundary (TZ-09) requires identical structures on both sides; msgspec is
+declared in api.md and is 5–10× faster than pydantic. Starting with dataclass + conversion is
+acceptable.
 
-### 2.1. Пакет `contracts/` — зависимости только на него
-Общие типы: `Strategy`, `Signal`, `ValidationResult`, `ManifestHash`, `OHLCVFrame`
-(единая схема TZ-02), `ModelBundle`, `PredictionContract`, `BacktestReport`.
-**Почему dataclasses/msgspec, а не свои классы в каждом модуле:** сериализация через
-границу white API ↔ локаль (TZ-09) требует одинаковых структур с обеих сторон; msgspec
-заявлен в api.md и быстрее pydantic в 5–10 раз. Допустимо начать с dataclass + конвертация.
+### 2.2. dishka as DI
+dishka is already a dependency. Providers: `Context` (dsl), `TaProvider`, `QdrantClient`,
+`OllamaClient`, model + bundle, DB connections. **Why not a manual singleton module:** different
+contours (backtest, inference, RAG) require different dependency graphs from the same components;
+dishka gives scopes without boilerplate.
 
-### 2.2. dishka как DI
-dishka уже в зависимостях. Провайдеры: `Context` (dsl), `TaProvider`, `QdrantClient`,
-`OllamaClient`, модель + bundle, соединения БД. **Почему не ручной singleton-модуль:**
-разные контуры (бэктест, инференс, RAG) требуют разные графы зависимостей из одних
-компонентов; dishka даёт scopes без boilerplate.
+### 2.3. Configuration
+Extend `main/src/config.py`: env vars for all external deps (DB_*, REDIS_*, MQ_* already in
+compose; add OLLAMA_HOST, QDRANT_URL, RAG_* params, MODEL_BUNDLE_PATH). One config source —
+otherwise with two contours (white/local) configs drift across modules.
 
-### 2.3. Конфигурация
-Расширение `main/src/config.py`: env-переменные для всех внешних зависимостей
-(DB_*, REDIS_*, MQ_* уже есть в compose; добавить OLLAMA_HOST, QDRANT_URL,
-RAG_* параметры, MODEL_BUNDLE_PATH). Один источник конфигурации — иначе при двух
-контурах (white/local) конфиги расползутся по модулям.
+## 3. Requirements
 
-## 3. Требования
+1. The `contracts/` package (or `common/contracts`) with the types above; modules depend only on it.
+2. dishka DI providers for all external components; contours: backtest, inference, rag, api.
+3. Unified env config (§2.3), validated at startup.
+4. No business logic in contracts/ — only types and (at most) structure validation.
 
-1. Пакет `contracts/` (или `common/contracts`) с типами выше; модули зависят только на него.
-2. DI-провайдеры dishka для всех внешних компонентов; контуры: backtest, inference, rag, api.
-3. Единый конфиг из env (п.2.3), валидация при старте.
-4. Никакой бизнес-логики в contracts/ — только типы и (максимум) валидация структуры.
+## 4. Acceptance criteria
 
-## 4. Критерии приёмки
-
-- Сборка графа зависимостей для каждого контура в тесте (без I/O, моки).
-- `import contracts` не тянет torch/qdrant (проверка временем импорта / опциональными
-  зависимостями).
+- Building the dependency graph for each contour in a test (no I/O, mocks).
+- `import contracts` does not pull torch/qdrant (checked by import time / optional deps).
