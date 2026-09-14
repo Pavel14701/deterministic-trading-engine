@@ -20,7 +20,7 @@ Each module is a uv workspace member with an isolated environment:
 | `dte-rag` | `rag/` | llama-index, qdrant, sentence-transformers | `uv run --package dte-rag pytest rag/tests` |
 | `dte-risk` | `risk/` | numpy, pyyaml | `uv run --package dte-risk pytest risk/tests` |
 | `dte-main` | `main/` | dishka, faststream, aiogram, sqlalchemy, alembic | — (TZ-08/10) |
-| `dte-okx` | `okx/` (planned) | niquests, websockets, msgspec, pyyaml | — (TZ-15) |
+| `dte-okx` | `okx/` | msgspec, pyyaml, dishka, niquests, websockets | TZ-15 core + live public md |
 
 Monorepo principles:
 1. **Environment isolation**: `uv sync --package dte-<x>` builds the env with only that
@@ -72,13 +72,13 @@ Legend: ✅ done · 🔨 in progress · ⬜ not started (order fixed by TZ-00).
 | 11 | TZ-11 risk engine | ✅ (22 + 12 integration tests; config-driven, rules registry, strict validation) | "Decisions only by deterministic code" is incomplete without risk management; the invariant-gate blocks live |
 | 12 | TZ-12 ta benchmarks | 🔨 runner (2 smoke tests, marker `performance`) | Public measurable proof for README/portfolio |
 | 13 | TZ-13 CI | ✅ (lint + mypy + EN-only guard + 9 pytest matrix jobs — main added) | Prevent monorepo regressions |
-| 14 | TZ-15 okx venue | ⬜ spec only (WS-first, onion, dishka TZ-08 pattern, normalized to T-Invest canon) | Second venue; depends on the deterministic path and DI |
+| 14 | TZ-15 okx venue | ✅ core v1 + ✅ live public market data (onion L1-L4, REST warm-up + WS business stream verified vs the real venue, 39 tests; trading contour closed until the baseline gate) | Second venue; depends on the deterministic path and DI |
 > Order deviation: TZ-05 was completed before TZ-02/03/04 (synthetic smoke was acceptable;
 > the strategy format in infer stays a stub until TZ-02).
 
 ## 3.1. Summary right now
 
-- **Full suite: 2425 passed / 120 skipped / 0 warnings**; ruff and mypy clean repo-wide
+- **Full suite: 2461 passed / 123 skipped / 0 warnings**; ruff and mypy clean repo-wide
   (only accepted tech-debt: docstrings in `ta/src/overlap/mama.py`).
 - **Deterministic path complete end-to-end on synthetic data**:
   ta → DSL → signals → **Risk Engine (TZ-11 ✅)** → backtest with reject-audit;

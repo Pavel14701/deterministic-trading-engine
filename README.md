@@ -21,7 +21,7 @@ kept **outside** the decision path.
 
 - **Deterministic path is complete end-to-end on synthetic data:**
   `ta → DSL → signals → Risk Engine → backtest with reject-audit`.
-- **Full suite: 2425 tests passed / 120 skipped / 0 warnings.** ruff & mypy clean
+- **Full suite: 2461 tests passed / 123 skipped / 0 warnings.** ruff & mypy clean
   repo-wide (only accepted tech-debt: docstrings in `ta/src/overlap/mama.py`).
 - **Documents in English.** Status markers: ✅ implemented · 🔨 in progress · ⬜ not started
   · ⬜=spec only (see `dev_docs/tz/TZ-00-roadmap.md` and `STATUS.md`).
@@ -36,6 +36,7 @@ kept **outside** the decision path.
 | `infer/` — inference CLI | ✅ |
 | `rag/` — RAG: docs → DSL | 🔨 core; pass@1 not measured on live LLM |
 | `main/` — DI / bridge / REST / PostgreSQL | 🔨 core; no live RabbitMQ/PG/Qdrant |
+| `okx/` — OKX venue adapter (TZ-15) | ✅ core + ✅ live public md; no trading |
 ## Implemented ✅
 
 **1. `ta/` — indicator library (`dte-ta`)**
@@ -123,9 +124,26 @@ kept **outside** the decision path.
 - **Not implemented**: real local backtest runner (DSL→signals→backtest+risk);
   aiogram bot + JWT; live RabbitMQ/PostgreSQL/Qdrant/Ollama; Alembic glue in server.
 
-**10. `okx/` — OKX venue adapter + event loop (`dte-okx`, TZ-15 ⬜ spec only)**
-- **Not implemented**: spec ready (`dev_docs/tz/TZ-15-okx-api-events.md`) — WS-first,
-  onion architecture, dishka DI, normalization to the T-Invest canon. No code yet.
+**10. `okx/` — OKX venue adapter + event loop (`dte-okx`, TZ-15 ✅ core + live public md)**
+- Onion architecture: L1 `domain.py`/`ports.py` (OkxEvent, OrderRequest,
+  InstrumentSpec, 9 Protocol ports), L2 `events.py` (per-instrument serial
+  event loop), `executor.py`, `collector.py` (live WS stream + REST warm-up);
+  L3 `okx_client.py` (signing, posMode startup check), `mapping.py`
+  (payload → canon: ts ms bar-open, confirm gate, SPOT/SWAP volume
+  semantics, lotSz/tickSz rounding, BAR_MAP); L4 `http_impl.py` (niquests),
+  `ws_impl.py` (websockets).
+- **Live public market data — verified against the real venue**: REST
+  `GET /api/v5/market/candles` warm-up + WS `candle{bar}` stream on
+  `wss://ws.okx.com:8443/ws/v5/business` (candle channels are served by the
+  *business* endpoint, not `/public`); only `confirm=1` bars reach md.ohlcv.
+  No API keys needed. Smoke tests: `OKX_LIVE_SMOKE=1 pytest okx/tests -m integration`.
+- dishka assembly `okx/src/di.py` (`make_okx_container`, fakes-injectable).
+- Invariants in code: order only on confirmed candle; every order through
+  RiskGate; deterministic `clOrdId` per (inst, ts, side) → replay-safe;
+  reconcile = source of truth after WS break.
+- **Not implemented**: private WS channels (orders/positions/account) + order
+  placement (trading contour closed until baseline gate), algo SL/TP attach,
+  PG-backed `InstrumentMap`/fill journal (TZ-10).
 ## Not implemented ⬜ / remaining
 
 1. **Live production backends never wired**: everything runs on in-memory
@@ -135,7 +153,9 @@ kept **outside** the decision path.
 3. **Model not trained** — no artifacts; `--ml` unavailable without a bundle.
    **Baseline gate not passed** — live contour stays closed until then (TZ-04 §4.6.1, TZ-00 §5).
 4. **pass@1 ≥ 70%** (RAG success criterion) — metric implemented, not measured on a live LLM.
-5. **OKX venue (TZ-15)** — spec only.
+5. **OKX trading contour (TZ-15)** — public market data is live (REST + WS, verified
+   against the real venue); private channels, order placement, algo SL/TP and
+   PG `InstrumentMap` — after the baseline gate.
 6. Manual T-Invest run (TZ-05), aiogram bot, JWT, TLS/tokens, lag metrics (TZ-09/10) — spec'd.
 7. **AI remaining**: OB-encoder batching, <5 ms measurement, training on real data, SIV run.
 8. **TZ-12 final**: reproducible ±10% reruns, TA-Lib optional CI job; only accepted
@@ -197,7 +217,8 @@ uv run --package dte-infer python -m infer.cli --help   # inference
 
 Python ≥ 3.12 · uv (workspaces) · NumPy/Numba · Polars · TA-Lib · PyTorch ·
 LlamaIndex + Ollama · Qdrant · PostgreSQL + SQLAlchemy + Alembic · Redis · RabbitMQ
-(FastStream) · aiogram · dishka. OKX (planned, TZ-15): niquests · websockets · msgspec.
+(FastStream) · aiogram · dishka. OKX adapter (TZ-15 core): msgspec · pyyaml · dishka;
+live transports (websockets/niquests) pending.
 
 ### `ta/` indicator benchmarks (TZ-12, n=100 000)
 
@@ -252,5 +273,8 @@ Current order: `dev_docs/tz/TZ-00-roadmap.md` §3.2. In brief:
 - [ ] TZ-07 pass@1 eval + live Ollama/Qdrant integration
 - [ ] TZ-04/TZ-06 real-data SIV run + model training + baseline gate
 - [ ] TZ-08 DB glue in server · TZ-12 benchmark reruns ±10%
-- [ ] TZ-15 OKX venue adapter + event loop
+- [x] TZ-15 OKX venue adapter — core v1 (event loop, mapping, DI) + live public
+  market data (REST warm-up + WS business stream, verified vs real venue);
+  trading contour (private channels, order placement) stays closed until the
+  baseline gate
 | `okx/` — OKX venue adapter + event loop (TZ-15) | ⬜ spec only |

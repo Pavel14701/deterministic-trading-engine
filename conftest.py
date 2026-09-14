@@ -24,6 +24,7 @@ def pytest_collection_modifyitems(items) -> None:
         "risk": "risk",
         "main": "main",
         "strategies": "strategies",
+        "okx": "okx",
     }
     for item in items:
         try:

@@ -1,0 +1,21 @@
+[project]
+name = "dte-okx"
+version = "0.1.0"
+description = "OKX venue adapter: WS-first collector + event-driven executor (TZ-15)"
+requires-python = ">=3.12"
+dependencies = [
+    "msgspec>=0.18",
+    "pyyaml>=6.0.3",
+    "dishka>=1.4",
+    "niquests>=3.20",
+    "websockets>=13.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.uv]
+package = false

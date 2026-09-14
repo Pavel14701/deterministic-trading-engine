@@ -1,8 +1,19 @@
 # TZ-15. OKX API: venue adapter + event reactions (WS-first, onion architecture)
 
-> **Status: ⬜ spec ready, implementation not started.**
-> To be built after TZ-03 wave 2 (the universal indicator mapper). Scope v1: SPOT + SWAP
-> (perpetual), WS-first, normalized to the T-Invest canon.
+> **Status: ✅ core implemented + ✅ live public market data.**
+> `okx/` package (dte-okx) is in the workspace: L1 domain/ports, L2 event loop /
+> executor / collector, L3 OKX client (signing, startup posMode check,
+> normalization in `mapping.py`), dishka assembly (`make_okx_container`).
+> 39 tests. Live public data (no keys needed) verified against the real venue:
+> REST `GET /api/v5/market/candles` warm-up + WS `candle{bar}` stream on
+> `wss://ws.okx.com:8443/ws/v5/business` (candle channels live on the business
+> endpoint, not `/public`) -> only `confirm=1` bars reach md.ohlcv.
+> Smoke tests (`okx/tests/test_live_smoke.py`, `integration` marker) run only
+> with `OKX_LIVE_SMOKE=1` and a reachable venue; skipped otherwise.
+> Not implemented: private WS channels (orders/positions/account) + order
+> placement (trading contour stays closed until the baseline gate, TZ-00 §5),
+> algo SL/TP attach, PG-backed `InstrumentMap`/fills (TZ-10).
+> Ruff/mypy clean. Run: `uv run --package dte-okx pytest okx/tests`.
 
 ## 1. Context
 

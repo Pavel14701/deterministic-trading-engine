@@ -17,6 +17,7 @@ members = [
     "dte-dsl",
     "dte-infer",
     "dte-main",
+    "dte-okx",
     "dte-rag",
     "dte-risk",
     "dte-strategies",
@@ -835,6 +836,39 @@ dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "pytest-asyncio", specifier = ">=1.4.0" },
     { name = "pytest-mock", specifier = ">=3.15.1" },
+]
+
+[[package]]
+name = "dte-okx"
+version = "0.1.0"
+source = { virtual = "okx" }
+dependencies = [
+    { name = "dishka" },
+    { name = "msgspec" },
+    { name = "niquests" },
+    { name = "pyyaml" },
+    { name = "websockets" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "dishka", specifier = ">=1.4" },
+    { name = "msgspec", specifier = ">=0.18" },
+    { name = "niquests", specifier = ">=3.20" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "websockets", specifier = ">=13.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "pytest-asyncio", specifier = ">=1.4.0" },
 ]
 
 [[package]]
