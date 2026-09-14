@@ -16,7 +16,7 @@ Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done ·
 | `infer/` CLI | ✅ TZ-05 | 9 tests |
 | `rag/` RAG | 🔨 core; pass@1 unmeasured | 47 tests |
 | `main/` DI+bridge+REST+PG | 🔨 core; e2e on in-memory broker + SQLite | 12 REST + 10 db + e2e |
-| `okx/` venue | ⬜ spec only (TZ-15) | — |
+| `okx/` venue adapter (TZ-15) | ✅ core v1 + ✅ live public md (REST warm-up + WS business stream) | 39 tests (36 unit + 3 live smoke) |
 
 **Status of the deterministic path:** complete end-to-end on **synthetic** data:
 `ta → DSL → signals → Risk Engine → backtest with reject-audit`.
@@ -29,7 +29,9 @@ Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done ·
 3. **Model not trained** — no artifacts; `--ml` needs a bundle; **baseline gate not passed**
    (keeps the live contour closed, TZ-00 §5).
 4. **pass@1 ≥ 70%** (RAG criterion) — implemented, not measured on a live LLM.
-5. **OKX venue (TZ-15)** — spec only, no code.
+5. **OKX trading contour (TZ-15)** — public market data is live (REST + WS, verified
+   against the real venue); private channels, order placement and algo SL/TP stay
+   closed until the baseline gate; PG-backed `InstrumentMap` not wired.
 6. Manual T-Invest run (TZ-05); aiogram bot, JWT, TLS/tokens, lag metrics (TZ-09/TZ-10).
 7. **AI**: OB-encoder batching, <5 ms measurement, real-data training, SIV run.
 8. **TZ-12 final**: ±10% reruns, TA-Lib optional CI job.
@@ -42,11 +44,11 @@ Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done ·
 4. TZ-09 finish: live RabbitMQ, TLS/tokens, lag metrics
 5. TZ-04/TZ-06 on real data: SIV run, training, baseline gate; OB batching, <5 ms
 6. TZ-12 final: ±10% reruns, TA-Lib CI job
-7. TZ-15 OKX implementation (spec → code)
+7. TZ-15 finish: private WS channels + order placement (after baseline gate), algo SL/TP, PG `InstrumentMap`
 
 ## Quality gates
 
-- Full suite: **2425 passed / 120 skipped / 0 warnings**; ruff + mypy clean
+- Full suite: **2461 passed / 123 skipped / 0 warnings**; ruff + mypy clean
   (only accepted tech-debt: docstrings in `ta/src/overlap/mama.py`).
 - **Baseline gate** (TZ-04 §4.6.1) is the project's main filter: nothing is valid without
   passing comparison vs Buy & Hold / logistic regression / RF/XGBoost.

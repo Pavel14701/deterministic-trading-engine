@@ -24,6 +24,7 @@ members = [
     "backtest",
     "contracts",
     "main",
+    "okx",
 ]
 
 [dependency-groups]
@@ -144,6 +145,7 @@ testpaths = [
     "backtest/tests",
     "contracts/tests",
     "main/tests",
+    "okx/tests",
 ]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
@@ -170,6 +172,7 @@ markers = [
     "backtest: belongs to the dte-backtest package",
     "main: belongs to the dte-main package",
     "strategies: belongs to the dte-strategies package",
+    "okx: belongs to the dte-okx package",
     # --- domain markers (inherited from the former per-package inis) ---
     "candle: [ta] candle-pattern indicators",
     "custom: [ta] custom indicators",

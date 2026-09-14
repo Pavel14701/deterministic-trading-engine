@@ -125,3 +125,12 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - run: uv sync --package dte-main
       - run: uv run --package dte-main pytest main/tests
+
+  test-okx:
+    name: pytest okx
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --package dte-okx
+      - run: uv run --package dte-okx pytest okx/tests
