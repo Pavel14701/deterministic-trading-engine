@@ -508,6 +508,7 @@ def _checkpoint_and_stop(
         best_val_loss = val_loss
         no_improve_count = 0
         if best_model_path is not None:
+            Path(best_model_path).parent.mkdir(parents=True, exist_ok=True)
             torch.save(model.state_dict(), best_model_path)
             logger.info("  -> Best model saved (val_loss=%.4f)", best_val_loss)
     else:
@@ -638,6 +639,20 @@ def train_one_round(
 
     if writer:
         writer.close()
+    # A run whose validation loss was never finite (degenerate run) would
+    # otherwise leave no artifact at all - always hand back a checkpoint.
+    if (
+        save_best
+        and best_model_path is not None
+        and not math.isfinite(best_val_loss)
+    ):
+        Path(best_model_path).parent.mkdir(parents=True, exist_ok=True)
+        torch.save(model.state_dict(), best_model_path)
+        logger.warning(
+            "  -> Validation loss never improved (or was not finite); "
+            "saved the final model to %s",
+            best_model_path,
+        )
     return model
 
 
@@ -1137,7 +1152,8 @@ def self_training_loop(
         shuffle=True,
     )
     train_loader, val_loader = _split_train_val(loader, val_split, batch_size)
-    class_weight = _compute_class_weights(df["action"].to_numpy())
+    # moved onto the training device: the CE loss uses these as `weight`
+    class_weight = _compute_class_weights(df["action"].to_numpy()).to(device)
 
     # ---------- Unlabeled loader ----------
     unlabeled_loader = build_unlabeled_loader_from_parquet(

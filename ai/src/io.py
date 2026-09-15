@@ -79,6 +79,10 @@ def load_order_blocks_parquet(path: str) -> list[OrderBlock]:
             trend_direction=row.get("trend_direction", None),
             start_idx=row.get("start_idx", -1),
             end_idx=row.get("end_idx", -1),
+            timeframe=row.get("timeframe", "1m"),
+            confirm_idx=row.get("confirm_idx", -1),
+            retest_idx=row.get("retest_idx", -1),
+            zone_height_atr=row.get("zone_height_atr", 0.0),
         )
         for row in df.iter_rows(named=True)
     )
@@ -126,16 +130,19 @@ def merge_features_labels(
                 f"df_lbl has {len(df_lbl)} rows. Cannot hstack without",
                 "'bar_index'.",
             )
-        # Ensure action and outcome columns exist; if not, add with defaults
+        # Ensure action and outcome columns exist; if not, add with defaults.
+        # NB: the columns are taken from ``df_lbl`` as Series - a bare
+        # ``pl.col("action")`` would be resolved against ``df_feat``, which
+        # does not contain the label columns.
         lbl_cols = []
-        if "action" in df_lbl.columns:
-            lbl_cols.append(pl.col("action"))
-        else:
-            lbl_cols.append(pl.lit(default_action).alias("action"))
-        if "outcome" in df_lbl.columns:
-            lbl_cols.append(pl.col("outcome"))
-        else:
-            lbl_cols.append(pl.lit(default_outcome).alias("outcome"))
+        for name, default in (
+            ("action", default_action),
+            ("outcome", default_outcome),
+        ):
+            if name in df_lbl.columns:
+                lbl_cols.append(df_lbl[name].alias(name))
+            else:
+                lbl_cols.append(pl.lit(default).alias(name))
         df = df_feat.with_columns(lbl_cols)
     # 3. Ensure final columns exist (in case join did not produce them)
     if "action" not in df.columns:

@@ -41,6 +41,24 @@ dev = [
 url = "https://opensource.tbank.ru/api/v4/projects/238/packages/pypi/simple"
 default = true
 
+# CUDA-сборки torch для GPU-обучения (RTX 3050): PyPI/приватный индекс отдают
+# CPU-варианты на Windows, CUDA-колёса живут только на download.pytorch.org.
+# Linux не тянем: там PyPI-torch уже с CUDA (TZ-06 п.11).
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu124", marker = "sys_platform == 'win32'" },
+]
+
+# Держим torch на 2.4.1 (та же версия, что в lockfile на Linux/CI; >=2.4.1 из
+# ai/pyproject.toml иначе взял бы 2.6.0+cu124 и потянул новую загрузку ~2ГБ).
+[tool.uv]
+constraint-dependencies = ["torch==2.4.1"]
+
 [tool.ruff]
 line-length = 79
 target-version = "py312"

@@ -50,11 +50,22 @@ def dual_loss(
         - pattern_loss
 
     """
-    action_loss = functional.cross_entropy(
-        action_logits.reshape(-1, action_logits.size(-1)),
-        action_targets.reshape(-1),
-        ignore_index=-100,
-        weight=class_weight,
+    # A batch may contain nothing but ignore labels (`-100`): the strategy
+    # leaves most bars undecided, so a whole validation window can be
+    # undecided.  ``cross_entropy`` would then average over zero elements
+    # and return NaN, poisoning the loss (and early stopping).  Multiply
+    # by zero instead so the result stays 0 *and* keeps the autograd graph.
+    action_flat = action_logits.reshape(-1, action_logits.size(-1))
+    action_valid = action_targets.reshape(-1) != -100
+    action_loss = (
+        functional.cross_entropy(
+            action_flat,
+            action_targets.reshape(-1),
+            ignore_index=-100,
+            weight=class_weight,
+        )
+        if bool(action_valid.any())
+        else action_logits.sum() * 0.0
     )
     entry_mask = action_targets == 1
     if outcome_mode == "binary":

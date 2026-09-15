@@ -197,3 +197,43 @@ def test_merge_features_labels(sample_dataframe: pl.DataFrame) -> None:
     assert "action" in df_merged.columns
     assert "outcome" in df_merged.columns
     assert len(df_merged) == len(df_feat)
+
+
+@pytest.mark.unit
+def test_merge_features_labels_without_bar_index(
+    sample_dataframe: pl.DataFrame,
+) -> None:
+    """Labels must be hstacked when there is no common join key.
+
+    Regression test: the no-``bar_index`` branch used to reference the
+    label columns with ``pl.col`` against the *features* frame, which
+    raised ``ColumnNotFoundError`` for every real dataset (the label
+    columns only exist in the labels frame).
+
+    Args:
+        sample_dataframe: Fixture with price and TP/SL columns.
+
+    Asserts:
+        - Merged frame carries the actual label values, row-aligned.
+        - Missing label columns fall back to the defaults.
+
+    """
+    n = len(sample_dataframe)
+    df_feat = sample_dataframe.select(["open", "high", "low", "close"])
+    actions = np.array([-100] * (n - 2) + [1, 2])
+    outcomes = np.linspace(0.0, 1.0, n)
+    df_lbl = pl.DataFrame(
+        {"action": actions, "outcome": outcomes}
+    )
+    df_merged = merge_features_labels(df_feat, df_lbl)
+    assert df_merged["action"].to_list() == actions.tolist()
+    assert df_merged["outcome"].to_list() == pytest.approx(outcomes.tolist())
+    # absent label columns are created with the documented defaults
+    df_merged2 = merge_features_labels(
+        df_feat, pl.DataFrame({"outcome": outcomes})
+    )
+    assert (df_merged2["action"] == -100).all()
+    df_merged3 = merge_features_labels(
+        df_feat, pl.DataFrame({"action": actions})
+    )
+    assert df_merged3["outcome"].is_nan().all()

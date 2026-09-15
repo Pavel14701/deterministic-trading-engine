@@ -78,12 +78,23 @@ class TradingDataset(Dataset):
         if bar_index is not None:
             self.bar_index = torch.tensor(bar_index, dtype=torch.long)
 
-        # TZ-06 item 2.6: order blocks sorted by end_idx so that each window
-        # only scans the prefix of blocks that could fall inside it
-        # (bisect instead of a full scan over all blocks).
-        self._ob_sorted = sorted(self.order_blocks, key=lambda ob: ob.end_idx)
-        self._ob_end_idx = np.asarray(
-            [ob.end_idx for ob in self._ob_sorted], dtype=np.int64
+        # TZ-06 item 2.6: order blocks sorted by known bar (confirm_idx or
+        # start_idx) so each window only scans the prefix of blocks that
+        # were already known by the window end (bisect, no full scan).
+        # A zone is included while it is still active (end_idx = break bar
+        # >= window start) - previously still-active zones (whose break
+        # lies in the future) were wrongly excluded.
+        self._ob_sorted = sorted(
+            self.order_blocks,
+            key=lambda ob: ob.confirm_idx if ob.confirm_idx >= 0
+            else ob.start_idx,
+        )
+        self._ob_known_idx = np.asarray(
+            [
+                ob.confirm_idx if ob.confirm_idx >= 0 else ob.start_idx
+                for ob in self._ob_sorted
+            ],
+            dtype=np.int64,
         )
 
     def __len__(self) -> int:
@@ -119,11 +130,16 @@ class TradingDataset(Dataset):
 
         start_bar = idx
         end_bar = idx + self.seq_len - 1
-        # blocks with end_idx <= end_bar form a prefix (sorted); among
-        # them keep those whose end is not before the window start
-        prefix = int(np.searchsorted(self._ob_end_idx, end_bar, side="right"))
+        # blocks known by the window end (prefix, sorted by known bar);
+        # keep those still relevant (not broken before the window start)
+        prefix = int(
+            np.searchsorted(self._ob_known_idx, end_bar, side="right")
+        )
         ob_window = [
-            ob for ob in self._ob_sorted[:prefix] if ob.end_idx >= start_bar
+            ob
+            for ob in self._ob_sorted[:prefix]
+            # end_idx == -1 means "still active / never broken"
+            if ob.end_idx < 0 or ob.end_idx >= start_bar
         ]
 
         action_target = self.action_targets[idx : idx + self.seq_len]

@@ -141,3 +141,67 @@ def test_dual_loss_with_pattern() -> None:
     )
     assert pattern_loss >= 0
     assert total_loss > 0
+
+
+@pytest.mark.unit
+def test_dual_loss_all_ignored_batch_is_finite() -> None:
+    """An all-ignored batch must yield a finite, graph-connected loss.
+
+    The strategy leaves most bars undecided (``action == -100``), so a
+    validation window can consist solely of ignored labels.  Plain
+    ``cross_entropy`` averages over zero elements there and returns NaN,
+    which previously poisoned ``val_loss`` and disabled early stopping.
+
+    Asserts:
+        - loss and action_loss are finite and equal to zero.
+        - the result stays connected to the graph (``backward`` works).
+
+    """
+    action_logits: Tensor = torch.randn(1, 4, 3, requires_grad=True)
+    outcome_logits: Tensor = torch.randn(1, 4, 1)
+    action_targets: Tensor = torch.full((1, 4), -100, dtype=torch.long)
+    outcome_targets: Tensor = torch.full((1, 4), 2.0)
+    total_loss, action_loss, outcome_loss, pattern_loss = dual_loss(
+        action_logits,
+        outcome_logits,
+        action_targets,
+        outcome_targets,
+        outcome_mode="binary",
+        lambda_outcome=0.3,
+    )
+    assert torch.isfinite(total_loss)
+    assert torch.isfinite(action_loss)
+    assert torch.isfinite(outcome_loss)
+    assert torch.isfinite(pattern_loss)
+    assert float(total_loss) == pytest.approx(0.0)
+    total_loss.backward()
+    assert action_logits.grad is not None
+
+
+@pytest.mark.unit
+def test_dual_loss_mixed_batch_ignores_only_ignored_bars() -> None:
+    """A single-valid-label batch must equal the CE over that label.
+
+    Guards the fallback path: batches with at least one real label keep
+    using ``cross_entropy`` (not the zero fallback).
+
+    Asserts:
+        - action_loss matches the manual cross-entropy for the label.
+
+    """
+    logits: Tensor = torch.zeros(1, 3, 3)
+    logits[0, 1] = torch.tensor([0.0, 5.0, 0.0])
+    targets: Tensor = torch.tensor([[-100, 1, -100]])
+    outcome_logits: Tensor = torch.zeros(1, 3, 1)
+    outcome_targets: Tensor = torch.full((1, 3), 2.0)
+    _, action_loss, _, _ = dual_loss(
+        logits,
+        outcome_logits,
+        targets,
+        outcome_targets,
+        outcome_mode="binary",
+    )
+    manual = torch.nn.functional.cross_entropy(
+        logits[0, 1].unsqueeze(0), torch.tensor([1])
+    )
+    assert float(action_loss) == pytest.approx(float(manual), abs=1e-6)

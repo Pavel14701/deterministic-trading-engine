@@ -61,6 +61,7 @@ def quick_train(
     val_path: str | None = None,
     val_labels_path: str | None = None,
     val_split: float | None = None,
+    val_order_blocks: str | None = None,
     class_weight: bool | None = None,
     log_dir: str | None = None,
     early_stopping_patience: int | None = None,
@@ -107,6 +108,10 @@ def quick_train(
         val_labels_path: Path to the validation labels Parquet file.
             Required when ``val_path`` is provided (the validation
             features must have their own per-bar labels).
+        val_order_blocks: Optional path to the validation order-block
+            Parquet file (per-segment, rebased indices).  When omitted
+            the main ``order_blocks`` file is used for validation too -
+            correct only when validation shares the bar index space.
         val_split: Fraction of training data to use for validation when
             ``val_path`` is not specified (default 0.2).  The split is
             chronological: the most recent windows are used for
@@ -220,7 +225,11 @@ def quick_train(
         val_loader, _ = build_loader_from_parquet(
             features_path=val_path,
             labels_path=val_labels_path,
-            order_blocks=obs,
+            order_blocks=(
+                load_order_blocks_parquet(val_order_blocks)
+                if val_order_blocks
+                else obs
+            ),
             seq_len=seq_len,
             price_cols=price_cols,
             ind_cols=ind_cols or [],
@@ -237,8 +246,11 @@ def quick_train(
             train_loader_all, val_split, batch_size
         )
     # ---------- Class weights (optional) ----------
+    # NB: these weights are used inside the CE loss as its `weight`
+    # argument, so they must live on the same device as the logits
+    # (CUDA training otherwise raises a device-mismatch error).
     cw = (
-        _compute_class_weights(df["action"].to_numpy())
+        _compute_class_weights(df["action"].to_numpy()).to(torch_device)
         if class_weight
         else None
     )

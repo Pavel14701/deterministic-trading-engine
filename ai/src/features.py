@@ -217,6 +217,113 @@ def compute_ob_distances(
     return (nearest_supply, nearest_demand, strongest_dist, is_in_zone)
 
 
+def compute_ob_features(
+    df: pl.DataFrame,
+    order_blocks: list[OrderBlock],
+    atr: np.ndarray,
+) -> dict[str, np.ndarray]:
+    """Compute the full per-bar order-block feature set (causal).
+
+    For every bar ``t`` a zone is *known* only from its ``confirm_idx``
+    (displacement confirmation) and *active* until its ``break_idx``.
+    Therefore no feature ever peeks into the future.
+
+    Returns a dict of float32 arrays (length ``len(df)``):
+
+    - ``dist_supply`` / ``dist_demand``: distance to the nearest active
+      zone (in ATR units, ``inf`` when none is active);
+    - ``in_zone_supply`` / ``in_zone_demand``: close inside the zone;
+    - ``strength_supply`` / ``strength_demand``: strength of the nearest
+      active zone (0 when none);
+    - ``height_supply`` / ``height_demand``: zone height in ATR units;
+    - ``age_supply`` / ``age_demand``: bars since the nearest active
+      zone became known;
+    - ``retested_supply`` / ``retested_demand``: 1 when the nearest
+      active zone has already been retested;
+    - ``count_supply`` / ``count_demand``: number of simultaneously
+      active zones (capped at 10, scaled to [0, 1]);
+    - ``broken_supply`` / ``broken_demand``: 1 when a zone of this side
+      was broken within the last 50 bars (breaker polarity shift).
+
+    """
+    n = df.height
+    close = df["close"].to_numpy()
+    atr_series = np.asarray(atr, dtype=np.float64)
+    atr_series = np.where(atr_series > 0, atr_series, 1.0)
+
+    spec = {
+        "supply": (
+            "dist_supply", "in_zone_supply", "strength_supply",
+            "height_supply", "age_supply", "retested_supply",
+            "count_supply", "broken_supply",
+        ),
+        "demand": (
+            "dist_demand", "in_zone_demand", "strength_demand",
+            "height_demand", "age_demand", "retested_demand",
+            "count_demand", "broken_demand",
+        ),
+    }
+    out: dict[str, np.ndarray] = {}
+    for kind, names in spec.items():
+        for name in names:
+            if name.startswith("dist"):
+                out[name] = np.full(n, np.inf, dtype=np.float32)
+            elif name.startswith(("in_zone", "retested", "broken")):
+                out[name] = np.zeros(n, dtype=np.float32)
+            elif name.startswith("count"):
+                out[name] = np.zeros(n, dtype=np.float32)
+            else:
+                out[name] = np.zeros(n, dtype=np.float32)
+        count = out[names[6]]
+        broken = out[names[7]]
+        dist = out[names[0]]
+        in_zone = out[names[1]]
+        strength = out[names[2]]
+        height = out[names[3]]
+        age = out[names[4]]
+        retested = out[names[5]]
+
+        active = [ob for ob in order_blocks if ob.block_type == kind]
+        for ob in active:
+            known = ob.confirm_idx if ob.confirm_idx >= 0 else ob.start_idx
+            start = max(0, known)
+            end = min(n, (ob.end_idx + 1) if ob.end_idx >= 0 else n)
+            if start >= end:
+                continue
+            zone_mid = (ob.zone_low + ob.zone_high) / 2.0
+            zone_h = max(ob.zone_high - ob.zone_low, 0.0)
+            h_atr = zone_h / atr_series[start:end]
+            d = np.abs(close[start:end] - zone_mid) / atr_series[start:end]
+            ages = np.arange(start, end) - known
+            retests = np.zeros(end - start, dtype=np.float32)
+            if 0 <= ob.retest_idx < (ob.end_idx if ob.end_idx >= 0 else n):
+                # the detector sets ``retest_idx = break_idx`` when the zone
+                # was never revisited, which is *not* a retest
+                retests[np.arange(start, end) >= ob.retest_idx] = 1.0
+            inside = (
+                (close[start:end] >= ob.zone_low)
+                & (close[start:end] <= ob.zone_high)
+            ).astype(np.float32)
+
+            closer = d < dist[start:end]
+            first = dist[start:end] == np.inf
+            take = closer | first
+            dist[start:end][take] = d[take]
+            strength[start:end][take] = ob.strength
+            height[start:end][take] = h_atr[take]
+            age[start:end][take] = ages[take]
+            retested[start:end] = np.maximum(retested[start:end], retests)
+            in_zone[start:end] = np.maximum(in_zone[start:end], inside)
+            count[start:end] += 1.0
+            # breaker: bars after the break (zone known, broken)
+            b_start = end
+            b_end = min(n, end + 50)
+            if b_start < b_end:
+                broken[b_start:b_end] = 1.0
+        count[:] = np.minimum(count, 10.0) / 10.0
+    return out
+
+
 class PositionState(NamedTuple):
     """Immutable state of a single trading position."""
 
@@ -357,6 +464,136 @@ def _find_entry_ob(
             continue
         return ob
     return None
+
+
+class _OBLookup:
+    """Incremental price index reproducing :func:`_find_entry_ob` exactly.
+
+    Scanning every order block for every bar is ``O(bars x blocks)`` and
+    becomes intractable on year-scale data (millions of bars, tens of
+    thousands of blocks).  This index answers the same question -
+    "first block *in list order* with ``end_idx <= bar`` whose zone
+    contains the bar's high or low" - in ``O(log blocks)`` per query.
+
+    Zones are compressed onto the sorted array of their own edge prices
+    and stored in a segment tree that supports *range-min assignment*
+    with *point* queries: inserting block ``k`` over its price range with
+    value ``k`` makes a point query return the smallest list index among
+    the covering zones, i.e. exactly the block the linear scan would find.
+
+    The structure and trend filters are bar-independent, so they are
+    applied at insertion time and stay exact.
+
+    """
+
+    _INF = 1 << 30
+
+    def __init__(
+        self,
+        order_blocks: list[OrderBlock],
+        use_structure_filter: bool,
+        trend_filter: str | None,
+    ) -> None:
+        """Build the (empty, to be filled) index over ``order_blocks``.
+
+        Args:
+            order_blocks: Blocks in the canonical list order; the index
+                preserves that order for the "first match" semantics.
+            use_structure_filter: Skip blocks without a structure label.
+            trend_filter: Keep only blocks with this trend direction.
+
+        """
+        self._blocks = [
+            ob
+            for ob in order_blocks
+            if not use_structure_filter or ob.structure_label is not None
+            if trend_filter is None or ob.trend_direction == trend_filter
+        ]
+        self._keys = np.array(
+            [ob.end_idx if ob.end_idx >= 0 else -1 for ob in self._blocks],
+            dtype=np.int64,
+        )
+        self._pending = np.argsort(self._keys, kind="stable")
+        self._ptr = 0
+        edges = sorted(
+            {ob.zone_low for ob in self._blocks}
+            | {ob.zone_high for ob in self._blocks}
+        )
+        self._edges = np.asarray(edges, dtype=np.float64)
+        # Each zone edge becomes an elementary coordinate; the open
+        # intervals between consecutive edges are coordinates as well, so
+        # a point query is exact even when the price sits strictly inside
+        # a zone (or strictly outside while inside the outer bounds).
+        n_coords = max(2 * len(edges) - 1, 1)
+        size = 1
+        while size < n_coords:
+            size <<= 1
+        self._size = size
+        self._tree = np.full(2 * size, self._INF, dtype=np.int64)
+
+    def advance(self, bar_idx: int) -> None:
+        """Insert every block whose break happened at or before ``bar_idx``."""
+        blocks = self._blocks
+        keys = self._keys
+        tree = self._tree
+        size = self._size
+        ptr = self._ptr
+        order = self._pending
+        edges = self._edges
+        n = len(blocks)
+        while ptr < n and keys[order[ptr]] <= bar_idx:
+            idx = int(order[ptr])
+            ptr += 1
+            ob = blocks[idx]
+            if len(edges) == 0:
+                continue
+            left = int(np.searchsorted(edges, ob.zone_low, side="left"))
+            right = int(np.searchsorted(edges, ob.zone_high, side="left"))
+            lo = 2 * left + size
+            hi = 2 * right + size + 1
+            while lo < hi:
+                if lo & 1:
+                    if idx < tree[lo]:
+                        tree[lo] = idx
+                    lo += 1
+                if hi & 1:
+                    hi -= 1
+                    if idx < tree[hi]:
+                        tree[hi] = idx
+                lo >>= 1
+                hi >>= 1
+        self._ptr = ptr
+
+    def query_point(self, price: float) -> int:
+        """Smallest list index of a covering, inserted zone (-1 = none)."""
+        edges = self._edges
+        if len(edges) == 0 or price < edges[0] or price > edges[-1]:
+            return -1
+        j = int(np.searchsorted(edges, price, side="right")) - 1
+        coord = 2 * j if edges[j] == price else 2 * j + 1
+        idx = coord + self._size
+        tree = self._tree
+        best = self._INF
+        while idx >= 1:
+            val = int(tree[idx])
+            if val < best:
+                best = val
+            idx >>= 1
+        return -1 if best >= self._INF else best
+
+    def query(self, bar_low: float, bar_high: float) -> OrderBlock | None:
+        """Return the block :func:`_find_entry_ob` would pick (or ``None``)."""
+        if not self._blocks:
+            return None
+        low_hit = self.query_point(bar_low)
+        high_hit = self.query_point(bar_high)
+        if low_hit < 0:
+            best = high_hit
+        elif high_hit < 0:
+            best = low_hit
+        else:
+            best = min(low_hit, high_hit)
+        return None if best < 0 else self._blocks[best]
 
 
 def _effective_entry_price(
@@ -533,6 +770,7 @@ def _find_decision(
     use_structure_filter: bool,
     trend_filter: str | None,
     min_rr: float,
+    lookup: _OBLookup | None = None,
 ) -> tuple[str | None, OrderBlock | None]:
     """Detect an entry **decision** on bar ``i``.
 
@@ -553,15 +791,22 @@ def _find_decision(
         use_structure_filter: Passed to ``_find_entry_ob``.
         trend_filter: Passed to ``_find_entry_ob``.
         min_rr: Minimum risk-reward ratio.
+        lookup: Optional pre-built :class:`_OBLookup`.  When given it
+            replaces the linear scan with an indexed query returning the
+            very same block (see the class docstring); the caller must
+            call ``lookup.advance(i)`` before each query.
 
     Returns:
         ``(direction, block)`` where ``direction`` is 'long'/'short'
         (None if no decision) and ``block`` is the matched order block.
 
     """
-    ob = _find_entry_ob(
-        i, high, low, order_blocks, use_structure_filter, trend_filter
-    )
+    if lookup is not None:
+        ob = lookup.query(low, high)
+    else:
+        ob = _find_entry_ob(
+            i, high, low, order_blocks, use_structure_filter, trend_filter
+        )
     if ob is None:
         return None, None
     direction = "long" if ob.block_type.lower() == "demand" else "short"
@@ -679,7 +924,11 @@ def generate_labels_from_strategy(
     sl = df["sl"].to_numpy()
 
     i = 0
+    # Indexed decision search: same result as the linear scan in
+    # _find_entry_ob, but O(log blocks) per bar instead of O(blocks).
+    lookup = _OBLookup(order_blocks, use_structure_filter, trend_filter)
     while i < n - 1:  # a decision on the last bar can never be filled
+        lookup.advance(i)
         direction, ob = _find_decision(
             i,
             high[i],
@@ -691,6 +940,7 @@ def generate_labels_from_strategy(
             use_structure_filter,
             trend_filter,
             min_rr,
+            lookup,
         )
         if direction is None or ob is None:
             i += 1
