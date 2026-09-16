@@ -1,4 +1,4 @@
-"""Tests for the label generator (TZ-02 п.2.4)."""
+"""Tests for the label generator (TZ-02 item 2.4)."""
 
 from __future__ import annotations
 

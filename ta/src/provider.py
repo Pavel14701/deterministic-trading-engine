@@ -67,7 +67,7 @@ class OutputSpec:
 
 @dataclass(frozen=True, slots=True)
 class IndicatorBinding:
-    """Declarative bridge between a ta function and the DSL (TZ-03 п.3.1).
+    """Declarative bridge between a ta function and the DSL (TZ-03 item 3.1).
 
     Attributes:
         dsl_name: name used in DSL expressions (e.g. ``rsi``).
@@ -218,7 +218,7 @@ def get_binding(name: str) -> IndicatorBinding:
 
 
 def build_manifest() -> dict[str, Any]:
-    """Generate a DSL manifest from the binding registry (TZ-03 п.3.2)."""
+    """Generate a DSL manifest from the binding registry (TZ-03 item 3.2)."""
     indicators: dict[str, Any] = {}
     for name, binding in BINDINGS.items():
         attrs = list(binding.outputs.keys())

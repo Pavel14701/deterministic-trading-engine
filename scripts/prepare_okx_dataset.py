@@ -456,9 +456,10 @@ def prepare_asset(
     for htf in bars[1:]:
         # cover the whole base span (+ warm-up) so no base bar lacks a
         # closed HTF bar; derived from the base bar count, not a default
-        htf_bars = int(
-            np.ceil(max_bars * BAR_MS[base_bar] / BAR_MS[htf])
-        ) + HTF_WARMUP_BARS
+        htf_bars = (
+            int(np.ceil(max_bars * BAR_MS[base_bar] / BAR_MS[htf]))
+            + HTF_WARMUP_BARS
+        )
         hdf = fetch_candles(
             inst_id, bar=htf, max_bars=htf_bars, cache_dir=cache_dir
         )

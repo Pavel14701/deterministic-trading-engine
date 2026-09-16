@@ -222,9 +222,7 @@ def test_merge_features_labels_without_bar_index(
     df_feat = sample_dataframe.select(["open", "high", "low", "close"])
     actions = np.array([-100] * (n - 2) + [1, 2])
     outcomes = np.linspace(0.0, 1.0, n)
-    df_lbl = pl.DataFrame(
-        {"action": actions, "outcome": outcomes}
-    )
+    df_lbl = pl.DataFrame({"action": actions, "outcome": outcomes})
     df_merged = merge_features_labels(df_feat, df_lbl)
     assert df_merged["action"].to_list() == actions.tolist()
     assert df_merged["outcome"].to_list() == pytest.approx(outcomes.tolist())

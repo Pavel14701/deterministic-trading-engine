@@ -1,5 +1,5 @@
 """Tests for temporal validation, walk-forward, and
-baseline gate (TZ-04 п.4.6)."""
+baseline gate (TZ-04 item 4.6)."""
 
 from __future__ import annotations
 

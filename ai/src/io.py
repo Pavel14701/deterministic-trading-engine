@@ -142,7 +142,7 @@ def merge_features_labels(
             if name in df_lbl.columns:
                 lbl_cols.append(df_lbl[name].alias(name))
             else:
-                lbl_cols.append(pl.lit(default).alias(name))
+                lbl_cols.append(pl.Series(name, [default] * df_feat.height))
         df = df_feat.with_columns(lbl_cols)
     # 3. Ensure final columns exist (in case join did not produce them)
     if "action" not in df.columns:

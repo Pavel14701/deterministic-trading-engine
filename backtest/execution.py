@@ -1,4 +1,4 @@
-"""Deterministic execution rules (TZ-04 п.4.1, п.0).
+"""Deterministic execution rules (TZ-04 item 4.1, item 0).
 
 Single source of truth shared by ai/ labels, backtest, and live.
 Entry fills at ``open[t+1]`` (never at close of the signal bar).

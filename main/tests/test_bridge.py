@@ -1,4 +1,4 @@
-"""Tests for the FastStream RabbitMQ bridge (TZ-09 волна 2)."""
+"""Tests for the FastStream RabbitMQ bridge (TZ-09 wave 2)."""
 
 from __future__ import annotations
 

@@ -108,7 +108,9 @@ indent-style = "space"
 quote-style = "double"
 skip-magic-trailing-comma = false
 docstring-code-format = true
-docstring-code-line-length = 88
+# Must match the global line-length: a longer value would make `ruff
+# format` itself reintroduce E501 violations inside docstring examples.
+docstring-code-line-length = 79
 
 [tool.ruff.lint.flake8-quotes]
 inline-quotes = "double"

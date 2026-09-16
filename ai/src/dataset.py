@@ -86,8 +86,9 @@ class TradingDataset(Dataset):
         # lies in the future) were wrongly excluded.
         self._ob_sorted = sorted(
             self.order_blocks,
-            key=lambda ob: ob.confirm_idx if ob.confirm_idx >= 0
-            else ob.start_idx,
+            key=lambda ob: (
+                ob.confirm_idx if ob.confirm_idx >= 0 else ob.start_idx
+            ),
         )
         self._ob_known_idx = np.asarray(
             [

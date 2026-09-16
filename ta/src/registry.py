@@ -44,7 +44,7 @@ __all__ = [
     "install_auto_bindings",
 ]
 
-# Engine-handled universal args (TZ-03 п.3.1): never exposed as
+# Engine-handled universal args (TZ-03 item 3.1): never exposed as
 # indicator params in the manifest.
 _ENGINE_ARGS: frozenset[str] = frozenset(
     {"offset", "fillna", "nan_policy", "trim", "use_talib"}
@@ -81,14 +81,16 @@ NAMED_OUTPUTS: dict[str, dict[str, int]] = {
 #: Non-standard warm-up (overrides the longest-length heuristic).
 MIN_BARS_OVERRIDES: dict[str, Callable[[dict[str, Any]], int]] = {
     # coppock smooths the sum of several ROC windows
-    "coppock": lambda p: 2
-    * max(
-        (
-            int(v)
-            for k, v in p.items()
-            if k.endswith("length") and isinstance(v, (int, float))
-        ),
-        default=10,
+    "coppock": lambda p: (
+        2
+        * max(
+            (
+                int(v)
+                for k, v in p.items()
+                if k.endswith("length") and isinstance(v, (int, float))
+            ),
+            default=10,
+        )
     ),
 }
 

@@ -1,4 +1,4 @@
-"""Tests for RAG retrieval and pipeline with pass@1 (TZ-07 волна 2)."""
+"""Tests for RAG retrieval and pipeline with pass@1 (TZ-07 wave 2)."""
 
 from __future__ import annotations
 
@@ -23,45 +23,56 @@ def embeddings() -> MockEmbedding:
 
 @pytest.fixture
 def retriever(
-    store: InMemoryVectorStore, embeddings: MockEmbedding,
+    store: InMemoryVectorStore,
+    embeddings: MockEmbedding,
 ) -> Retriever:
     return Retriever(store, embeddings)
 
 
 class TestRetriever:
     def test_retrieve_docs(
-        self, store: InMemoryVectorStore, embeddings: MockEmbedding,
+        self,
+        store: InMemoryVectorStore,
+        embeddings: MockEmbedding,
         retriever: Retriever,
     ) -> None:
-        store.upsert(DOC_COLLECTION, [
-            VectorPoint(
-                id="rsi-doc",
-                vector=embeddings.embed(
-                    "RSI measures momentum, oversold below 30"
+        store.upsert(
+            DOC_COLLECTION,
+            [
+                VectorPoint(
+                    id="rsi-doc",
+                    vector=embeddings.embed(
+                        "RSI measures momentum, oversold below 30"
+                    ),
+                    payload={"heading": "RSI Guide", "text": "RSI doc"},
                 ),
-                payload={"heading": "RSI Guide", "text": "RSI doc"},
-            ),
-        ])
+            ],
+        )
         result = retriever.retrieve("RSI oversold momentum")
         assert len(result.docs) > 0
         assert result.docs[0].heading == "RSI Guide"
 
     def test_retrieve_cases(
-        self, store: InMemoryVectorStore, embeddings: MockEmbedding,
+        self,
+        store: InMemoryVectorStore,
+        embeddings: MockEmbedding,
         retriever: Retriever,
     ) -> None:
-        store.upsert(CASE_COLLECTION, [
-            VectorPoint(
-                id="s1",
-                vector=embeddings.embed("RSI oversold entry strategy"),
-                payload={
-                    "strategy_id": "s1",
-                    "dsl_entry": "rsi.value < 30",
-                    "description": "RSI entry",
-                    "indicators_used": ["rsi"],
-                },
-            ),
-        ])
+        store.upsert(
+            CASE_COLLECTION,
+            [
+                VectorPoint(
+                    id="s1",
+                    vector=embeddings.embed("RSI oversold entry strategy"),
+                    payload={
+                        "strategy_id": "s1",
+                        "dsl_entry": "rsi.value < 30",
+                        "description": "RSI entry",
+                        "indicators_used": ["rsi"],
+                    },
+                ),
+            ],
+        )
         result = retriever.retrieve("RSI oversold entry")
         assert len(result.cases) > 0
         assert result.cases[0].strategy_id == "s1"
@@ -107,8 +118,11 @@ class TestRAGPipeline:
         pipeline = _build_pipeline([])
         cases = [
             StrategyCase(
-                case_id="s1", dsl_entry="rsi.value < 30", dsl_exit=None,
-                indicators_used=["rsi"], description="RSI oversold",
+                case_id="s1",
+                dsl_entry="rsi.value < 30",
+                dsl_exit=None,
+                indicators_used=["rsi"],
+                description="RSI oversold",
                 manifest_hash="abc",
             ),
         ]
@@ -119,8 +133,11 @@ class TestRAGPipeline:
         pipeline = _build_pipeline(["rsi.value < 30"])
         cases = [
             StrategyCase(
-                case_id="s1", dsl_entry="rsi.value < 30", dsl_exit=None,
-                indicators_used=["rsi"], description="RSI oversold entry",
+                case_id="s1",
+                dsl_entry="rsi.value < 30",
+                dsl_exit=None,
+                indicators_used=["rsi"],
+                description="RSI oversold entry",
                 manifest_hash="abc",
             ),
         ]
@@ -139,11 +156,13 @@ class TestRAGPipeline:
         assert metrics.pass_at_1_pct == 100.0
 
     def test_pass_at_n_with_repair(self) -> None:
-        pipeline = _build_pipeline([
-            "bad_ind < 1",
-            "rsi.value < 30",
-            "rsi.value < 30",
-        ])
+        pipeline = _build_pipeline(
+            [
+                "bad_ind < 1",
+                "rsi.value < 30",
+                "rsi.value < 30",
+            ]
+        )
         pipeline.generate("query 1")
         pipeline.generate("query 2")
         metrics = pipeline.metrics

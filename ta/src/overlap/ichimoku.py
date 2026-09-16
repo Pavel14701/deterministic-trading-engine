@@ -338,7 +338,9 @@ def ichimoku_ind(
     >>> close = 100 + np.cumsum(rng.standard_normal(n))
     >>> df = pl.DataFrame(
     ...     {
-    ...         "date": pl.date_range(date(2020, 1, 1), date(2020, 4, 29), "1d", eager=True),
+    ...         "date": pl.date_range(
+    ...             date(2020, 1, 1), date(2020, 4, 29), "1d", eager=True
+    ...         ),
     ...         "high": close + np.abs(rng.standard_normal(n)),
     ...         "low": close - np.abs(rng.standard_normal(n)),
     ...         "close": close,

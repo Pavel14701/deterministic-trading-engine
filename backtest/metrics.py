@@ -1,4 +1,4 @@
-"""Backtest performance metrics (TZ-04 п.4.5)."""
+"""Backtest performance metrics (TZ-04 item 4.5)."""
 
 from __future__ import annotations
 

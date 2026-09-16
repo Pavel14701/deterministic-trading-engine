@@ -167,7 +167,7 @@ def main() -> None:
             if mask.any():
                 all_logits.append(logits[mask].cpu())
                 all_tgt.append(act[mask].cpu())
-                all_out.append(outc[mask][:, -1].cpu())
+                all_out.append(outc[mask].cpu())
     if not all_logits:
         raise RuntimeError("no labelled bars in the test segment")
     logits = torch.cat(all_logits)

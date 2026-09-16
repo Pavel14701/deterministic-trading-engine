@@ -1,4 +1,4 @@
-"""RAG generation: prompt template + LLM call + repair loop (TZ-07 п.3).
+"""RAG generation: prompt template + LLM call + repair loop (TZ-07 item 3).
 
 Prompt includes: rendered manifest (deterministic), retrieved docs
 (semantic context), and few-shot examples (validated strategies).

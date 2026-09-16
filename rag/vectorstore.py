@@ -37,7 +37,10 @@ class VectorStore(Protocol):
         ...
 
     def search(
-        self, collection: str, query_vector: list[float], top_k: int = 5,
+        self,
+        collection: str,
+        query_vector: list[float],
+        top_k: int = 5,
         payload_filter: dict[str, Any] | None = None,
     ) -> list[SearchResult]:
         """Cosine-similarity top-k search with optional payload filter."""
@@ -108,10 +111,12 @@ class QdrantVectorStore:
 
     def __init__(self, url: str = "http://localhost:6333") -> None:
         from qdrant_client import QdrantClient
+
         self._client = QdrantClient(url=url)
 
     def _ensure_collection(self, collection: str, dim: int) -> None:
         from qdrant_client.models import Distance, VectorParams
+
         if not self._client.collection_exists(collection):
             self._client.create_collection(
                 collection_name=collection,
@@ -131,9 +136,7 @@ class QdrantVectorStore:
         self._client.upsert(
             collection_name=collection,
             points=[
-                PointStruct(
-                    id=p.id, vector=p.vector, payload=p.payload
-                )
+                PointStruct(id=p.id, vector=p.vector, payload=p.payload)
                 for p in points
             ],
         )
@@ -150,10 +153,12 @@ class QdrantVectorStore:
 
         qfilter = None
         if payload_filter:
-            qfilter = Filter(must=[
-                FieldCondition(key=k, match=MatchValue(value=v))
-                for k, v in payload_filter.items()
-            ])
+            qfilter = Filter(
+                must=[
+                    FieldCondition(key=k, match=MatchValue(value=v))
+                    for k, v in payload_filter.items()
+                ]
+            )
         res = self._client.query_points(
             collection_name=collection,
             query=query_vector,

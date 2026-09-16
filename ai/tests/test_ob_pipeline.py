@@ -70,16 +70,33 @@ def test_ob_features_all_fields_present_and_bounded():
     atr = compute_atr(df)
     obs = [
         _mk_ob(id=0, block_type="demand", confirm_idx=12, end_idx=40),
-        _mk_ob(id=1, block_type="supply", confirm_idx=20, end_idx=50,
-               zone_low=101.0, zone_high=102.0),
+        _mk_ob(
+            id=1,
+            block_type="supply",
+            confirm_idx=20,
+            end_idx=50,
+            zone_low=101.0,
+            zone_high=102.0,
+        ),
     ]
     feats = compute_ob_features(df, obs, atr)
     expected = {
-        "dist_supply", "dist_demand", "in_zone_supply", "in_zone_demand",
-        "strength_supply", "strength_demand", "height_supply",
-        "height_demand", "age_supply", "age_demand", "retested_supply",
-        "retested_demand", "count_supply", "count_demand",
-        "broken_supply", "broken_demand",
+        "dist_supply",
+        "dist_demand",
+        "in_zone_supply",
+        "in_zone_demand",
+        "strength_supply",
+        "strength_demand",
+        "height_supply",
+        "height_demand",
+        "age_supply",
+        "age_demand",
+        "retested_supply",
+        "retested_demand",
+        "count_supply",
+        "count_demand",
+        "broken_supply",
+        "broken_demand",
     }
     assert set(feats) == expected
     for name, arr in feats.items():
@@ -107,8 +124,7 @@ def test_split_chronological_no_overlap_and_context():
     n = 4000
     feat = _mk_df(n)
     labels = pl.DataFrame(
-        {"action": np.zeros(n, dtype=int),
-         "outcome": np.zeros(n)}
+        {"action": np.zeros(n, dtype=int), "outcome": np.zeros(n)}
     )
     ob = _mk_ob(start_idx=100, end_idx=3000, confirm_idx=102)
     segs = split_chronological(feat, labels, [ob], seq_len=128)
@@ -124,7 +140,7 @@ def test_split_chronological_no_overlap_and_context():
     assert ctx > 0
     assert (val[1]["action"][:ctx] == -100).all()
     assert (val[1]["action"][ctx:] != -100).all()
-    assert (test[1]["action"][:test[3]["n_context"]] == -100).all()
+    assert (test[1]["action"][: test[3]["n_context"]] == -100).all()
     # OB rebased into each segment
     assert val[2][0].start_idx >= 0
 
@@ -157,9 +173,14 @@ def test_transformer_encodes_all_ob_fields():
     from ai.src.transformer import EntryExitTransformer
 
     model = EntryExitTransformer(
-        n_price_feats=5, n_ind_feats=2, n_sig_feats=2,
-        hidden_size=16, num_layers=1, num_heads=2,
-        max_seq_len=32, max_ob_seq_len=8,
+        n_price_feats=5,
+        n_ind_feats=2,
+        n_sig_feats=2,
+        hidden_size=16,
+        num_layers=1,
+        num_heads=2,
+        max_seq_len=32,
+        max_ob_seq_len=8,
     )
     ob = _mk_ob(timeframe="1H", retest_idx=20)
     numeric, type_id, structure_id, trend_id, tf_id = model._encode_ob(ob, 8)
@@ -170,8 +191,12 @@ def test_transformer_encodes_all_ob_fields():
     b, t = 1, 8
     prices = torch.randn(b, t, 5)
     out = model(
-        prices, torch.randn(b, t, 2), torch.randn(b, t, 2),
-        torch.randn(b, t, 1), torch.randn(b, t, 1), [[ob]],
+        prices,
+        torch.randn(b, t, 2),
+        torch.randn(b, t, 2),
+        torch.randn(b, t, 1),
+        torch.randn(b, t, 1),
+        [[ob]],
     )
     assert out[0].shape == (b, t, 3)
 
@@ -295,6 +320,8 @@ def test_ob_lookup_is_exact_at_zone_boundaries():
     lookup2 = _OBLookup([active], False, None)
     lookup2.advance(0)
     assert lookup2.query(92.0, 93.0) is not None
+
+
 def test_vectorised_ob_encoding_matches_per_block():
     """`_encode_obs` must reproduce `_encode_ob` row by row.
 
@@ -318,12 +345,30 @@ def test_vectorised_ob_encoding_matches_per_block():
         max_ob_seq_len=8,
     )
     obs = [
-        _mk_ob(id=0, block_type="demand", structure_label="fresh",
-               trend_direction="up", timeframe="1m", retest_idx=-1),
-        _mk_ob(id=1, block_type="supply", structure_label="retested",
-               trend_direction="down", timeframe="1H", retest_idx=20),
-        _mk_ob(id=2, block_type="demand", structure_label=None,
-               trend_direction=None, timeframe="15m", retest_idx=3),
+        _mk_ob(
+            id=0,
+            block_type="demand",
+            structure_label="fresh",
+            trend_direction="up",
+            timeframe="1m",
+            retest_idx=-1,
+        ),
+        _mk_ob(
+            id=1,
+            block_type="supply",
+            structure_label="retested",
+            trend_direction="down",
+            timeframe="1H",
+            retest_idx=20,
+        ),
+        _mk_ob(
+            id=2,
+            block_type="demand",
+            structure_label=None,
+            trend_direction=None,
+            timeframe="15m",
+            retest_idx=3,
+        ),
     ]
     device = torch.device("cpu")
     numeric, type_ids, struct_ids, trend_ids, tf_ids = model._encode_obs(
@@ -334,7 +379,10 @@ def test_vectorised_ob_encoding_matches_per_block():
         n, t_id, s_id, tr_id, tf_id = model._encode_ob(ob, 32)
         assert torch.allclose(numeric[k], n)
         assert (type_ids[k], struct_ids[k], trend_ids[k], tf_ids[k]) == (
-            t_id, s_id, tr_id, tf_id
+            t_id,
+            s_id,
+            tr_id,
+            tf_id,
         )
     # no blocks in a window: empty sequence, but the forward pass still works
     out = model(

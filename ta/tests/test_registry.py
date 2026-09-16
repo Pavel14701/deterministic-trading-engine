@@ -56,15 +56,19 @@ class TestRegistryCoverage:
         from ta.src import registry as reg
 
         for dsl_name, _fn in reg._iter_indicator_funcs():
-            assert (
-                dsl_name in BINDINGS or dsl_name in AUTO_REPORT
-            ), f"{dsl_name} silently lost"
+            assert dsl_name in BINDINGS or dsl_name in AUTO_REPORT, (
+                f"{dsl_name} silently lost"
+            )
 
     def test_no_duplicate_sources_mismatch(self) -> None:
         """Auto bindings derive sources from data args."""
         assert BINDINGS["macd"].sources == ("close",)
         assert set(BINDINGS["brar"].sources) <= {
-            "open", "high", "low", "close", "volume"
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
         }
         assert BINDINGS["brar"].sources
 
@@ -102,7 +106,9 @@ class TestManifestWave2:
 
 
 class TestEngineWave2:
-    def test_multi_output_resolution(self, ) -> None:
+    def test_multi_output_resolution(
+        self,
+    ) -> None:
         provider = TaProvider(_ohlc())
         provider.cursor = 200
         macd = provider.resolve("macd", {}, ["macd"], 0)

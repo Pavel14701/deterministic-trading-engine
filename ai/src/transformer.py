@@ -192,16 +192,25 @@ class EntryExitTransformer(nn.Module):
 
         numeric = torch.tensor(
             [
-                start_norm, end_norm, low_norm, high_norm, strength_norm,
-                height_norm, retested,
+                start_norm,
+                end_norm,
+                low_norm,
+                high_norm,
+                strength_norm,
+                height_norm,
+                retested,
             ],
             dtype=torch.float32,
         )
 
         type_id = 0 if ob.block_type.lower() == "supply" else 1
         structure_map = {
-            "valid": 0, "fresh": 0, "broken": 1, "retested": 2,
-            "weak": 3, None: 3,
+            "valid": 0,
+            "fresh": 0,
+            "broken": 1,
+            "retested": 2,
+            "weak": 3,
+            None: 3,
         }
         structure_id = structure_map.get(ob.structure_label, 3)
         trend_map = {"up": 0, "down": 1, None: 2}

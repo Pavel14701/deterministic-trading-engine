@@ -253,14 +253,24 @@ def compute_ob_features(
 
     spec = {
         "supply": (
-            "dist_supply", "in_zone_supply", "strength_supply",
-            "height_supply", "age_supply", "retested_supply",
-            "count_supply", "broken_supply",
+            "dist_supply",
+            "in_zone_supply",
+            "strength_supply",
+            "height_supply",
+            "age_supply",
+            "retested_supply",
+            "count_supply",
+            "broken_supply",
         ),
         "demand": (
-            "dist_demand", "in_zone_demand", "strength_demand",
-            "height_demand", "age_demand", "retested_demand",
-            "count_demand", "broken_demand",
+            "dist_demand",
+            "in_zone_demand",
+            "strength_demand",
+            "height_demand",
+            "age_demand",
+            "retested_demand",
+            "count_demand",
+            "broken_demand",
         ),
     }
     out: dict[str, np.ndarray] = {}

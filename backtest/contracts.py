@@ -1,4 +1,4 @@
-"""Data contracts for the backtest engine (TZ-04 п.3)."""
+"""Data contracts for the backtest engine (TZ-04 item 3)."""
 
 from __future__ import annotations
 
