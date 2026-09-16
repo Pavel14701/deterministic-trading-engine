@@ -71,8 +71,7 @@ def _talib(name: str) -> Callable | None:
         import talib
     except ImportError:
         return None
-    fn = getattr(talib, name, None)
-    return fn
+    return getattr(talib, name, None)
 
 
 def _scenarios() -> list[dict[str, Any]]:
@@ -228,23 +227,23 @@ def run_benchmarks(
         baselines: dict[str, Callable | None] = sc["baselines"]
         cold_ms = _time_cold(fast, data)
         fast_ms = _time_warm(fast, data, repeats)
-        rows.append(
-            [
-                str(sc["module"]),
-                name,
-                "numba (cold)",
-                f"{cold_ms:.2f}",
-                "-",
-            ]
-        )
-        rows.append(
-            [
-                str(sc["module"]),
-                name,
-                "numba (warm)",
-                f"{fast_ms:.2f}",
-                "1.0x",
-            ]
+        rows.extend(
+            (
+                [
+                    str(sc["module"]),
+                    name,
+                    "numba (cold)",
+                    f"{cold_ms:.2f}",
+                    "-",
+                ],
+                [
+                    str(sc["module"]),
+                    name,
+                    "numba (warm)",
+                    f"{fast_ms:.2f}",
+                    "1.0x",
+                ],
+            )
         )
         for impl, fn in baselines.items():
             if fn is None:
