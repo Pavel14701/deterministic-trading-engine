@@ -1,4 +1,4 @@
-"""Label generator: DSL signals -> action/outcome (TZ-02 п.2.4).
+"""Label generator: DSL signals -> action/outcome (TZ-02 item 2.4).
 
 Bridges the strategy layer to the ML training pipeline. Uses the
 backtest execution engine (TZ-04) to simulate trades from DSL signals

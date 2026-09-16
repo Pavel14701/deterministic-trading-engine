@@ -1,4 +1,4 @@
-"""Portfolio management: positions, partial takes, equity (TZ-04 п.4.2).
+"""Portfolio management: positions, partial takes, equity (TZ-04 item 4.2).
 
 Supports TP1 (partial 50%) + TP2 (remainder), trailing stop by indicator
 callback, max_bars_hold, and equity tracking with unrealised PnL.

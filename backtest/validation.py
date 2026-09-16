@@ -1,4 +1,6 @@
-"""Temporal validation: OOS split, walk-forward, baseline gate (TZ-04 п.4.6).
+"""Temporal validation: OOS split, walk-forward, baseline gate.
+
+Reference: TZ-04 item 4.6.
 
 The Baseline Gate is a blocking filter: without a passing comparison
 against simple methods, results are invalid and downstream consumers
@@ -41,7 +43,7 @@ class FoldResult:
 
 @dataclass(frozen=True, slots=True)
 class BaselineGateResult:
-    """Output of the mandatory baseline comparison gate (п.4.6.1)."""
+    """Output of the mandatory baseline comparison gate (item 4.6.1)."""
 
     status: BaselineGateStatus
     best_baseline_sharpe: float
@@ -107,7 +109,7 @@ def walk_forward_folds(
 
 
 # --------------------------------------------------------------------------- #
-# Baseline Gate (TZ-04 п.4.6.1)
+# Baseline Gate (TZ-04 item 4.6.1)
 # --------------------------------------------------------------------------- #
 
 
@@ -183,7 +185,7 @@ def validate_report_has_baselines(
     """
     errors = []
     if "baselines" not in report:
-        errors.append("Report missing 'baselines' section (TZ-04 п.4.6.1)")
+        errors.append("Report missing 'baselines' section (TZ-04 item 4.6.1)")
     else:
         baselines = report["baselines"]
         required = {

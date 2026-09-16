@@ -296,7 +296,9 @@ def sma_polars(
     Examples
     --------
     >>> import polars as pl
-    >>> df = pl.DataFrame({"close": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]})
+    >>> df = pl.DataFrame(
+    ...     {"close": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]}
+    ... )
     >>> sma_polars(df, length=3, output_col="SMA3")
     shape: (10,)
     Series: 'SMA3' [f64]
@@ -313,7 +315,7 @@ def sma_polars(
         9.0
     ]
 
-    """  # noqa: E501
+    """
     close = df[close_col].to_numpy()
     result = sma_ind(
         close,

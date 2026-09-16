@@ -42,3 +42,8 @@ class OrderBlock:
     trend_direction: str | None = None
     start_idx: int = -1
     end_idx: int = -1
+    # --- extended fields (full OB passthrough into the model) ---
+    timeframe: str = "1m"  # source timeframe: '1m' | '5m' | '15m' | '1H'
+    confirm_idx: int = -1  # bar where the zone became known (displacement)
+    retest_idx: int = -1  # bar index of the first retest (-1 if none)
+    zone_height_atr: float = 0.0  # zone height in ATR units (at detection)

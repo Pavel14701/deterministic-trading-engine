@@ -123,9 +123,7 @@ class RAGPipeline:
     def generate(self, task: str) -> GenerationResult:
         """Full RAG: retrieve context → generate DSL → validate → repair."""
         retrieval = self._retriever.retrieve(task)
-        docs = [
-            {"heading": d.heading, "text": d.text} for d in retrieval.docs
-        ]
+        docs = [{"heading": d.heading, "text": d.text} for d in retrieval.docs]
         examples = [
             {
                 "description": c.description,
@@ -143,15 +141,17 @@ class RAGPipeline:
         )
         elapsed_ms = (time.perf_counter() - start) * 1000
 
-        self._query_logs.append(QueryLog(
-            query=task,
-            status=result.status,
-            iterations=result.iterations,
-            dsl_entry=result.dsl_entry,
-            errors=result.errors,
-            elapsed_ms=elapsed_ms,
-            docs_used=result.docs_used,
-        ))
+        self._query_logs.append(
+            QueryLog(
+                query=task,
+                status=result.status,
+                iterations=result.iterations,
+                dsl_entry=result.dsl_entry,
+                errors=result.errors,
+                elapsed_ms=elapsed_ms,
+                docs_used=result.docs_used,
+            )
+        )
         return result
 
     # -- Metrics ------------------------------------------------------------ #
@@ -163,7 +163,8 @@ class RAGPipeline:
         if not logs:
             return PipelineMetrics()
         pass_at_1 = sum(
-            1 for entry in logs
+            1
+            for entry in logs
             if entry.status == "ok" and entry.iterations == 1
         )
         pass_at_n = sum(1 for entry in logs if entry.status == "ok")

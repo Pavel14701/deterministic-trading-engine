@@ -73,7 +73,7 @@ class TestAppConfig:
 
 
 class TestWave2Providers:
-    """TZ-08 волна 2: rag/LLM/bundle providers."""
+    """TZ-08 wave 2: rag/LLM/bundle providers."""
 
     def test_rag_provides_vector_store(self) -> None:
         """Rag contour wires a Qdrant vector store (lazy client)."""

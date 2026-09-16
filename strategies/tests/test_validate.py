@@ -1,4 +1,7 @@
-"""Tests for Strategy validation and AST indicator extraction (TZ-02 п.3)."""
+"""Strategy validation and AST indicator extraction tests.
+
+Reference: TZ-02 item 3.
+"""
 
 from __future__ import annotations
 

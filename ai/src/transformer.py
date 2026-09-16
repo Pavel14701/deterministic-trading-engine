@@ -87,16 +87,17 @@ class EntryExitTransformer(nn.Module):
         self.time_encoder = nn.TransformerEncoder(time_layer, num_layers)
 
         # Order block encoder
-        self.ob_numeric_proj = nn.Linear(5, hidden_size // 2)
+        self.ob_numeric_proj = nn.Linear(7, hidden_size // 2)
         self.ob_type_embedding = nn.Embedding(2, ob_embedding_dim)
         self.ob_structure_embedding = nn.Embedding(4, ob_embedding_dim)
         self.ob_trend_embedding = nn.Embedding(3, ob_embedding_dim)
+        self.ob_tf_embedding = nn.Embedding(4, ob_embedding_dim)
         self.ob_merge = nn.Linear(
-            hidden_size // 2 + ob_embedding_dim * 3, hidden_size
+            hidden_size // 2 + ob_embedding_dim * 4, hidden_size
         )
 
         self.ob_pos_encoding = self._positional_encoding(
-            max_ob_seq_len, hidden_size
+            max_ob_seq_len + 1, hidden_size
         )
         ob_layer = nn.TransformerEncoderLayer(
             d_model=hidden_size,
@@ -164,10 +165,12 @@ class EntryExitTransformer(nn.Module):
 
     def _encode_ob(
         self, ob: OrderBlock, seq_len: int
-    ) -> tuple[torch.Tensor, int, int, int]:
+    ) -> tuple[torch.Tensor, int, int, int, int]:
         """Encode a single OrderBlock into numeric and categorical IDs.
 
         Normalises indices by ``seq_len``, prices by ``atr_global``.
+        Numeric features (7): relative start/end indices, relative zone
+        bounds, strength, zone height (ATR units), retested flag.
 
         Args:
             ob: OrderBlock instance.
@@ -175,8 +178,8 @@ class EntryExitTransformer(nn.Module):
                 indices).
 
         Returns:
-            Tuple of (numeric_features, type_id, structure_id, trend_id).
-            numeric_features is a float32 tensor of shape (5,).
+            Tuple of (numeric_features, type_id, structure_id, trend_id,
+            tf_id).  numeric_features is a float32 tensor of shape (7,).
 
         """
         start_norm = ob.start_idx / seq_len
@@ -184,19 +187,80 @@ class EntryExitTransformer(nn.Module):
         low_norm = ob.zone_low / self.atr_global
         high_norm = ob.zone_high / self.atr_global
         strength_norm = ob.strength
+        height_norm = ob.zone_height_atr
+        retested = 1.0 if ob.retest_idx >= 0 else 0.0
 
         numeric = torch.tensor(
-            [start_norm, end_norm, low_norm, high_norm, strength_norm],
+            [
+                start_norm,
+                end_norm,
+                low_norm,
+                high_norm,
+                strength_norm,
+                height_norm,
+                retested,
+            ],
             dtype=torch.float32,
         )
 
         type_id = 0 if ob.block_type.lower() == "supply" else 1
-        structure_map = {"valid": 0, "broken": 1, "weak": 2, None: 3}
+        structure_map = {
+            "valid": 0,
+            "fresh": 0,
+            "broken": 1,
+            "retested": 2,
+            "weak": 3,
+            None: 3,
+        }
         structure_id = structure_map.get(ob.structure_label, 3)
         trend_map = {"up": 0, "down": 1, None: 2}
         trend_id = trend_map.get(ob.trend_direction, 2)
+        tf_map = {"1m": 0, "5m": 1, "15m": 2, "1H": 3}
+        tf_id = tf_map.get(ob.timeframe, 0)
 
-        return numeric, type_id, structure_id, trend_id
+        return numeric, type_id, structure_id, trend_id, tf_id
+
+    def _encode_obs(
+        self, obs: list[OrderBlock], seq_len: int, device: torch.device
+    ) -> tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+    ]:
+        """Vectorised :meth:`_encode_ob` for a whole window's block list.
+
+        Encoding blocks one by one would launch a tiny projection kernel
+        per block (hundreds per sample), leaving the GPU idle on kernel
+        launch overhead; here all blocks of one sample are stacked and
+        projected in a single call.  The produced values are identical to
+        the per-block encoding.
+
+        Args:
+            obs: Order blocks of a single window.
+            seq_len: Window length used to normalise indices.
+            device: Device the resulting tensors are placed on.
+
+        Returns:
+            ``(numeric (K, 7), type_ids (K,), structure_ids (K,),
+            trend_ids (K,), tf_ids (K,))`` with ``K = len(obs)``.
+
+        """
+        encoded = [self._encode_ob(ob, seq_len) for ob in obs]
+        numeric = torch.stack([e[0] for e in encoded]).to(device)
+        cat_ids = torch.tensor(
+            [[e[1], e[2], e[3], e[4]] for e in encoded],
+            dtype=torch.long,
+            device=device,
+        )
+        return (
+            numeric,
+            cat_ids[:, 0],
+            cat_ids[:, 1],
+            cat_ids[:, 2],
+            cat_ids[:, 3],
+        )
 
     def forward(
         self,
@@ -245,36 +309,24 @@ class EntryExitTransformer(nn.Module):
 
         for obs in order_blocks:
             obs = obs[-max_len:]
-            vecs = []
-            for ob in obs:
-                numeric, type_id, structure_id, trend_id = self._encode_ob(
-                    ob, seq_len
+            if obs:
+                numeric, type_ids, struct_ids, trend_ids, tf_ids = (
+                    self._encode_obs(obs, seq_len, device)
                 )
-                numeric = numeric.to(device)
-                num_proj = functional.gelu(
-                    self.ob_numeric_proj(numeric.unsqueeze(0))
-                )
-
-                type_emb = self.ob_type_embedding(
-                    torch.tensor([type_id], device=device)
-                )
-                struct_emb = self.ob_structure_embedding(
-                    torch.tensor([structure_id], device=device)
-                )
-                trend_emb = self.ob_trend_embedding(
-                    torch.tensor([trend_id], device=device)
-                )
-
+                num_proj = functional.gelu(self.ob_numeric_proj(numeric))
                 combined = torch.cat(
-                    [num_proj, type_emb, struct_emb, trend_emb], dim=-1
+                    [
+                        num_proj,
+                        self.ob_type_embedding(type_ids),
+                        self.ob_structure_embedding(struct_ids),
+                        self.ob_trend_embedding(trend_ids),
+                        self.ob_tf_embedding(tf_ids),
+                    ],
+                    dim=-1,
                 )
-                ob_vec = functional.gelu(self.ob_merge(combined))
-                vecs.append(ob_vec)
-
-            if not vecs:
-                ob_seq = torch.zeros(0, self.hidden_size, device=device)
+                ob_seq = functional.gelu(self.ob_merge(combined))
             else:
-                ob_seq = torch.cat(vecs, dim=0)
+                ob_seq = torch.zeros(0, self.hidden_size, device=device)
 
             pad = max_len - ob_seq.size(0)
             if pad > 0:

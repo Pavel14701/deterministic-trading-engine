@@ -1,4 +1,4 @@
-"""FastStream RabbitMQ bridge (TZ-09 волна 2).
+"""FastStream RabbitMQ bridge (TZ-09 wave 2).
 
 White side: publishes md.*/cmd.*, consumes evt.*.
 Local side: consumes md.*/cmd.*, publishes evt.*.

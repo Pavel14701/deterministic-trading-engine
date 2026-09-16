@@ -1,4 +1,4 @@
-"""Bar-by-bar backtest engine (TZ-04 п.4.3).
+"""Bar-by-bar backtest engine (TZ-04 item 4.3).
 
 Takes OHLCV data, ATR values, and entry/exit signal arrays.
 Produces trades + equity curve + performance metrics.
@@ -53,8 +53,8 @@ def run_backtest(
         sl_mult: SL = sl_mult * ATR.
         tp_mult: TP = tp_mult * ATR.
         risk_config: optional validated RiskConfig; when provided every
-            entry passes through ``risk.engine.check`` (TZ-04 п.4.6 /
-            TZ-11 п.4.5: one risk gate for backtest and live). Rejected
+            entry passes through ``risk.engine.check`` (TZ-04 item 4.6 /
+            TZ-11 item 4.5: one risk gate for backtest and live). Rejected
             entries are recorded in ``metrics.risk_rejects`` with the
             rule name and params snapshot.
 

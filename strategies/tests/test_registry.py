@@ -1,4 +1,4 @@
-"""Tests for StrategyRegistry: register, query, delete (TZ-02 п.3.2)."""
+"""Tests for StrategyRegistry: register, query, delete (TZ-02 item 3.2)."""
 
 from __future__ import annotations
 

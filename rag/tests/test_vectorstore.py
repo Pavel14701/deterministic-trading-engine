@@ -1,4 +1,4 @@
-"""Tests for vector store and embeddings (TZ-07 волна 2)."""
+"""Tests for vector store and embeddings (TZ-07 wave 2)."""
 
 from __future__ import annotations
 
@@ -33,14 +33,17 @@ class TestVectorStore:
         assert store.count("test") == 1
 
     def test_search_returns_relevant(self, store: InMemoryVectorStore) -> None:
-        store.upsert("test", [
-            VectorPoint(
-                id="rsi", vector=[1.0, 0.0, 0.0], payload={"name": "rsi"}
-            ),
-            VectorPoint(
-                id="ema", vector=[0.0, 1.0, 0.0], payload={"name": "ema"}
-            ),
-        ])
+        store.upsert(
+            "test",
+            [
+                VectorPoint(
+                    id="rsi", vector=[1.0, 0.0, 0.0], payload={"name": "rsi"}
+                ),
+                VectorPoint(
+                    id="ema", vector=[0.0, 1.0, 0.0], payload={"name": "ema"}
+                ),
+            ],
+        )
         results = store.search("test", [1.0, 0.1, 0.0], top_k=1)
         assert len(results) == 1
         assert results[0].id == "rsi"
@@ -49,12 +52,20 @@ class TestVectorStore:
     def test_search_with_payload_filter(
         self, store: InMemoryVectorStore
     ) -> None:
-        store.upsert("test", [
-            VectorPoint(id="a", vector=[1.0, 0.0], payload={"type": "doc"}),
-            VectorPoint(id="b", vector=[1.0, 0.1], payload={"type": "case"}),
-        ])
-        results = store.search("test", [1.0, 0.0], top_k=2,
-                               payload_filter={"type": "doc"})
+        store.upsert(
+            "test",
+            [
+                VectorPoint(
+                    id="a", vector=[1.0, 0.0], payload={"type": "doc"}
+                ),
+                VectorPoint(
+                    id="b", vector=[1.0, 0.1], payload={"type": "case"}
+                ),
+            ],
+        )
+        results = store.search(
+            "test", [1.0, 0.0], top_k=2, payload_filter={"type": "doc"}
+        )
         assert len(results) == 1
         assert results[0].id == "a"
 

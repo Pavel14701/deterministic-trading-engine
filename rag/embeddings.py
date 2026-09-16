@@ -57,6 +57,7 @@ class OllamaEmbedding:
         model: str = "bge-m3",
     ) -> None:
         import niquests
+
         self._session = niquests.Session()
         self._url = f"{base_url.rstrip('/')}/api/embeddings"
         self._model = model

@@ -23,18 +23,14 @@ from ta.src.volatility.atr import atr_ind
 REPEATS = 3
 
 
-def make_data(
-    n: int, seed: int = 42
-) -> dict[str, np.ndarray]:
+def make_data(n: int, seed: int = 42) -> dict[str, np.ndarray]:
     """Deterministic OHLC data for benchmarks."""
     rng = np.random.default_rng(seed)
     close = 100.0 + np.cumsum(rng.normal(0, 0.5, n))
     open_ = close + rng.normal(0, 0.2, n)
     high = np.maximum(open_, close) + np.abs(rng.normal(0, 0.3, n))
     low = np.minimum(open_, close) - np.abs(rng.normal(0, 0.3, n))
-    return {
-        "open": open_, "high": high, "low": low, "close": close
-    }
+    return {"open": open_, "high": high, "low": low, "close": close}
 
 
 def _pandas_sma(close: np.ndarray, length: int = 10) -> np.ndarray:
@@ -50,17 +46,22 @@ def _pandas_ema(close: np.ndarray, length: int = 10) -> np.ndarray:
 
 
 def _pandas_atr(
-    high: np.ndarray, low: np.ndarray, close: np.ndarray,
+    high: np.ndarray,
+    low: np.ndarray,
+    close: np.ndarray,
     length: int = 14,
 ) -> np.ndarray:
     import pandas as pd
 
     pc = pd.Series(close).shift(1)
-    tr = pd.concat([
-        pd.Series(high) - pd.Series(low),
-        (pd.Series(high) - pc).abs(),
-        (pd.Series(low) - pc).abs(),
-    ], axis=1).max(axis=1)
+    tr = pd.concat(
+        [
+            pd.Series(high) - pd.Series(low),
+            (pd.Series(high) - pc).abs(),
+            (pd.Series(low) - pc).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
     return tr.ewm(alpha=1.0 / length, adjust=False).mean().to_numpy()
 
 
@@ -70,8 +71,7 @@ def _talib(name: str) -> Callable | None:
         import talib
     except ImportError:
         return None
-    fn = getattr(talib, name, None)
-    return fn
+    return getattr(talib, name, None)
 
 
 def _scenarios() -> list[dict[str, Any]]:
@@ -84,51 +84,60 @@ def _scenarios() -> list[dict[str, Any]]:
     talib_cdl = _talib("CDLENGULFING")
     return [
         {
-            "module": "overlap", "name": "sma",
+            "module": "overlap",
+            "name": "sma",
             "fast": lambda d: sma_ind(d["close"], length=10),
             "baselines": {
                 "pandas": lambda d: _pandas_sma(d["close"], 10),
                 "talib": (
                     (lambda d: talib_sma(d["close"], 10))
-                    if talib_sma else None
+                    if talib_sma
+                    else None
                 ),
             },
         },
         {
-            "module": "overlap", "name": "ema",
+            "module": "overlap",
+            "name": "ema",
             "fast": lambda d: ema_ind(d["close"], length=10),
             "baselines": {
                 "pandas": lambda d: _pandas_ema(d["close"], 10),
                 "talib": (
                     (lambda d: talib_ema(d["close"], 10))
-                    if talib_ema else None
+                    if talib_ema
+                    else None
                 ),
             },
         },
         {
-            "module": "momentum", "name": "rsi",
+            "module": "momentum",
+            "name": "rsi",
             "fast": lambda d: rsi_ind(d["close"], length=14),
             "baselines": {
                 "numpy": lambda d: rsi_numpy(d["close"], 14),
                 "talib": (
                     (lambda d: talib_rsi(d["close"], 14))
-                    if talib_rsi else None
+                    if talib_rsi
+                    else None
                 ),
             },
         },
         {
-            "module": "momentum", "name": "macd",
+            "module": "momentum",
+            "name": "macd",
             "fast": lambda d: macd_ind(d["close"]),
             "baselines": {
                 "numpy": lambda d: macd_numpy(d["close"]),
                 "talib": (
                     (lambda d: talib_macd(d["close"])[0])
-                    if talib_macd else None
+                    if talib_macd
+                    else None
                 ),
             },
         },
         {
-            "module": "volatility", "name": "atr",
+            "module": "volatility",
+            "name": "atr",
             "fast": lambda d: atr_ind(
                 d["high"], d["low"], d["close"], length=14
             ),
@@ -137,31 +146,35 @@ def _scenarios() -> list[dict[str, Any]]:
                     d["high"], d["low"], d["close"], 14
                 ),
                 "talib": (
-                    (lambda d: talib_atr(
-                        d["high"], d["low"], d["close"], 14
-                    ))
-                    if talib_atr else None
+                    (lambda d: talib_atr(d["high"], d["low"], d["close"], 14))
+                    if talib_atr
+                    else None
                 ),
             },
         },
         {
-            "module": "candle", "name": "cdl_engulfing",
+            "module": "candle",
+            "name": "cdl_engulfing",
             "fast": lambda d: cdl_engulfing(
                 d["open"], d["high"], d["low"], d["close"]
             ),
             "baselines": {
                 "talib": (
-                    (lambda d: talib_cdl(
-                        d["open"], d["high"], d["low"], d["close"]
-                    ))
-                    if talib_cdl else None
+                    (
+                        lambda d: talib_cdl(
+                            d["open"], d["high"], d["low"], d["close"]
+                        )
+                    )
+                    if talib_cdl
+                    else None
                 ),
             },
         },
         {
             # OTT is skipped (known upstream numba int8+fillna bug);
-            # SCRSI is the custom-group representative instead (TZ-12 п.2).
-            "module": "custom", "name": "scrsi",
+            # SCRSI is the custom-group representative instead (TZ-12 item 2).
+            "module": "custom",
+            "name": "scrsi",
             "fast": lambda d: scrsi_ind(
                 d["close"], domcycle=20, vibration=10, leveling=5
             ),
@@ -195,15 +208,15 @@ def _time_cold(fn: Callable, data: dict) -> float:
 
 
 def run_benchmarks(
-    n: int, repeats: int = REPEATS, seed: int = 42,
+    n: int,
+    repeats: int = REPEATS,
+    seed: int = 42,
     only: list[str] | None = None,
 ) -> str:
     """Run all scenarios; return a markdown table."""
     data = make_data(n, seed)
     rows: list[list[str]] = []
-    header = (
-        "| module | indicator | impl | ms | speedup |"
-    )
+    header = "| module | indicator | impl | ms | speedup |"
     sep = "|---|---|---|---:|---:|"
     lines = [f"# ta/ benchmarks (n={n}, repeats={repeats})", "", header, sep]
     for sc in SCENARIOS:
@@ -214,25 +227,47 @@ def run_benchmarks(
         baselines: dict[str, Callable | None] = sc["baselines"]
         cold_ms = _time_cold(fast, data)
         fast_ms = _time_warm(fast, data, repeats)
-        rows.append([
-            str(sc["module"]), name, "numba (cold)", f"{cold_ms:.2f}", "-",
-        ])
-        rows.append([
-            str(sc["module"]), name, "numba (warm)", f"{fast_ms:.2f}", "1.0x",
-        ])
+        rows.extend(
+            (
+                [
+                    str(sc["module"]),
+                    name,
+                    "numba (cold)",
+                    f"{cold_ms:.2f}",
+                    "-",
+                ],
+                [
+                    str(sc["module"]),
+                    name,
+                    "numba (warm)",
+                    f"{fast_ms:.2f}",
+                    "1.0x",
+                ],
+            )
+        )
         for impl, fn in baselines.items():
             if fn is None:
-                rows.append([
-                    str(sc["module"]), name, impl, "n/a (not installed)",
-                    "-",
-                ])
+                rows.append(
+                    [
+                        str(sc["module"]),
+                        name,
+                        impl,
+                        "n/a (not installed)",
+                        "-",
+                    ]
+                )
                 continue
             base_ms = _time_warm(fn, data, repeats)
             speedup = base_ms / fast_ms if fast_ms > 0 else 0.0
-            rows.append([
-                str(sc["module"]), name, impl, f"{base_ms:.2f}",
-                f"{speedup:.1f}x",
-            ])
+            rows.append(
+                [
+                    str(sc["module"]),
+                    name,
+                    impl,
+                    f"{base_ms:.2f}",
+                    f"{speedup:.1f}x",
+                ]
+            )
     for row in rows:
         module, name, impl, ms, speed = row
         lines.append(f"| {module} | {name} | {impl} | {ms} | {speed} |")

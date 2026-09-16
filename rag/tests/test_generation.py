@@ -1,4 +1,4 @@
-"""Tests for RAG generation: prompt, repair loop, mocked LLM (TZ-07 п.3)."""
+"""Tests for RAG generation: prompt, repair loop, mocked LLM (TZ-07 item 3)."""
 
 from __future__ import annotations
 
