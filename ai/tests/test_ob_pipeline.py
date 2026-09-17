@@ -145,6 +145,45 @@ def test_split_chronological_no_overlap_and_context():
     assert val[2][0].start_idx >= 0
 
 
+def test_split_short_history_raises_clear_error():
+    import pytest
+
+    from scripts.prepare_okx_dataset import split_chronological
+
+    # 600 bars used to overflow the frame (IndexError) because the gap was
+    # added on top of the fractions; it must now fail with a clear
+    # "not enough bars" error instead.
+    n = 600
+    feat = _mk_df(n)
+    labels = pl.DataFrame(
+        {"action": np.zeros(n, dtype=int), "outcome": np.zeros(n)}
+    )
+    with pytest.raises(RuntimeError, match="not enough bars"):
+        split_chronological(feat, labels, [], seq_len=128)
+
+
+def test_split_segments_fit_frame_and_reserve_gaps():
+    from scripts.prepare_okx_dataset import split_chronological
+
+    n, seq_len = 1200, 128
+    feat = _mk_df(n)
+    labels = pl.DataFrame(
+        {"action": np.zeros(n, dtype=int), "outcome": np.zeros(n)}
+    )
+    segs = split_chronological(feat, labels, [], seq_len=seq_len)
+    train, val, test = segs["train"], segs["val"], segs["test"]
+    # every segment stays inside the frame
+    for seg in (train, val, test):
+        info = seg[3]
+        assert info["ts_start"] == int(feat["ts"][info["file_start"]])
+        assert info["label_end"] <= n
+        assert info["ts_end"] == int(feat["ts"][info["label_end"] - 1])
+    # labelled ranges never overlap and both gaps are excluded
+    assert train[3]["label_end"] + seq_len == val[3]["label_start"]
+    assert val[3]["label_end"] + seq_len == test[3]["label_start"]
+    assert test[3]["label_end"] == n
+
+
 def test_dataset_includes_active_zones():
     from ai.src.dataset import TradingDataset
 

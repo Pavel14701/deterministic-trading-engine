@@ -75,10 +75,7 @@ class OkxClient:
         self, inst_id: str, bar: str, n: int, inst_type: str = "SPOT"
     ) -> OhlcvBatch:
         """``GET /market/candles`` -> canon batch (bar-open ts ms)."""
-        path = (
-            f"/market/candles?instId={inst_id}"
-            f"&bar={okx_bar(bar)}&limit={n}"
-        )
+        path = f"/market/candles?instId={inst_id}&bar={okx_bar(bar)}&limit={n}"
         resp = self.transport.request("GET", path)
         spec_ct = 1.0
         if inst_type != "SPOT":

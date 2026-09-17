@@ -54,9 +54,7 @@ class VenueTransport(Protocol):
 class MarketDataSource(Protocol):
     """L2 <- L3: normalized market data."""
 
-    def candles_history(
-        self, inst_id: str, bar: str, n: int
-    ) -> OhlcvBatch:
+    def candles_history(self, inst_id: str, bar: str, n: int) -> OhlcvBatch:
         """Last ``n`` closed bars as a canon batch."""
 
     def subscribe_candles(self, inst_id: str, bar: str) -> None:
@@ -155,4 +153,3 @@ class StateStore(Protocol):
 
     def record_reject(self, inst_id: str, ts: int, reason: str) -> None:
         """Journal a risk reject for the audit."""
-

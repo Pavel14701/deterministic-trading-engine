@@ -54,7 +54,10 @@ def test_rest_row_spot_volume_is_base() -> None:
     c = candle_from_rest_row(ROW_SPOT, "SPOT", 1.0)
     assert c.ts == 1700000000000  # bar open time, ms
     assert (c.open, c.high, c.low, c.close) == (
-        50000.0, 50100.0, 49900.0, 50050.0
+        50000.0,
+        50100.0,
+        49900.0,
+        50050.0,
     )
     assert c.volume == 2.5
 

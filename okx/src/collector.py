@@ -25,9 +25,7 @@ def _subscribe_frame(inst_id: str, bar: str) -> dict[str, Any]:
     """OKX WS subscribe frame for the candle channel."""
     return {
         "op": "subscribe",
-        "args": [
-            {"channel": f"candle{BAR_MAP[bar]}", "instId": inst_id}
-        ],
+        "args": [{"channel": f"candle{BAR_MAP[bar]}", "instId": inst_id}],
     }
 
 
@@ -38,18 +36,14 @@ def batch_from_ws(msg: dict[str, Any]) -> OhlcvBatch | None:
     publishes a forming bar. Returns None when nothing is confirmed.
     """
     rows = [
-        r
-        for r in msg.get("data", [])
-        if isinstance(r, list) and len(r) >= 9
+        r for r in msg.get("data", []) if isinstance(r, list) and len(r) >= 9
     ]
     confirmed = [r for r in rows if is_confirmed(str(r[8]))]
     if not confirmed:
         return None
     inst_type = str(msg.get("instType", "SPOT"))
     ct_val = float(msg.get("ctVal", 1.0) or 1.0)
-    inst_id = str(
-        msg.get("instId") or msg.get("arg", {}).get("instId", "")
-    )
+    inst_id = str(msg.get("instId") or msg.get("arg", {}).get("instId", ""))
     candles = []
     for row in confirmed:
         c = candle_from_rest_row(row, inst_type, ct_val)
@@ -90,9 +84,7 @@ class LiveCollector:
         """Pull REST history for every instrument; returns bar count."""
         total = 0
         for inst_id in self.inst_ids:
-            batch = self.source.candles_history(
-                inst_id, self.bar, self.warmup
-            )
+            batch = self.source.candles_history(inst_id, self.bar, self.warmup)
             publish(batch, self.sink)
             total += len(batch.candles)
         return total
@@ -123,4 +115,3 @@ class LiveCollector:
     def stop(self) -> None:
         """Request stop by closing the transport (fire-and-forget)."""
         asyncio.get_event_loop().create_task(self.transport.close())
-

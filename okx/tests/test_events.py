@@ -124,9 +124,7 @@ async def test_ws_disconnected_triggers_reconcile() -> None:
     gateway.pending_orders = []
     gateway.position = None
     loop.submit(candle_event())
-    loop.submit(
-        OkxEvent(kind="ws_disconnected", inst_id="BTC-USDT", ts=1)
-    )
+    loop.submit(OkxEvent(kind="ws_disconnected", inst_id="BTC-USDT", ts=1))
     await loop.drain()
     # reconcile ran over the known instruments (empty snapshots, no crash)
     assert any(a.get("event") == "ws_disconnected" for a in loop.audit)
