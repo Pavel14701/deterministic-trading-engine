@@ -1,0 +1,18 @@
+[project]
+name = "dte-tinvest"
+version = "0.1.0"
+description = "T-Invest (Tinkoff Invest API) market-data adapter: REST candle history for the dataset pipeline"
+requires-python = ">=3.12"
+dependencies = [
+    "niquests>=3.20",
+    "polars>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.uv]
+package = false

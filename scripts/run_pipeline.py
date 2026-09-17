@@ -1,9 +1,11 @@
-"""Single-command data pipeline for the OKX training dataset.
+"""Single-command data pipeline for the training dataset.
 
 Runs the full data preparation (fetch year-scale multi-timeframe
-history, featurise, detect + pass through ALL order-block fields,
-label, chronological train/val/test split) and stops there -
-training and evaluation are separate, manually invoked steps:
+history from any registered source - OKX by default, T-Invest via
+``--source tinvest`` or per-asset prefixes, featurise, detect + pass
+through ALL order-block fields, label, chronological train/val/test
+split) and stops there - training and evaluation are separate, manually
+invoked steps:
 
     uv run python scripts/train_okx.py --data data/okx --device cuda
     uv run python scripts/eval_okx.py --data data/okx

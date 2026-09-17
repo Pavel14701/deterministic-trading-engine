@@ -20,9 +20,7 @@ def sign_request(
     """REST signature for the OK-ACCESS-SIGN header."""
     msg = f"{timestamp}{method.upper()}{request_path}{body}"
     return base64.b64encode(
-        hmac.new(
-            secret.encode(), msg.encode(), hashlib.sha256
-        ).digest()
+        hmac.new(secret.encode(), msg.encode(), hashlib.sha256).digest()
     ).decode()
 
 

@@ -4,12 +4,8 @@ from okx.src.signing import sign_request, sign_ws_login
 
 
 def test_rest_signature_deterministic() -> None:
-    a = sign_request(
-        "secret", "1700000000000", "GET", "/account/config", ""
-    )
-    b = sign_request(
-        "secret", "1700000000000", "GET", "/account/config", ""
-    )
+    a = sign_request("secret", "1700000000000", "GET", "/account/config", "")
+    b = sign_request("secret", "1700000000000", "GET", "/account/config", "")
     assert a == b
     assert a.endswith("=")  # base64 of 32 bytes
     assert len(a) == 44

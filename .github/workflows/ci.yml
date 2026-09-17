@@ -16,8 +16,8 @@ jobs:
         with:
           version: latest
       - run: uv sync --all-packages
-      - run: uv run ruff check ta dsl ai infer rag risk strategies main backtest
-      - run: uv run ruff format --check ta dsl ai infer rag risk strategies main backtest
+      - run: uv run ruff check ta dsl ai infer rag risk strategies main backtest tinvest marketdata okx scripts contracts
+      - run: uv run ruff format --check ta dsl ai infer rag risk strategies main backtest tinvest marketdata okx scripts contracts
 
   mypy:
     name: mypy (risk + infer + ai strict)
@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check for Cyrillic in .py files
         run: |
-          if grep -rlP '[\x{0400}-\x{04FF}]' --include='*.py' ta dsl ai infer rag risk strategies main backtest; then
+          if grep -rlP '[\x{0400}-\x{04FF}]' --include='*.py' ta dsl ai infer rag risk strategies main backtest tinvest marketdata; then
             echo "ERROR: Cyrillic characters found in .py files (TZ-14 item 2.1)"
             exit 1
           fi
@@ -138,3 +138,12 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - run: uv sync --all-packages
       - run: uv run pytest okx/tests
+
+  test-tinvest:
+    name: pytest tinvest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --all-packages
+      - run: uv run pytest tinvest/tests

@@ -7,7 +7,9 @@ Pipeline (run from the repo root):
         --bars 1m 5m 15m 1H --years 1 --out data/okx
 
 Steps per asset:
-  1. fetch candle history for every timeframe (okx.src.fetch, public
+  1. fetch candle history for every timeframe (via the marketdata
+     source registry: OKX by default, T-Invest with --source or
+     per-asset "src:inst" prefixes; public REST, parquet-cached
      REST, no keys; raw frames cached as parquet);
   2. detect supply/demand order blocks on **every** timeframe
      (swing + displacement heuristic) - all block fields are kept
@@ -47,8 +49,10 @@ import argparse
 import json
 import sys
 
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import polars as pl
@@ -65,17 +69,20 @@ from ai.src.features import (  # noqa: E402
     compute_tp_sl,
     generate_labels_from_strategy,
 )
-from okx.src.fetch import fetch_candles  # noqa: E402
-from ta.src.provider import BINDINGS, TaProvider  # noqa: E402
+from marketdata.common import (  # noqa: E402
+    CandleSource,
+    get_source,
+    known_sources,
+)
+from marketdata.okx_source import OkxSource  # noqa: E402,F401
+from marketdata.tinvest_source import TInvestSource  # noqa: E402,F401
+from ta.src.provider import (  # noqa: E402
+    BINDINGS,
+    OutputSpec,
+    TaProvider,
+)
 
 
-BAR_MS = {"1m": 60_000, "5m": 300_000, "15m": 900_000, "1H": 3_600_000}
-BARS_PER_YEAR = {
-    "1m": 525_600,
-    "5m": 105_120,
-    "15m": 35_040,
-    "1H": 8_760,
-}
 DIST_CAP = 10.0  # cap for distance features (in ATR units)
 HTF_WARMUP_BARS = 300  # extra HTF bars before the base start (warm-up)
 
@@ -216,7 +223,7 @@ def compute_indicator_columns(
             print(f"  skip {name}: {exc}")
             continue
         if arr.ndim == 1:
-            for attr in binding.outputs or {"value": None}:
+            for attr in binding.outputs or {"value": OutputSpec(index=0)}:
                 col = f"{name}_{attr}"
                 if col not in cols:
                     cols[col] = pl.Series(np.asarray(arr, dtype=np.float64))
@@ -256,13 +263,13 @@ def normalise(feat: pl.DataFrame, ind_cols: list[str]) -> pl.DataFrame:
     scaling for the whole column (``nan`` comparisons are always False).
 
     """
-    ref_close = float(feat["close"][:500].median())
+    ref_close = float(cast(float, feat["close"][:500].median()))
 
     def _median(series: pl.Series) -> float:
         clean = series.drop_nulls().drop_nans()
         if clean.len() == 0:
             return 0.0
-        return float(clean.abs().median() or 0.0)
+        return float(cast(float, clean.abs().median()) or 0.0)
 
     scale_map: dict[str, float] = {}
     for col in feat.columns:
@@ -414,6 +421,7 @@ def prepare_asset(
     max_bars: int,
     cfg: AIConfig,
     cache_dir: Path,
+    source: CandleSource,
 ) -> tuple[pl.DataFrame, pl.DataFrame, list[OrderBlock], list[str], list[str]]:
     """Fetch, featurise and label one asset across all timeframes.
 
@@ -428,7 +436,7 @@ def prepare_asset(
         f"(+ HTF: {', '.join(bars[1:]) or 'none'}) ...",
         flush=True,
     )
-    df = fetch_candles(
+    df = source.fetch_candles(
         inst_id, bar=base_bar, max_bars=max_bars, cache_dir=cache_dir
     )
     t0 = datetime.fromtimestamp(df["ts"][0] / 1000, tz=timezone.utc)
@@ -457,10 +465,14 @@ def prepare_asset(
         # cover the whole base span (+ warm-up) so no base bar lacks a
         # closed HTF bar; derived from the base bar count, not a default
         htf_bars = (
-            int(np.ceil(max_bars * BAR_MS[base_bar] / BAR_MS[htf]))
+            int(
+                np.ceil(
+                    max_bars * source.BAR_MS[base_bar] / source.BAR_MS[htf]
+                )
+            )
             + HTF_WARMUP_BARS
         )
-        hdf = fetch_candles(
+        hdf = source.fetch_candles(
             inst_id, bar=htf, max_bars=htf_bars, cache_dir=cache_dir
         )
         hatr = compute_atr(hdf, risk=cfg.risk)
@@ -469,12 +481,12 @@ def prepare_asset(
             hobs,
             hdf["ts"].to_numpy(),
             base_ts,
-            BAR_MS[htf],
-            BAR_MS[base_bar],
+            source.BAR_MS[htf],
+            source.BAR_MS[base_bar],
         )
         obs.extend(hobs)
         hfeats = compute_ob_features(hdf, hobs, hatr)
-        hts_close = hdf["ts"].to_numpy() + BAR_MS[htf]
+        hts_close = hdf["ts"].to_numpy() + source.BAR_MS[htf]
         hframe = pl.DataFrame({"close_ts": hts_close})
         for col in sorted(hfeats):
             hframe = hframe.with_columns(
@@ -542,21 +554,38 @@ def split_chronological(
 
     """
     n = feat.height
-    n_train = int(n * train_frac)
-    n_val = int(n * val_frac)
     gap = seq_len
+    # Reserve both inter-segment gaps out of the usable budget so the
+    # segments can never run past the end of the frame.  (The previous
+    # arithmetic added the gap on top of the fractions, which overflowed
+    # - and crashed - on short histories such as daily bars.)
+    usable = n - 2 * gap
+    min_segment = seq_len + 10
+    if usable < 3 * min_segment:
+        raise RuntimeError(
+            f"not enough bars for a {seq_len}-bar model: {n} bars leave "
+            f"{usable} usable after the two {gap}-bar gaps, but three "
+            f"segments of at least {min_segment} bars are required. "
+            "Fetch more history (--years/--max-bars) or reduce the "
+            "model seq_len (configs/ai.yaml) for this timeframe."
+        )
+    n_train = int(usable * train_frac)
+    n_val = int(usable * val_frac)
     bounds = {
         "train": (0, n_train),
-        "val": (n_train, n_train + gap + n_val),
-        "test": (n_train + gap + n_val, n),
+        "val": (n_train + gap, n_train + gap + n_val),
+        "test": (n_train + gap + n_val + gap, n),
     }
+
     out: dict[
         str, tuple[pl.DataFrame, pl.DataFrame, list[OrderBlock], dict]
     ] = {}
     for name, (start, end) in bounds.items():
         if end - start <= seq_len + 10:
             raise RuntimeError(
-                f"segment '{name}' too small ({end - start} bars)"
+                f"segment '{name}' too small ({end - start} bars, need "
+                f"> {seq_len + 10}); fetch more history (--years/--max-bars) "
+                "or reduce the model seq_len for this timeframe"
             )
         ctx = 0 if name == "train" else min(seq_len, start)
         fstart = start - ctx
@@ -656,9 +685,81 @@ def class_distribution(labels: pl.DataFrame) -> dict[str, int]:
     return {str(int(u)): int(c) for u, c in zip(uniq, cnt, strict=True)}
 
 
+@dataclass
+class SegmentBucket:
+    """Per-split accumulator: feature/label frames and their order blocks.
+
+    Keeping the three lists in one typed object (instead of a nested
+    ``dict[str, list[...]]``) lets ``obs`` hold ``OrderBlock`` lists
+    without lying about the element type.
+    """
+
+    feat: list[pl.DataFrame] = field(default_factory=list)
+    lbl: list[pl.DataFrame] = field(default_factory=list)
+    obs: list[list[OrderBlock]] = field(default_factory=list)
+
+
+def resolve_assets(
+    default_source: CandleSource,
+    specs: list[str],
+    bars: list[str],
+    years: float,
+) -> list[tuple[str, str, CandleSource]]:
+    """Resolve ``--assets`` specs into (source, instrument) pairs.
+
+    ``--source`` supplies the default venue; an explicit ``src:inst``
+    prefix (``okx:BTC-USDT``, ``tinvest:SBER@MOEX``) overrides it so a
+    single dataset can mix venues.  The requested bars are validated
+    against **every** resolved source (support + history depth), which
+    makes an impossible request fail with a clear message instead of a
+    ``KeyError`` deep inside the fetch loop.
+
+    Args:
+        default_source: Source used for assets without a prefix.
+        specs: Raw ``--assets`` entries.
+        bars: Requested pipeline bars (first = base).
+        years: Requested history depth in years.
+
+    Returns:
+        ``(source_name, instrument, source)`` per asset, input order.
+
+    Raises:
+        ValueError: For an unknown source prefix or an asset whose
+            source cannot serve one of the requested bars.
+
+    """
+    default_source.validate_bars(bars, years)
+    resolved: list[tuple[str, str, CandleSource]] = []
+    for spec in specs:
+        prefix, sep, inst = spec.partition(":")
+        if sep:
+            if prefix not in known_sources():
+                known = ", ".join(known_sources())
+                raise ValueError(
+                    f"unknown source prefix {prefix!r} in {spec!r} "
+                    f"(known: {known}); write {inst!r} for the default "
+                    "source or '<source>:<instrument>' to mix venues"
+                )
+            source = get_source(prefix)
+            source.validate_bars(bars, years)
+        else:
+            inst, source = spec, default_source
+        resolved.append((source.name, inst, source))
+    return resolved
+
+
 def main() -> None:
     """Run the full dataset preparation (multi-TF, year-scale, split)."""
-    ap = argparse.ArgumentParser(description="Prepare OKX training dataset")
+    ap = argparse.ArgumentParser(
+        description=(
+            "Prepare a multi-source training dataset (OKX, T-Invest, ...)"
+        )
+    )
+    ap.add_argument(
+        "--source",
+        default="okx",
+        help="default candle source for assets without an explicit prefix",
+    )
     ap.add_argument(
         "--assets",
         nargs="+",
@@ -668,6 +769,10 @@ def main() -> None:
             "SOL-USDT",
             "DOGE-USDT",
         ],
+        help=(
+            "instruments; optionally prefixed with a source, e.g. "
+            "tinvest:SBER@MOEX okx:BTC-USDT"
+        ),
     )
     ap.add_argument(
         "--bars",
@@ -690,6 +795,14 @@ def main() -> None:
     ap.add_argument("--out", default="data/okx")
     args = ap.parse_args()
 
+    default_source = get_source(args.source)
+    # resolve each asset to its (source, instrument) pair: an explicit
+    # "src:inst" prefix overrides --source, letting one dataset mix venues;
+    # every requested bar is validated against every resolved source
+    resolved = resolve_assets(
+        default_source, args.assets, args.bars, args.years
+    )
+
     cfg = AIConfig()
     seq_len = cfg.model.seq_len
     out = REPO / args.out
@@ -698,20 +811,24 @@ def main() -> None:
         (out / sub).mkdir(exist_ok=True)
 
     base_bar = args.bars[0]
-    max_bars = args.max_bars or int(BARS_PER_YEAR[base_bar] * args.years)
 
-    seg_data: dict[str, dict[str, list[pl.DataFrame]]] = {
-        "train": {"feat": [], "lbl": [], "obs": []},
-        "val": {"feat": [], "lbl": [], "obs": []},
-        "test": {"feat": [], "lbl": [], "obs": []},
+    seg_data: dict[str, SegmentBucket] = {
+        "train": SegmentBucket(),
+        "val": SegmentBucket(),
+        "test": SegmentBucket(),
     }
     all_obs: list[OrderBlock] = []
     meta_assets: dict[str, dict] = {}
     ind_cols: list[str] | None = None
     sig_cols: list[str] | None = None
-    for inst_id in args.assets:
+    for src_name, inst_id, src in resolved:
+        # per-asset bar budget: a mixed dataset derives the count from
+        # each asset's own source (venues may differ in bar duration)
+        max_bars = args.max_bars or int(
+            src.bars_per_year(base_bar) * args.years
+        )
         df, lbl, obs, icols, scols = prepare_asset(
-            inst_id, args.bars, max_bars, cfg, out
+            inst_id, args.bars, max_bars, cfg, out, src
         )
         if ind_cols is None:
             ind_cols = icols
@@ -725,10 +842,11 @@ def main() -> None:
         segments = split_chronological(df, lbl, obs, seq_len)
         meta_assets[inst_id] = {
             "bars": df.height,
+            "source": src_name,
             "segments": {},
         }
         for name, (sf, sl, sobs, info) in segments.items():
-            offset = sum(f.height for f in seg_data[name]["feat"])
+            offset = sum(f.height for f in seg_data[name].feat)
             seg_obs: list[OrderBlock] = []
             for ob in sobs:  # rebase OB indices into the joined frame
                 # Per-segment indices are already non-negative; -1 keeps its
@@ -757,21 +875,19 @@ def main() -> None:
                 )
                 all_obs.append(rebased)  # global (for analysis)
                 seg_obs.append(rebased)  # per-segment (for training)
-            seg_data[name]["feat"].append(sf)
-            seg_data[name]["lbl"].append(sl)
-            seg_data[name]["obs"].append(seg_obs)
+            seg_data[name].feat.append(sf)
+            seg_data[name].lbl.append(sl)
+            seg_data[name].obs.append(seg_obs)
             info = dict(info)
             info["class_distribution"] = class_distribution(sl)
             meta_assets[inst_id]["segments"][name] = info
 
     for name in ("train", "val", "test"):
-        feat_df = pl.concat(seg_data[name]["feat"], how="vertical")
-        lbl_df = pl.concat(seg_data[name]["lbl"], how="vertical")
+        feat_df = pl.concat(seg_data[name].feat, how="vertical")
+        lbl_df = pl.concat(seg_data[name].lbl, how="vertical")
         feat_df.write_parquet(out / name / "features.parquet")
         lbl_df.write_parquet(out / name / "labels.parquet")
-        obs_df = obs_to_frame(
-            [ob for seg in seg_data[name]["obs"] for ob in seg]
-        )
+        obs_df = obs_to_frame([ob for seg in seg_data[name].obs for ob in seg])
         obs_df.write_parquet(out / name / "order_blocks.parquet")
         print(
             f"[{name}] {feat_df.height} bars, "
@@ -786,9 +902,9 @@ def main() -> None:
         "years": args.years,
         "seq_len": seq_len,
         "split": {"train": 0.70, "val": 0.15, "test": 0.15, "gap": seq_len},
-        "total_bars_train": sum(f.height for f in seg_data["train"]["feat"]),
-        "total_bars_val": sum(f.height for f in seg_data["val"]["feat"]),
-        "total_bars_test": sum(f.height for f in seg_data["test"]["feat"]),
+        "total_bars_train": sum(f.height for f in seg_data["train"].feat),
+        "total_bars_val": sum(f.height for f in seg_data["val"].feat),
+        "total_bars_test": sum(f.height for f in seg_data["test"].feat),
         "n_indicators": len(ind_cols or []),
         "n_signals": len(sig_cols or []),
         "n_order_blocks": len(all_obs),

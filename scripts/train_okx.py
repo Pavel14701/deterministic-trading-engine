@@ -53,6 +53,25 @@ def main() -> None:
     from ai.src.quickstart import quick_train  # heavy torch import, keep lazy
 
     data = REPO / args.data
+
+    # Fail with a clear message when the dataset has not been prepared yet
+    # (e.g. run_pipeline.py is still running and train/val/test are empty).
+    missing = [
+        str(data / seg / f)
+        for seg in ("train", "val")
+        for f in ("features.parquet", "labels.parquet", "order_blocks.parquet")
+        if not (data / seg / f).is_file()
+    ]
+    if missing:
+        import sys
+
+        print(
+            "Dataset not ready. Missing files (relative to "
+            f"{data}): {missing}. Run scripts/run_pipeline.py first and wait "
+            "for it to finish before training."
+        )
+        sys.exit(1)
+
     meta = json.loads((data / "meta.json").read_text(encoding="utf-8"))
     ind_cols = list(meta["ind_cols"])
     sig_cols = list(meta.get("sig_cols") or SIG_COLS)
