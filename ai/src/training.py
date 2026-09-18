@@ -29,7 +29,7 @@ import polars as pl
 import torch
 import torch.nn.functional as functional
 
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
 from torch.utils.tensorboard import SummaryWriter
 
 from .dataset import TradingDataset, collate_ob
@@ -43,6 +43,13 @@ from .io import (
 from .losses import dual_loss
 from .metrics import compute_action_accuracy, compute_trade_metrics
 
+
+# The mem-efficient / flash SDP kernels return NaN in the backward pass
+# for (rare) batches whose attention masks leave almost no valid
+# positions. The math backend is numerically safe, slightly slower, and
+# identical in results. Must be set before any attention runs.
+torch.backends.cuda.enable_flash_sdp(False)
+torch.backends.cuda.enable_mem_efficient_sdp(False)
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +66,9 @@ def build_loader_from_parquet(
     batch_size: int,
     shuffle: bool,
     pattern_cols: list[str] | None = None,
+    sample_weights: np.ndarray | None = None,
+    epoch_windows: int | None = None,
+    max_ob: int | None = None,
 ) -> tuple[DataLoader, pl.DataFrame]:
     """Create a DataLoader from labeled Parquet files.
 
@@ -87,6 +97,17 @@ def build_loader_from_parquet(
         pattern_cols: Optional list of pattern label column names.
             If provided, they are extracted as a multi-label target
             tensor.
+        sample_weights: Optional per-bar weights (length == df.height).
+            When given, a ``WeightedRandomSampler`` (with replacement)
+            balances how often windows are drawn - used to keep small
+            timeframes from being drowned by the base grid in multi-TF
+            training.  Takes precedence over ``shuffle``.
+        epoch_windows: Cap on windows drawn per epoch when sampling
+            with weights (tf balance ratios are preserved).  ``None``
+            draws the full dataset per epoch.
+        max_ob: Cap on order blocks attached to each window (the
+            newest blocks are kept).  ``None`` keeps every block known
+            by the window end.
 
     Returns:
         A tuple ``(loader, merged_df)`` where ``loader`` is a
@@ -127,12 +148,34 @@ def build_loader_from_parquet(
         sig_feats=len(sig_cols),
         tp_sl_feats=len(tp_sl_cols),
         pattern_targets=pattern_targets,
+        max_ob=max_ob,
     )
 
+    sampler = None
+    if sample_weights is not None:
+        if len(sample_weights) != len(df):
+            raise ValueError(
+                f"sample_weights has {len(sample_weights)} entries, "
+                f"expected {len(df)} (one per bar)"
+            )
+        # A window's tf is defined by its labelled (last) bar, so window i
+        # (0-based over dataset.__len__) inherits the weight of bar
+        # seq_len - 1 + i.
+        win_w = np.asarray(sample_weights, dtype=np.float64)[seq_len - 1 :]
+        sampler = WeightedRandomSampler(
+            weights=torch.from_numpy(win_w),
+            num_samples=(
+                min(epoch_windows, len(win_w))
+                if epoch_windows
+                else len(win_w)
+            ),
+            replacement=True,
+        )
     loader = DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=shuffle,
+        shuffle=shuffle if sampler is None else False,
+        sampler=sampler,
         collate_fn=collate_ob,
     )
     return loader, df
@@ -405,6 +448,9 @@ def _run_train_epoch(
         )
         optimizer.zero_grad()
         loss.backward()
+        # Guard against exploding gradients (e.g. a batch with extreme
+        # inputs): unbounded updates instantly poison weights with NaN.
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         total_loss += loss.item()
         num_batches += 1

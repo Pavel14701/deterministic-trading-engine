@@ -55,6 +55,7 @@ class TradingDataset(Dataset):
         tp_sl_feats: int = 2,
         pattern_targets: np.ndarray | None = None,
         bar_index: np.ndarray | None = None,
+        max_ob: int | None = None,
     ):
         self.data = torch.tensor(data, dtype=torch.float32)
         self.order_blocks = order_blocks
@@ -97,6 +98,11 @@ class TradingDataset(Dataset):
             ],
             dtype=np.int64,
         )
+        # Cap on blocks scanned per window (the newest ones are kept).
+        # Merged multi-base train sets carry >1M blocks; scanning the
+        # whole known-prefix for every window makes epoch preparation
+        # take hours, so callers should pass a small cap (e.g. 64).
+        self._max_ob = max_ob
 
     def __len__(self) -> int:
         """Return the number of possible sliding windows."""
@@ -136,9 +142,14 @@ class TradingDataset(Dataset):
         prefix = int(
             np.searchsorted(self._ob_known_idx, end_bar, side="right")
         )
+        lo = (
+            0
+            if self._max_ob is None
+            else max(0, prefix - self._max_ob)
+        )
         ob_window = [
             ob
-            for ob in self._ob_sorted[:prefix]
+            for ob in self._ob_sorted[lo:prefix]
             # end_idx == -1 means "still active / never broken"
             if ob.end_idx < 0 or ob.end_idx >= start_bar
         ]

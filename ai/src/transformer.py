@@ -84,7 +84,14 @@ class EntryExitTransformer(nn.Module):
             activation="gelu",
             batch_first=True,
         )
-        self.time_encoder = nn.TransformerEncoder(time_layer, num_layers)
+        # enable_nested_tensor=False: the nested-tensor fast path is
+        # incompatible with the mem-efficient SDP backward on batches
+        # whose padding masks mask out nearly all positions - it
+        # silently poisons gradients with NaN (rare batches, hard to
+        # reproduce). See ai/src/training.py for the SDP backend caps.
+        self.time_encoder = nn.TransformerEncoder(
+            time_layer, num_layers, enable_nested_tensor=False
+        )
 
         # Order block encoder
         self.ob_numeric_proj = nn.Linear(7, hidden_size // 2)
@@ -107,7 +114,9 @@ class EntryExitTransformer(nn.Module):
             activation="gelu",
             batch_first=True,
         )
-        self.ob_encoder = nn.TransformerEncoder(ob_layer, num_layers)
+        self.ob_encoder = nn.TransformerEncoder(
+            ob_layer, num_layers, enable_nested_tensor=False
+        )
         self.ob_cls_token = nn.Parameter(torch.randn(1, 1, hidden_size))
 
         # Heads

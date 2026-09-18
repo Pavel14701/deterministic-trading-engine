@@ -272,6 +272,7 @@ def normalise(feat: pl.DataFrame, ind_cols: list[str]) -> pl.DataFrame:
         return float(cast(float, clean.abs().median()) or 0.0)
 
     scale_map: dict[str, float] = {}
+    log_cols: list[str] = []
     for col in feat.columns:
         if col == "ts" or col in PRICE_COLS:
             scale_map[col] = ref_close
@@ -285,9 +286,21 @@ def normalise(feat: pl.DataFrame, ind_cols: list[str]) -> pl.DataFrame:
                 vm = _median(feat[col][:500])
                 if vm > 0 and np.isfinite(vm):
                     scale_map[col] = vm
+        elif "volume" in col.lower():
+            # Raw traded volume spans many orders of magnitude (coin
+            # units: median ~1e2, spikes ~1e9).  A linear scale cannot
+            # tame that; log1p of the volume normalised by its early
+            # median maps it to a compact, model-friendly range.
+            vm = _median(feat[col][:500])
+            if vm > 0 and np.isfinite(vm):
+                log_cols.append(col)
     out = feat.with_columns(
         [(pl.col(c) / s).alias(c) for c, s in scale_map.items() if s > 0]
     )
+    if log_cols:
+        out = out.with_columns(
+            [pl.col(c).log1p().alias(c) for c in log_cols]
+        )
     return sanitise_features(out)
 
 
@@ -781,6 +794,18 @@ def main() -> None:
         help="timeframes, first = base",
     )
     ap.add_argument(
+        "--base",
+        nargs="+",
+        default=None,
+        help=(
+            "base grid(s) to build full datasets on (subset of --bars; "
+            "default: the first --bars entry). Each base sees only the "
+            "timeframes OLDER than itself as causal HTF context, so "
+            "'--bars 1m 5m 15m 1H --base 1m 15m' yields a 1m dataset "
+            "(5m/15m/1H context) and a 15m dataset (1H context)"
+        ),
+    )
+    ap.add_argument(
         "--years",
         type=float,
         default=1.0,
@@ -810,106 +835,166 @@ def main() -> None:
     for sub in ("train", "val", "test"):
         (out / sub).mkdir(exist_ok=True)
 
-    base_bar = args.bars[0]
+    bars_ms = default_source.BAR_MS
+    # Base grids to build full datasets on.  Every base sees the
+    # timeframes *older* than itself as causal HTF context, so one
+    # ladder yields one complete dataset per requested grid.
+    bases = args.base or [args.bars[0]]
+    unknown = [b for b in bases if b not in args.bars]
+    if unknown:
+        raise SystemExit(f"--base {unknown} not among --bars {args.bars}")
+    multi = len(bases) > 1
 
-    seg_data: dict[str, SegmentBucket] = {
-        "train": SegmentBucket(),
-        "val": SegmentBucket(),
-        "test": SegmentBucket(),
-    }
-    all_obs: list[OrderBlock] = []
-    meta_assets: dict[str, dict] = {}
     ind_cols: list[str] | None = None
-    sig_cols: list[str] | None = None
-    for src_name, inst_id, src in resolved:
-        # per-asset bar budget: a mixed dataset derives the count from
-        # each asset's own source (venues may differ in bar duration)
-        max_bars = args.max_bars or int(
-            src.bars_per_year(base_bar) * args.years
-        )
-        df, lbl, obs, icols, scols = prepare_asset(
-            inst_id, args.bars, max_bars, cfg, out, src
-        )
-        if ind_cols is None:
-            ind_cols = icols
-        elif icols != ind_cols:
-            raise RuntimeError(f"{inst_id}: indicator columns differ")
-        if sig_cols is None:
-            sig_cols = scols
-        elif scols != sig_cols:
-            raise RuntimeError(f"{inst_id}: signal columns differ")
-        df = normalise(df, icols)
-        segments = split_chronological(df, lbl, obs, seq_len)
-        meta_assets[inst_id] = {
-            "bars": df.height,
-            "source": src_name,
-            "segments": {},
-        }
-        for name, (sf, sl, sobs, info) in segments.items():
-            offset = sum(f.height for f in seg_data[name].feat)
-            seg_obs: list[OrderBlock] = []
-            for ob in sobs:  # rebase OB indices into the joined frame
-                # Per-segment indices are already non-negative; -1 keeps its
-                # sentinel meaning ("still active" / "no retest") instead of
-                # being shifted to a bogus bar index.
-                def off(x: int, offset: int = offset) -> int:
-                    return -1 if x < 0 else x + offset
+    base_sig_cols: dict[str, list[str]] = {}
+    per_base: dict[str, dict] = {}
+    meta_assets: dict[str, dict] = {}
+    grand_obs = 0
+    bars_tot = {"train": 0, "val": 0, "test": 0}
 
-                rebased = OrderBlock(
-                    id=len(all_obs),
-                    block_type=ob.block_type,
-                    start=ob.start,
-                    break_=ob.break_,
-                    retest=ob.retest,
-                    zone_low=ob.zone_low,
-                    zone_high=ob.zone_high,
-                    strength=ob.strength,
-                    structure_label=ob.structure_label,
-                    trend_direction=ob.trend_direction,
-                    start_idx=off(ob.start_idx),
-                    end_idx=off(ob.end_idx),
-                    timeframe=ob.timeframe,
-                    confirm_idx=off(ob.confirm_idx),
-                    retest_idx=off(ob.retest_idx),
-                    zone_height_atr=ob.zone_height_atr,
-                )
-                all_obs.append(rebased)  # global (for analysis)
-                seg_obs.append(rebased)  # per-segment (for training)
-            seg_data[name].feat.append(sf)
-            seg_data[name].lbl.append(sl)
-            seg_data[name].obs.append(seg_obs)
-            info = dict(info)
-            info["class_distribution"] = class_distribution(sl)
-            meta_assets[inst_id]["segments"][name] = info
-
-    for name in ("train", "val", "test"):
-        feat_df = pl.concat(seg_data[name].feat, how="vertical")
-        lbl_df = pl.concat(seg_data[name].lbl, how="vertical")
-        feat_df.write_parquet(out / name / "features.parquet")
-        lbl_df.write_parquet(out / name / "labels.parquet")
-        obs_df = obs_to_frame([ob for seg in seg_data[name].obs for ob in seg])
-        obs_df.write_parquet(out / name / "order_blocks.parquet")
+    for base_bar in bases:
+        ctx_bars = [b for b in args.bars if bars_ms[b] > bars_ms[base_bar]]
+        ladder = [base_bar, *ctx_bars]
         print(
-            f"[{name}] {feat_df.height} bars, "
-            f"actions={class_distribution(lbl_df)}, "
-            f"ob={obs_df.height}",
+            f"=== base {base_bar} "
+            f"(context: {', '.join(ctx_bars) or 'none'}) ===",
             flush=True,
         )
+        seg_data: dict[str, SegmentBucket] = {
+            "train": SegmentBucket(),
+            "val": SegmentBucket(),
+            "test": SegmentBucket(),
+        }
+        all_obs: list[OrderBlock] = []
+        base_assets: dict[str, dict] = {}
+        sig_cols: list[str] | None = None
+        for src_name, inst_id, src in resolved:
+            # per-asset bar budget: a mixed dataset derives the count from
+            # each asset's own source (venues may differ in bar duration)
+            max_bars = args.max_bars or int(
+                src.bars_per_year(base_bar) * args.years
+            )
+            df, lbl, obs, icols, scols = prepare_asset(
+                inst_id, ladder, max_bars, cfg, out, src
+            )
+            if ind_cols is None:
+                ind_cols = icols
+            elif icols != ind_cols:
+                raise RuntimeError(f"{inst_id}: indicator columns differ")
+            if sig_cols is None:
+                sig_cols = scols
+            elif scols != sig_cols:
+                raise RuntimeError(f"{inst_id}: signal columns differ")
+            df = normalise(df, icols)
+            segments = split_chronological(df, lbl, obs, seq_len)
+            base_assets[inst_id] = {
+                "bars": df.height,
+                "source": src_name,
+                "segments": {},
+            }
+            for name, (sf, sl, sobs, info) in segments.items():
+                offset = sum(f.height for f in seg_data[name].feat)
+                seg_obs: list[OrderBlock] = []
+                for ob in sobs:  # rebase OB indices into the joined frame
+                    # Per-segment indices are already non-negative; -1 keeps
+                    # its sentinel meaning ("still active" / "no retest")
+                    # instead of being shifted to a bogus bar index.
+                    def off(x: int, offset: int = offset) -> int:
+                        return -1 if x < 0 else x + offset
+
+                    rebased = OrderBlock(
+                        id=len(all_obs),
+                        block_type=ob.block_type,
+                        start=ob.start,
+                        break_=ob.break_,
+                        retest=ob.retest,
+                        zone_low=ob.zone_low,
+                        zone_high=ob.zone_high,
+                        strength=ob.strength,
+                        structure_label=ob.structure_label,
+                        trend_direction=ob.trend_direction,
+                        start_idx=off(ob.start_idx),
+                        end_idx=off(ob.end_idx),
+                        timeframe=ob.timeframe,
+                        confirm_idx=off(ob.confirm_idx),
+                        retest_idx=off(ob.retest_idx),
+                        zone_height_atr=ob.zone_height_atr,
+                    )
+                    all_obs.append(rebased)  # global (for analysis)
+                    seg_obs.append(rebased)  # per-segment (for training)
+                seg_data[name].feat.append(sf)
+                seg_data[name].lbl.append(sl)
+                seg_data[name].obs.append(seg_obs)
+                info = dict(info)
+                info["class_distribution"] = class_distribution(sl)
+                base_assets[inst_id]["segments"][name] = info
+
+        totals: dict[str, int] = {}
+        for name in ("train", "val", "test"):
+            seg_dir = out / name / base_bar if multi else out / name
+            if multi:
+                seg_dir.mkdir(parents=True, exist_ok=True)
+            feat_df = pl.concat(seg_data[name].feat, how="vertical")
+            lbl_df = pl.concat(seg_data[name].lbl, how="vertical")
+            feat_df.write_parquet(seg_dir / "features.parquet")
+            lbl_df.write_parquet(seg_dir / "labels.parquet")
+            obs_df = obs_to_frame(
+                [ob for seg in seg_data[name].obs for ob in seg]
+            )
+            obs_df.write_parquet(seg_dir / "order_blocks.parquet")
+            totals[name] = feat_df.height
+            bars_tot[name] += feat_df.height
+            print(
+                f"[{name}/{base_bar}] {feat_df.height} bars, "
+                f"actions={class_distribution(lbl_df)}, "
+                f"ob={obs_df.height}",
+                flush=True,
+            )
+        base_sig_cols[base_bar] = sig_cols or []
+        per_base[base_bar] = {
+            "sig_cols": sig_cols or [],
+            **{f"total_bars_{n}": totals[n] for n in totals},
+            "n_order_blocks": len(all_obs),
+        }
+        grand_obs += len(all_obs)
+        if multi:
+            for inst, info in base_assets.items():
+                entry = meta_assets.setdefault(
+                    inst, {"source": info["source"], "bases": {}}
+                )
+                entry["bases"][base_bar] = {
+                    "bars": info["bars"],
+                    "segments": info["segments"],
+                }
+        else:
+            meta_assets = base_assets
+
+    # union of per-base signal columns (a smaller base lacks the
+    # HTF-prefixed columns of larger-context bases); train_okx fills
+    # the missing ones with neutral values
+    sig_union: list[str] = []
+    for b in bases:
+        for col in base_sig_cols[b]:
+            if col not in sig_union:
+                sig_union.append(col)
 
     meta = {
         "assets": meta_assets,
         "bars": args.bars,
+        "bases": bases,
         "years": args.years,
         "seq_len": seq_len,
         "split": {"train": 0.70, "val": 0.15, "test": 0.15, "gap": seq_len},
-        "total_bars_train": sum(f.height for f in seg_data["train"].feat),
-        "total_bars_val": sum(f.height for f in seg_data["val"].feat),
-        "total_bars_test": sum(f.height for f in seg_data["test"].feat),
+        "total_bars_train": bars_tot["train"],
+        "total_bars_val": bars_tot["val"],
+        "total_bars_test": bars_tot["test"],
+        "per_base": per_base,
+        "base_sig_cols": base_sig_cols,
         "n_indicators": len(ind_cols or []),
-        "n_signals": len(sig_cols or []),
-        "n_order_blocks": len(all_obs),
+        "n_signals": len(sig_union),
+        "n_order_blocks": grand_obs,
         "ind_cols": ind_cols,
-        "sig_cols": sig_cols,
+        "sig_cols": sig_union,
         "price_cols": ["open", "high", "low", "close", "volume"],
         "tp_sl_cols": ["tp", "sl"],
         "generated_at": datetime.now(tz=timezone.utc).isoformat(),
@@ -917,7 +1002,7 @@ def main() -> None:
     (out / "meta.json").write_text(
         json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8"
     )
-    print(f"\nDONE: OB={len(all_obs)} -> {out}")
+    print(f"\nDONE: OB={grand_obs} bases={bases} -> {out}")
 
 
 if __name__ == "__main__":
