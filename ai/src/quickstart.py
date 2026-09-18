@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import dataclasses
 
+import numpy as np
 import torch
 
 from .config import AIConfig, load_config, set_seed
@@ -67,6 +68,9 @@ def quick_train(
     early_stopping_patience: int | None = None,
     save_best_path: str | None = None,
     n_patterns: int | None = None,
+    train_sample_weights: "np.ndarray | None" = None,
+    epoch_windows: int | None = None,
+    max_ob: int | None = None,
     config: AIConfig | None = None,
     **model_kwargs,
 ) -> EntryExitTransformer:
@@ -119,6 +123,17 @@ def quick_train(
         class_weight: If True, compute inverse-frequency class weights
             for the action loss (default True).
         log_dir: If set, TensorBoard logs are written there.
+        train_sample_weights: Optional per-bar weights over the training
+            table (one entry per merged row); when given, training
+            windows are drawn via a weighted random sampler - used to
+            balance timeframes in multi-base training.  Validation is
+            unaffected.
+        epoch_windows: When sampling with weights, cap the number of
+            windows drawn per epoch (the sampler keeps the tf balance
+            ratios).  ``None`` draws the full dataset per epoch.
+        max_ob: Cap on order blocks attached to each window (the newest
+            blocks are kept).  ``None`` keeps every block known by the
+            window end (slow on large merged datasets).
         early_stopping_patience: Stop after this many epochs without
             improvement (default 3). 0 disables.
         save_best_path: If set, the model with the lowest validation loss
@@ -211,6 +226,9 @@ def quick_train(
         batch_size=batch_size,
         shuffle=True,
         pattern_cols=pattern_cols,
+        sample_weights=train_sample_weights,
+        epoch_windows=epoch_windows,
+        max_ob=max_ob,
     )
     # ---------- Validation split ----------
     if val_path:
@@ -230,6 +248,7 @@ def quick_train(
                 if val_order_blocks
                 else obs
             ),
+            max_ob=max_ob,
             seq_len=seq_len,
             price_cols=price_cols,
             ind_cols=ind_cols or [],

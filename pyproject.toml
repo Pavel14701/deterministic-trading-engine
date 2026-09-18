@@ -10,7 +10,11 @@ requires-python = ">=3.12"
 # Корневой проект — workspace-обвязка: инструменты разработки и общий тестовый
 # стек. Рантайм-зависимости распределены по членам workspace (uv workspaces).
 # См. dev_docs/tz/TZ-00-roadmap.md п. «Монорепозиторий».
-dependencies = []
+dependencies = [
+    "lightgbm",
+    "scikit-learn>=1.8.0",
+    "xgboost",
+]
 
 [tool.uv.workspace]
 members = [
