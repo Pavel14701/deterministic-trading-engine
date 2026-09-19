@@ -32,7 +32,7 @@ def compute_atr(
         df: DataFrame with columns 'high', 'low', 'close'.
         period: Lookback period (default 14; overridden by ``risk``).
         risk: Optional :class:`RiskConfig` supplying ``atr_period`` /
-            ``atr_floor`` (configs/ai.yaml).
+            ``atr_floor`` (configs/engine.yaml).
 
     Returns:
         np.ndarray of shape (len(df),) with ATR values as float32.
@@ -88,7 +88,7 @@ def compute_tp_sl(
         sl_atr_multiplier: ATR multiplier for the stop-loss distance.
         close_col: Name of the close price column (default 'close').
         risk: Optional :class:`RiskConfig` supplying multipliers and the
-            ATR period (configs/ai.yaml). Explicit arguments win.
+            ATR period (configs/engine.yaml). Explicit arguments win.
 
     Returns:
         A tuple ``(tp, sl)`` of float32 arrays of length ``len(df)``.
@@ -840,7 +840,7 @@ def generate_labels_from_strategy(
     """Generate action and outcome labels by simulating a strategy.
 
     Risk parameters may come from three sources (priority order):
-    explicit keyword argument > ``risk`` (RiskConfig from configs/ai.yaml)
+    explicit keyword argument > ``risk`` (RiskConfig from configs/engine.yaml)
     > legacy defaults (identical to the YAML defaults).
 
     Execution model (look-ahead free):
@@ -876,7 +876,7 @@ def generate_labels_from_strategy(
             orders (default 0.0005 = 0.05%).
         max_bars_hold: Maximum bars to hold before a time-based exit
             (default 20; 0 disables).
-        risk: Optional :class:`RiskConfig` from configs/ai.yaml supplying
+        risk: Optional :class:`RiskConfig` from configs/engine.yaml supplying
             all of the above; explicit keyword arguments win.
 
     Returns:

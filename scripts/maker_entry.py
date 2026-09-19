@@ -32,7 +32,7 @@ import polars as pl
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from ai.mtf import resample_ohlcv  # noqa: E402
+from engine.mtf import resample_ohlcv  # noqa: E402
 from scripts.sim_engine import (  # noqa: E402
     COMM,
     E_MULT,

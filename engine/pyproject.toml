@@ -1,5 +1,5 @@
 [project]
-name = "dte-ai"
+name = "dte-engine"
 version = "0.1.0"
 description = "Research library: features, candidates, MTF panels, LGBM ranker, state machine, OKX sources"
 requires-python = ">=3.12"

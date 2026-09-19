@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [tool.uv.workspace]
-members = ["ai", "ta", "dsl"]
+members = ["engine", "ta", "dsl"]
 
 [dependency-groups]
 dev = [
@@ -124,7 +124,7 @@ explicit_package_bases = true
 namespace_packages = true
 exclude = ["legacy", ".venv", "ta/tests", "data", "runs"]
 
-[tool.mypy-ai]
+[tool.mypy-engine]
 disallow_untyped_defs = true
 warn_return_any = true
 check_untyped_defs = true
@@ -152,7 +152,7 @@ markers = [
     # Applied automatically by the root conftest.py path hook; do not
     # mark tests manually.
     "ta: belongs to the vendored dte-ta package",
-    "ai: belongs to the dte-ai package",
+    "engine: belongs to the dte-engine package",
     "dsl: belongs to the dte-dsl package",
     # --- domain markers (inherited from the former per-package inis) ---
     "candle: [ta] candle-pattern indicators",

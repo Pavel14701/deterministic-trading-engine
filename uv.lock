@@ -15,8 +15,8 @@ resolution-markers = [
 [manifest]
 members = [
     "deterministic-trading-engine",
-    "dte-ai",
     "dte-dsl",
+    "dte-engine",
     "dte-ta",
 ]
 constraints = [
@@ -245,9 +245,34 @@ dev = [
 ]
 
 [[package]]
-name = "dte-ai"
+name = "dte-dsl"
 version = "0.1.0"
-source = { virtual = "ai" }
+source = { virtual = "dsl" }
+dependencies = [
+    { name = "niquests" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-mock" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "niquests", specifier = ">=3.20.1" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "pytest-asyncio", specifier = ">=1.4.0" },
+    { name = "pytest-mock", specifier = ">=3.15.1" },
+]
+
+[[package]]
+name = "dte-engine"
+version = "0.1.0"
+source = { virtual = "engine" }
 dependencies = [
     { name = "niquests" },
     { name = "numpy" },
@@ -278,31 +303,6 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "pytest", specifier = "==9.1.1" },
-    { name = "pytest-mock", specifier = ">=3.15.1" },
-]
-
-[[package]]
-name = "dte-dsl"
-version = "0.1.0"
-source = { virtual = "dsl" }
-dependencies = [
-    { name = "niquests" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-mock" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "niquests", specifier = ">=3.20.1" }]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "pytest-asyncio", specifier = ">=1.4.0" },
     { name = "pytest-mock", specifier = ">=3.15.1" },
 ]
 

@@ -27,13 +27,13 @@ import polars as pl
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from ai.mtf_model import (  # noqa: E402
+from engine.mtf_model import (  # noqa: E402
     build_features,
     candidate_key,
     fit_rule_table,
     trade_curve_stats,
 )
-from ai.state_machine import run_state_machine
+from engine.state_machine import run_state_machine
 
 
 GEN_SLIP, COMM = 0.0005, 0.001
@@ -69,7 +69,7 @@ def sim_trade(
     return np.nan, np.nan, -1  # unreachable (loop always ends with time exit)
 
 
-from ai.mtf import resample_ohlcv  # noqa: E402
+from engine.mtf import resample_ohlcv  # noqa: E402
 
 
 raw = resample_ohlcv(

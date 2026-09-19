@@ -28,13 +28,13 @@ import polars as pl
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from ai.mtf import resample_ohlcv  # noqa: E402
-from ai.mtf_model import (  # noqa: E402
+from engine.mtf import resample_ohlcv  # noqa: E402
+from engine.mtf_model import (  # noqa: E402
     build_features,
     candidate_key,
     fit_rule_table,
 )
-from ai.state_machine import run_state_machine  # noqa: E402
+from engine.state_machine import run_state_machine  # noqa: E402
 from scripts.sim_engine import pess, sim  # noqa: E402
 
 

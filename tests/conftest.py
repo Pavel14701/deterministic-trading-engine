@@ -7,8 +7,8 @@ import numpy as np
 import polars as pl
 import pytest
 
-from ai.datatypes import OrderBlock
-from ai.features import compute_atr
+from engine.datatypes import OrderBlock
+from engine.features import compute_atr
 
 
 @pytest.fixture

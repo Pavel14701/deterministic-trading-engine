@@ -34,8 +34,8 @@ import sys  # noqa: E402
 
 sys.path.insert(0, str(REPO))
 
-from ai.config import load_config  # noqa: E402
-from ai.features import (  # noqa: E402
+from engine.config import load_config  # noqa: E402
+from engine.features import (  # noqa: E402
     compute_atr,
     generate_labels_from_strategy,
 )

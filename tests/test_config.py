@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from ai.config import (
+from engine.config import (
     AIConfig,
     RiskConfig,
     load_config,
@@ -48,7 +48,7 @@ def test_defaults_equal_legacy_hardcode():
 
 def test_load_from_yaml_overrides(tmp_path):
     """Unknown keys are ignored; known keys override defaults."""
-    yml = tmp_path / "ai.yaml"
+    yml = tmp_path / "engine.yaml"
     yml.write_text(
         "seed: 7\n"
         "risk:\n"
@@ -91,15 +91,15 @@ def test_set_seed_reproducible():
 
 
 def test_shipped_yaml_equals_dataclass_defaults():
-    """configs/ai.yaml must reproduce the dataclass defaults bit-for-bit.
+    """configs/engine.yaml must reproduce the dataclass defaults bit-for-bit.
 
     Rounded literals (e.g. ``0.3333`` for ``1/3``) would silently change
     the effective configuration, so every section must compare exactly.
 
     """
-    repo_yaml = Path(__file__).resolve().parents[3] / "configs" / "ai.yaml"
+    repo_yaml = Path(__file__).resolve().parents[3] / "configs" / "engine.yaml"
     if not repo_yaml.exists():
-        pytest.skip("configs/ai.yaml not present")
+        pytest.skip("configs/engine.yaml not present")
     cfg = load_config(repo_yaml)
     defaults = AIConfig()
     assert cfg.seed == defaults.seed

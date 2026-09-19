@@ -19,14 +19,14 @@ import polars as pl
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
-from ai.mtf import resample_ohlcv
-from ai.mtf_model import (
+from engine.mtf import resample_ohlcv
+from engine.mtf_model import (
     build_features,
     candidate_key,
     fit_rule_table,
     trade_curve_stats,
 )
-from ai.state_machine import run_state_machine
+from engine.state_machine import run_state_machine
 
 
 GEN_SLIP, COMM, GAP, E_MULT, X_MULT = 0.0005, 0.001, 0.25, 2.0, 2.0

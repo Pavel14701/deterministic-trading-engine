@@ -12,7 +12,7 @@ Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done ·
 | `strategies/` strategy layer | ✅ TZ-02 | 25 tests |
 | `backtest/` backtest | ✅ core; risk-gate ✅ TZ-04 | 34 + 12 integration |
 | `risk/` risk engine | ✅ config-driven TZ-11 | 22 + 12 integration |
-| `ai/` model | 🔨 core; trained on real data (OKX 7×4TF), best classifier of the baseline run — edge not yet achieved (gate not passed) | 71 tests + first backtest vs 7 baselines |
+| `engine/` model | 🔨 core; trained on real data (OKX 7×4TF), best classifier of the baseline run — edge not yet achieved (gate not passed) | 71 tests + first backtest vs 7 baselines |
 | `infer/` CLI | ✅ TZ-05 | 9 tests |
 | `rag/` RAG | 🔨 core; pass@1 unmeasured | 47 tests |
 | `main/` DI+bridge+REST+PG | 🔨 core; e2e on in-memory broker + SQLite | 12 REST + 10 db + e2e |
@@ -46,7 +46,7 @@ label profile (TP 2×ATR/SL 1.5×ATR) has negative expectancy net of costs on
 every TF (proven by the oracle test), while the **decoupled wide geometry**
 (1m OB entries, hour-scale TP/SL) shows in-sample positive expectancy.
 
-**Named risk profiles** now live in `configs/ai.yaml`: `risk_profile: default`
+**Named risk profiles** now live in `configs/engine.yaml`: `risk_profile: default`
 reads the `risk:` block; `--risk-profile wide` (prepare/backtest/dsl_stage0)
 reads `risk_wide:` (TP 108×ATR(1m) ≈ 5.9%, SL 27× ≈ 1.5%, hold 480×1m = 8h).
 
@@ -159,7 +159,7 @@ Priority queue reshuffle:
    verify with `--oracle` in backtest before training anything.
 2. **Cost model**: 0.1%/side taker is conservative; maker/limit entries (~0.02%)
    would move breakeven WR from ~0.40 to ~0.35 at TP3/SL1.5 — decide the
-   execution assumption explicitly in configs/ai.yaml `risk`.
+   execution assumption explicitly in configs/engine.yaml `risk`.
 3. Per-TF reporting: backtest report should include cost/TP per slice and
    per-class entry precision/recall (reviewer note — valid).
 4. Purged walk-forward CV and PnL-weighted loss — still queued, but secondary

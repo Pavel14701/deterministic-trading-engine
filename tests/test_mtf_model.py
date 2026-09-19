@@ -4,7 +4,7 @@ import numpy as np
 import polars as pl
 import pytest
 
-from ai.mtf_model import (
+from engine.mtf_model import (
     CATEGORICAL_FEATURES,
     NUMERIC_FEATURES,
     apply_rule_table,
@@ -134,7 +134,7 @@ def test_describe_by_regime_groups() -> None:
 
 
 def test_candidate_key_separates_sides_on_same_bar() -> None:
-    from ai.mtf_model import candidate_key
+    from engine.mtf_model import candidate_key
 
     df = pl.DataFrame(
         {

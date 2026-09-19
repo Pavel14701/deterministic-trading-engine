@@ -27,14 +27,14 @@ import polars as pl
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from ai.mtf_model import (  # noqa: E402
+from engine.mtf_model import (  # noqa: E402
     apply_rule_table,
     build_features,
     candidate_key,
     fit_rule_table,
     trade_curve_stats,
 )
-from ai.state_machine import run_state_machine
+from engine.state_machine import run_state_machine
 
 
 GEN_SLIP = 0.0005

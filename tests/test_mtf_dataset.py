@@ -8,7 +8,7 @@ SMA-based trend state.
 import numpy as np
 import pytest
 
-from ai.mtf_dataset import (
+from engine.mtf_dataset import (
     assign_splits,
     limit_fill,
     nearest_zone_dists,

@@ -38,11 +38,11 @@ import sys  # noqa: E402
 
 sys.path.insert(0, str(REPO))
 
-from ai.candidates import collect_candidates  # noqa: E402
-from ai.config import load_config  # noqa: E402
-from ai.features import compute_atr  # noqa: E402
-from ai.mtf import asof_rows, resample_ohlcv  # noqa: E402
-from ai.mtf_dataset import (  # noqa: E402
+from engine.candidates import collect_candidates  # noqa: E402
+from engine.config import load_config  # noqa: E402
+from engine.features import compute_atr  # noqa: E402
+from engine.mtf import asof_rows, resample_ohlcv  # noqa: E402
+from engine.mtf_dataset import (  # noqa: E402
     assign_splits,
     limit_fill,
     nearest_zone_dists,

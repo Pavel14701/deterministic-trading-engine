@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
 
 jobs:
@@ -12,12 +12,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
       - run: uv sync --all-packages
-      - name: Lint (library, tests, dsl subset)
+      - name: Lint (library, tests, dsl)
         # scripts/ keeps its research-grade style; only F-class is enforced:
-        - run: uv run ruff check ai tests dsl
+        # real bugs (undefined names, syntax) block, style does not.
+        run: uv run ruff check engine tests dsl
       - name: Lint (scripts, F-class only)
         run: uv run ruff check scripts --select F,E9
       - name: Type check
-        run: uv run mypy ai
+        run: uv run mypy engine
       - name: Tests
         run: uv run pytest tests dsl/tests

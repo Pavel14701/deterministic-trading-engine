@@ -1,4 +1,4 @@
-"""dte-ai: research library of the trading pipeline.
+"""dte-engine: research library of the trading pipeline.
 
 Live modules (everything else lives in ``legacy/``):
 - ``config``     - YAML config, seeds, risk kwargs;

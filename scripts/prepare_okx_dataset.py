@@ -62,25 +62,25 @@ import polars as pl
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from ai.config import (  # noqa: E402
+from engine.config import (  # noqa: E402
     AIConfig,
     load_config,
     risk_kwargs,
 )
-from ai.datatypes import OrderBlock  # noqa: E402
-from ai.features import (  # noqa: E402
+from engine.datatypes import OrderBlock  # noqa: E402
+from engine.features import (  # noqa: E402
     compute_atr,
     compute_ob_features,
     compute_tp_sl,
     generate_labels_from_strategy,
 )
-from ai.io import load_order_blocks_parquet  # noqa: E402
-from ai.marketdata.common import (  # noqa: E402
+from engine.io import load_order_blocks_parquet  # noqa: E402
+from engine.marketdata.common import (  # noqa: E402
     CandleSource,
     get_source,
     known_sources,
 )
-from ai.marketdata.okx_source import OkxSource  # noqa: E402,F401
+from engine.marketdata.okx_source import OkxSource  # noqa: E402,F401
 from ta.src.provider import (  # noqa: E402
     BINDINGS,
     OutputSpec,
@@ -595,7 +595,7 @@ def split_chronological(
             f"{usable} usable after the two {gap}-bar gaps, but three "
             f"segments of at least {min_segment} bars are required. "
             "Fetch more history (--years/--max-bars) or reduce the "
-            "model seq_len (configs/ai.yaml) for this timeframe."
+            "model seq_len (configs/engine.yaml) for this timeframe."
         )
     n_train = int(usable * train_frac)
     n_val = int(usable * val_frac)
@@ -846,7 +846,7 @@ def main() -> None:
         "--risk-profile",
         default=None,
         help=(
-            "named risk profile from configs/ai.yaml: 'default' or e.g. "
+            "named risk profile from configs/engine.yaml: 'default' or e.g. "
             "'wide' (risk_wide block); default follows the yaml "
             "risk_profile key. Must match the --risk-profile used at "
             "backtest time"

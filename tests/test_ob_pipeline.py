@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 import numpy as np
 import polars as pl
 
-from ai.datatypes import OrderBlock
-from ai.features import compute_atr, compute_ob_features
+from engine.datatypes import OrderBlock
+from engine.features import compute_atr, compute_ob_features
 
 
 def _mk_df(n: int = 64) -> pl.DataFrame:
@@ -246,7 +246,7 @@ def test_ob_lookup_matches_linear_scan():
     high or low" rule and the structure/trend filters.
 
     """
-    from ai.features import _find_entry_ob, _OBLookup
+    from engine.features import _find_entry_ob, _OBLookup
 
     rng = np.random.default_rng(11)
     n_bars = 60
@@ -284,7 +284,7 @@ def test_ob_lookup_matches_linear_scan():
 
 def test_ob_lookup_is_exact_at_zone_boundaries():
     """Point queries stay exact strictly inside / outside a zone."""
-    from ai.features import _OBLookup
+    from engine.features import _OBLookup
 
     ob = _mk_ob(
         id=0, zone_low=100.0, zone_high=105.0, end_idx=0, confirm_idx=0

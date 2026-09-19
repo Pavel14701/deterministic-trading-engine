@@ -7,8 +7,8 @@ from typing import ClassVar
 
 import polars as pl
 
-from ai.marketdata.common import CandleSource, register
-from ai.marketdata.okx_fetch import fetch_candles as _okx_fetch_candles
+from engine.marketdata.common import CandleSource, register
+from engine.marketdata.okx_fetch import fetch_candles as _okx_fetch_candles
 
 
 @register

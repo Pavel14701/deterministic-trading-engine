@@ -20,17 +20,14 @@ rank-based admission. Full evidence trail: **STATUS.md**.
 ## Repository layout
 
 ```
-ai/          research library: config, features, candidates, mtf resampling,
-             mtf panel/model (LGBM), state machine, (parked) transformer,
-             marketdata (OKX candle sources)
-scripts/     the stage pipeline (semantic names; d-prefixed runs kept):
-               data:    prepare_okx_dataset.py build_mtf_dataset.py
-                        build_stop_dataset.py zones.py
-               core:    sim_engine.py        (unified event simulator)
+engine/      research library: config, features, candidates, mtf resampling,
+             mtf panel/model (LGBM), state machine, marketdata (OKX candle
+             sources), zones, event sims (sim/maker), okx dataset builder
+scripts/     experiment drivers & stage pipeline (research-grade style):
+               data:    build_mtf_dataset.py build_stop_dataset.py
                stages:  execution_costs.py ranking_baselines.py
                         adaptive_tp.py matrix_2x2.py wf_ab.py
                         portfolio.py robustness.py nested_cv.py
-                        admission.py maker_entry.py
 tests/       unit tests (simulator, maker entry, zones, library)
 ta/          vendored indicator library (upstream; excluded from default run)
 dsl/         dte-dsl package: declarative trading-conditions DSL
