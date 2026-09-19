@@ -1115,26 +1115,59 @@ Results (test pess R, n, maxDD event):
 | C (real OB, no AVSL)| +0.476 (1281, 4.8R) | - | - |
 | D (placebo, no AVSL)| +0.539 (1490, 2.6R) | +0.541 (1430, 3.4R) | +0.531 (1459, 2.1R) |
 
-Verdict: OB contribution (A-B) = **-0.03R** (negative in every seed);
-AVSL contribution (A-C) = **-0.049R**; the detector-free stack D =
-**+0.53..0.54R** - BETTER than the full stack (+0.11R, n +45%, dd
-lower in 2/3 seeds).  The entire pess edge lives in stop/TP geometry
-(rule table), cost-aware ranking, the gate and the slot state machine;
-real OB level selection and AVSL contribute nothing measurable and
-appear to cost R via candidate clustering (slot contention) and
-low-quality avsl_bounce entries (consistent with D.5 anchor-stops and
-D.12 maker adverse selection).  Corollary: "the OB finds zones that
-hold" is NOT the source of the +0.44R - a random nearby zone does as
-well or better.  Caveats: single regime sample (3 majors, 1h, 1.5y);
-placebo keeps real zone timing/height/side so it ablates LEVEL
-selection, not candidate timing per se; fold dispersion is real but
-the B>A, D>A ordering is stable across all 3 placebo seeds.
+Verdict (REVISED after D.13b diagnostics - see below): the first-pass
+reading "detectors carry no edge" was TOO WIDE.  Decomposition:
 
-Actions: (1) treat OB/AVSL as candidate generators, not edge sources -
-no further detector tuning; (2) test dropping avsl_bounce outright;
-(3) re-run this ablation after the data expansion (15m, more assets)
-before committing to a detector-free architecture; (4) stop-head /
-admission / state machine are the alpha carriers - hardening them
-(and the live execution layer) is the priority.
+1. COST GEOMETRY IS THE DOMINANT MECHANISM.  Within EVERY variant,
+   EV is strongly monotone in stop width: quintile of risk_unit/ATR
+   q0 (narrowest, cost_R 0.29) has ev -0.14 (A) / -0.09 (D), q2
+   (cost_R 0.05) has +0.09 (A) / +0.05 (D).  Narrow stops die of
+   round-trip cost drag (the D.3 mechanism), mechanically.  Placebo's
+   outward shift widens risk_unit (17.4 -> 19.1 ATR) and cuts mean
+   cost_R (0.099 -> 0.084) purely geometrically.
+2. AT MATCHED GEOMETRY REAL OB WINS.  Among affordable rows
+   (cost_R <= 0.05, ~54-60% of panel): A +0.0640 > B +0.0579 >
+   C +0.0571 > D +0.0493.  The real-OB candidate stream is BETTER
+   than placebo where costs are survivable.  The OB entry-timing/
+   level signal exists; it is positive, not the +0.10..0.15R hoped
+   for, but not zero and not negative.
+3. THE D>A GAP IS A MIX EFFECT, NOT SELECTION: placebo shrinks the
+   toxic tail (cost_R > 0.15: 21.6% of A rows contributing -0.036R/
+   trade vs 17.2% contributing -0.024R for D).  "Random zones beat
+   OB" is false; "random zones have fewer unaffordable entries" is
+   true and mechanical.
+4. AVSL IS ROBUSTLY HARMFUL (the one clean architectural finding):
+   D - B = +0.08..0.09R in every seed; C > A at panel level; the
+   avsl anchor stop rules were already the worst in stage 0.5b.
+5. Fold robustness: D - A > 0 in 7/8, 6/8, 7/8, 7/8, 6/8 folds
+   (seeds 1-5) but one regime fold contributes +0.28..0.37 of the
+   pooled +0.09..0.11R; without it the gap is ~+0.05..0.07R.
+   B - A is 5/8, 5/8, 5/8, 6/8, 3/8 folds - the "placebo OB better
+   than real OB" first impression was NOT fold-robust; it was the
+   AVSL/mix effect.
+
+Pre-registration results table (test pess R, n, maxDD event; 5
+placebo seeds for B/D - D > A in 5/5, B > A in 5/5, D > B in 5/5):
+| variant | s1 | s2 | s3 | s4 | s5 |
+|---------|----|----|----|----|----|
+| A (real OB+AVSL)    | +0.427 (1026, 4.3R) | - | - | - | - |
+| B (placebo+AVSL)    | +0.452 (1031, 3.2R) | +0.448 (997, 2.6R) | +0.477 (1089, 3.7R) | +0.453 (1019, 3.2R) | +0.432 (967, 2.1R) |
+| C (real OB, no AVSL)| +0.476 (1281, 4.8R) | - | - | - | - |
+| D (placebo, no AVSL)| +0.539 (1490, 2.6R) | +0.541 (1430, 3.4R) | +0.531 (1459, 2.1R) | +0.521 (1391, 1.9R) | +0.531 (1497, 2.5R) |
+
+Caveats: 3 majors, 1h, 1.5y, one regime sample; placebo inherits real
+zone timing/height/side (ablates LEVEL selection, not candidate
+timing); diagnostics at panel level (no gate) + WF folds (gated).
+
+Actions: (1) DO NOT go detector-free - real OB beats placebo at
+matched cost geometry; (2) kill the toxic tail with an explicit
+cost-aware rule (cap cost_R ~0.15 or min risk_unit in ATRs - the
+mechanical -0.14R ev of q0 is pure cost drag); (3) drop avsl_bounce
+and the anchor:avsl*/avsr* stop rules (robust +0.05..0.09R, the only
+clean architectural finding); (4) re-run the ablation after data
+expansion (15m, more assets) before freezing conclusions; (5) keep
+detector tuning frozen - the affordable-segment OB edge (+0.064 vs
++0.049 placebo) is real but small; capacity/robustness work first.
+
 
 
