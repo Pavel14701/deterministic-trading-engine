@@ -81,7 +81,6 @@ ENTRY_SLIP_MULT = 2.0
 
 
 def pess_r(row: dict, gap_atr_mult: float) -> float:
-    sign = 1.0 if row["side"] == "long" else -1.0
     risk = row["risk_unit"]
     fill = row["fill_price"]
     delta = ENTRY_SLIP_MULT * GEN_SLIP * fill / risk  # worse entry

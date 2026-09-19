@@ -104,7 +104,6 @@ fmt = pl.format("{}|{}", pl.col("regime_dir"), pl.col("side"))
 
 # --- D.4 ranker for trade selection (same recipe, pess labels) ---
 def _pess(row: dict) -> float:
-    sign = 1.0 if row["side"] == "long" else -1.0
     risk, fill = row["risk_unit"], row["fill_price"]
     d = E_MULT * GEN_SLIP * fill / risk
     if row["exit_reason"] == "sl":

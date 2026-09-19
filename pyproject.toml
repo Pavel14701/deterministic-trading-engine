@@ -1,7 +1,7 @@
 [project]
 name = "deterministic-trading-engine"
 version = "0.1.0"
-description = "Deterministic algorithmic trading system: DSL, ta indicators, Transformer P(win), RAG as an auxiliary layer"
+description = "BTC/ETH/SOL trading research pipeline: zone-geometry EV, walk-forward validation, rank-based admission"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]

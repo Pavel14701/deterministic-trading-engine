@@ -43,7 +43,6 @@ E_MULT, X_MULT = 2.0, 2.0
 
 
 def pess_r(row: dict) -> float:
-    sign = 1.0 if row["side"] == "long" else -1.0
     risk, fill = row["risk_unit"], row["fill_price"]
     delta = E_MULT * GEN_SLIP * fill / risk
     if row["exit_reason"] == "sl":

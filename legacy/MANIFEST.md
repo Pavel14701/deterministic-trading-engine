@@ -68,3 +68,22 @@ STATUS.md; kept as provenance.
 its own synthetic case, unrelated to the pipeline (documented since the
 first full-suite run). `ta/` is excluded from the default pytest
 path (`testpaths = ["tests"]`).
+
+## Second pass (restructure v2, 2026-09-19)
+
+- `ai/transformer.py` moved here (from `ai/transformer.py`);
+  `tests/test_transformer.py`
+  and the two transformer-reference tests cut from `tests/test_ob_pipeline.py`
+  (`test_transformer_encodes_all_ob_fields`,
+  `test_vectorised_ob_encoding_matches_per_block`, appended at the bottom of
+  `legacy/tests_ai/test_transformer.py`). The module had zero live importers:
+  `scripts/matrix_2x2.py` carries its own inline torch TRF for cells C/D.
+- `ai/docs/` (7 md files describing the archived transformer system) ->
+  `legacy/ai_docs/`.
+- `tests/conftest.py`: transformer-only fixtures removed (sample_batch,
+  sample_batch_tensors, model_params, sample_action_outcome_labels,
+  sample_parquet_files, Batch alias); shared data fixtures kept.
+- Deps trimmed: `tensorboard`, gpu extras (torch-directml / onnx /
+  onnxruntime-directml) removed from `ai/pyproject.toml` (torch kept for
+  matrix_2x2). `configs/ai.yaml` restored after being dropped in v1
+  (live builders need `load_config(risk_profile=...)`).

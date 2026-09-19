@@ -1,4 +1,4 @@
-"""Prepare an EntryExitTransformer training dataset from live OKX data.
+"""Prepare the multi-timeframe research dataset from live OKX data.
 
 Pipeline (run from the repo root):
 
@@ -736,7 +736,7 @@ def resolve_assets(
     """Resolve ``--assets`` specs into (source, instrument) pairs.
 
     ``--source`` supplies the default venue; an explicit ``src:inst``
-    prefix (``okx:BTC-USDT``, ``tinvest:SBER@MOEX``) overrides it so a
+    prefix (``okx:BTC-USDT``) overrides it so a
     single dataset can mix venues.  The requested bars are validated
     against **every** resolved source (support + history depth), which
     makes an impossible request fail with a clear message instead of a
@@ -780,7 +780,7 @@ def main() -> None:
     """Run the full dataset preparation (multi-TF, year-scale, split)."""
     ap = argparse.ArgumentParser(
         description=(
-            "Prepare a multi-source training dataset (OKX, T-Invest, ...)"
+            "Prepare the multi-timeframe research dataset (OKX)"
         )
     )
     ap.add_argument(
@@ -799,7 +799,7 @@ def main() -> None:
         ],
         help=(
             "instruments; optionally prefixed with a source, e.g. "
-            "tinvest:SBER@MOEX okx:BTC-USDT"
+            "okx:BTC-USDT"
         ),
     )
     ap.add_argument(
@@ -875,10 +875,7 @@ def main() -> None:
         default_source, args.assets, args.bars, args.years
     )
 
-    cfg = load_config(risk_profile=args.risk_profile)
-    seq_len = cfg.model.seq_len
     out = REPO / args.out
-    cache = REPO / args.cache_dir if args.cache_dir else out
     out.mkdir(parents=True, exist_ok=True)
     for sub in ("train", "val", "test"):
         (out / sub).mkdir(exist_ok=True)

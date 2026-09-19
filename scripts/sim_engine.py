@@ -55,7 +55,6 @@ def sim(o, h, l, c, i0, side, sl, tp, hold, atr):
 
 
 def pess(row):
-    sign = 1.0 if row["side"] == "long" else -1.0
     risk, fill = row["risk_unit"], row["fill_price"]
     d = E_MULT * GEN_SLIP * fill / risk
     if row["exit_reason"] == "sl":

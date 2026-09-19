@@ -818,6 +818,32 @@ After D.12 the repo was rebuilt around the live research pipeline:
   ai/candidates.py (F821), orphan dead code after return in
   ai/candidates.py, missing niquests dep declaration (ai/pyproject).
 
+### Repo restructure v2 (2026-09-19, same day)
+
+Post-restructure audit pass:
+- **`configs/ai.yaml` restored** — it had been dropped during v1 (the
+  configs/ dir was inspected for *.py only). It is required by
+  `load_config(risk_profile=...)` in build_mtf_dataset / build_stop_dataset /
+  prepare_okx_dataset; without it the builders crash. Back in place from
+  git history, verified `load_config(risk_profile='wide')` works.
+- **Transformer fully archived**: `ai/transformer.py` ->
+  `legacy/ai/transformer.py` (matrix_2x2 has its own inline TRF, so the
+  module had zero live importers); tests/test_transformer.py and the two
+  transformer-reference tests in test_ob_pipeline.py ->
+  `legacy/tests_ai/`; `ai/docs/` (old transformer-system docs) ->
+  `legacy/ai_docs/`; transformer-only conftest fixtures
+  (sample_batch / model_params / sample_action_outcome_labels /
+  sample_parquet_files) removed; tensorboard + torch-directml/onnx extras
+  dropped from ai deps (torch stays: matrix_2x2 uses it).
+- **Dead locals removed**: unused `sign` in the pess-helpers of
+  sim_engine / ranking_baselines / adaptive_tp / execution_costs;
+  unused `seq_len`/`cache`/`cfg` in prepare_okx_dataset's split-stage;
+  stale T-Invest mentions dropped from prepare_okx_dataset docstrings.
+- **Validation**: 112 passed / 2 skipped (6 transformer tests left with
+  the module), mypy strict clean, ruff clean incl. F/E9 on scripts;
+  smokes byte-identical: wf_ab A +0.401 / B +0.450 / 2891 signals,
+  REPLACE-low +466.0R / 2.44R, maker lift -0.414.
+
 ### NEXT
 
 1. **Data expansion** (more assets incl. low-liquidity alts, longer history

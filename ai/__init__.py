@@ -10,7 +10,6 @@ Live modules (everything else lives in ``legacy/``):
 - ``mtf_dataset``- multi-timeframe panel builder;
 - ``mtf_model``  - LGBM ranker, feature builders, rule tables;
 - ``state_machine``- portfolio slot state machine (FCFS / REPLACE);
-- ``transformer``- EntryExitTransformer (parked, kept for D.8 evidence);
 - ``marketdata`` - OKX candle sources.
 """
 
@@ -38,13 +37,11 @@ from .io import (
     merge_features_labels,
     save_labels_parquet,
 )
-from .transformer import EntryExitTransformer
 
 
 __all__ = [
     "AIConfig",
     "ComputeConfig",
-    "EntryExitTransformer",
     "ModelConfig",
     "OrderBlock",
     "RiskConfig",
