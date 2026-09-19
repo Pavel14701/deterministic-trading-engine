@@ -27,8 +27,8 @@ from dsl.exceptions import ProviderError
 from dsl.providers.base import IndicatorProvider
 
 from .candle.cdl_engulfing import cdl_engulfing
-from .custom.ott import ott_ind
 from .custom.avsl import avsl_ind
+from .custom.ott import ott_ind
 from .momentum.rsi import rsi_ind
 from .overlap.ema import ema_ind
 from .overlap.sma import sma_ind
