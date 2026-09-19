@@ -8,6 +8,7 @@ from engine.mtf_model import (
     CATEGORICAL_FEATURES,
     NUMERIC_FEATURES,
     apply_rule_table,
+    bucketed_sharpe,
     build_features,
     describe_by_regime,
     ev_threshold,
@@ -16,6 +17,7 @@ from engine.mtf_model import (
     oracle_policy_ev,
     paired_bootstrap_diff,
     per_candidate_pick,
+    per_trade_sharpe,
     policy_by_rule_choice,
     random_rule_choice_ev,
     select_entry_rows,
@@ -195,6 +197,77 @@ def test_trade_curve_stats_edge_cases() -> None:
     assert all_win["max_dd_r"] == 0.0
     # NaN rows are ignored
     assert trade_curve_stats(np.array([np.nan, 1.0]))["n"] == 1
+
+
+def test_trade_curve_stats_dd_depends_on_order() -> None:
+    """max_dd_r is a chronological statistic: same multiset of trades in
+    a different order gives a different drawdown.  Callers must sort by
+    trade time before pooling (d13c/wf_ab pool per asset then fold)."""
+    loss_first = np.array([-2.0, 1.0, 1.0, 1.0, 1.0])
+    loss_in_middle = np.array([1.0, 1.0, -2.0, 1.0, 1.0])
+    assert trade_curve_stats(loss_first)["max_dd_r"] == pytest.approx(0.0)
+    assert trade_curve_stats(loss_in_middle)["max_dd_r"] == pytest.approx(2.0)
+    # same trades, same mean - only the curve shape differs
+    assert loss_first.mean() == pytest.approx(loss_in_middle.mean())
+
+
+def test_t_stat_inflated_by_pooled_correlated_copies() -> None:
+    """t_stat assumes independent trades.  Pooling k identical copies
+    (proxy for correlated assets / overlapping trades) multiplies it by
+    ~sqrt(k) without adding information - why t=14 is NOT a Sharpe."""
+    rng = np.random.default_rng(7)
+    r = rng.normal(0.1, 1.0, size=200)
+    t1 = trade_curve_stats(r)["t_stat"]
+    r3 = np.tile(r, 3)
+    t3 = trade_curve_stats(r3)["t_stat"]
+    # exact: same mean/std up to ddof weighting, n scaled by 3
+    assert t3 == pytest.approx(
+        r3.mean() / r3.std(ddof=1) * np.sqrt(r3.size), rel=1e-12)
+    assert t3 / t1 == pytest.approx(np.sqrt(3), rel=1e-2)
+
+
+def test_per_trade_sharpe_known_values() -> None:
+    r = np.array([2.0, -1.0, 2.0, -1.0, 2.0, -1.0])
+    std = r.std(ddof=1)
+    assert per_trade_sharpe(r) == pytest.approx(r.mean() / std)
+    assert per_trade_sharpe(np.array([1.0])) == 0.0
+    assert per_trade_sharpe(np.array([2.0, 2.0])) == 0.0  # zero dispersion
+    assert per_trade_sharpe(np.array([np.nan, 1.0, 3.0])) == pytest.approx(
+        np.array([1.0, 3.0]).mean() / np.array([1.0, 3.0]).std(ddof=1))
+
+
+def test_bucketed_sharpe_known_series() -> None:
+    """Two weeks, 2R per week, zero dispersion -> std 0 -> Sharpe 0."""
+    day = 86_400_000
+    ts = np.array([0, 1 * day, 8 * day, 9 * day], dtype=float)
+    r = np.array([1.0, 1.0, 1.0, 1.0])
+    assert bucketed_sharpe(r, ts) == 0.0
+
+
+def test_bucketed_sharpe_computes_from_weekly_sums() -> None:
+    day = 86_400_000
+    # week 0: +3R total, week 1: -1R, week 2: +2R, week 4: +2R
+    ts = np.array([0, 1 * day, 8 * day, 16 * day, 30 * day], dtype=float)
+    r = np.array([1.0, 2.0, -1.0, 2.0, 2.0])
+    s = bucketed_sharpe(r, ts)
+    weekly = np.array([3.0, -1.0, 2.0, 0.0, 2.0])  # week 3 flat = 0
+    expected = weekly.mean() / weekly.std(ddof=1) * np.sqrt(365.25 / 7)
+    assert s == pytest.approx(expected)
+
+
+def test_bucketed_sharpe_unsorted_input_and_edges() -> None:
+    day = 86_400_000
+    ts = np.array([16 * day, 0.0, 8 * day], dtype=float)
+    r = np.array([2.0, 3.0, -1.0])
+    s_sorted = bucketed_sharpe(r, ts)
+    s_unsorted = bucketed_sharpe(r[::-1], ts[::-1])
+    # sums per bucket are order-independent, so Sharpe must match
+    assert s_unsorted == pytest.approx(s_sorted)
+    assert s_sorted != 0.0
+    # degenerate inputs
+    assert bucketed_sharpe(np.array([1.0]), np.array([0.0])) == 0.0
+    assert bucketed_sharpe(np.array([np.nan, 1.0, 2.0]),
+                           np.array([0.0, 0.0, 7 * 86_400_000.0])) != 0.0
 
 
 def test_policy_skips_invalid_rows_and_picks_best_rule() -> None:

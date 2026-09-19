@@ -1232,8 +1232,49 @@ correlate weekly pess R with intra-week vol episodes - find what the
 surviving trades in f2/f5 looked like vs the casualties.
 
 New production baseline (accepted, from D.13c): C + cost_R cap 0.15 =
-+0.502R, n=970, dd 3.6R.  Order matters: AVSL-off FIRST, cap second -
-the cap loses EV on the full stack.
++0.502R, n=970, dd 3.0R (chronological).  Order matters: AVSL-off
+FIRST, cap second - the cap loses EV on the full stack.
+
+### Stage D.13e — metrics audit: "Sharpe 14" was the t-stat; dd was computed on a non-chronological curve :white_check_mark: (formulas now tested; performance LEVEL still suspicious)
+
+Full pass over the metric plumbing (user flagged Sharpe = 14):
+
+1. There is NO Sharpe anywhere in the codebase.  The 14 was
+   ``trade_curve_stats["t_stat"]`` = mean/std*sqrt(n) - a SIGNIFICANCE
+   statistic (mean in units of standard errors), not a Sharpe.  For
+   C|cap=0.15: mean 0.502, per-trade std 0.46R, n=970 -> t = 14.2.
+   Worse, the t-stat itself is inflated by dependence: pooling 3
+   correlated assets multiplies it ~sqrt(3) with zero new information
+   (now proven by test).  Naive t on the C cells reads up to 38.
+2. Honest Sharpe, now computed and tested
+   (``per_trade_sharpe`` = mean/std per trade;
+   ``bucketed_sharpe`` = weekly R-sum Sharpe * sqrt(52), which absorbs
+   intra-week overlap and cross-asset pooling): per-trade 0.72-1.08,
+   annualized 5.7-16.5 across the grid; baseline C|cap=0.15:
+   per-trade 1.08, annualized 12.3.
+3. REAL BUG fixed in d13c: max_dd_r was computed on a PSEUDO-curve
+   (trades concatenated per asset then per fold - not chronological),
+   which overstated dd.  Corrected chronological dd, all cells:
+   A|None 2.4R (was 4.3), C|None 3.7R (was 4.8), C|cap0.15 3.0R (was
+   3.6), C|cap0.1 2.1R (was 3.0).  Consequence: earlier dd-based
+   statements were partly artifacts - A's control dd is actually the
+   LOWEST of the A cells; the cap no longer "cuts dd on A".  Mean
+   ranking is unchanged: C|cap=0.15 remains the best cell (+0.502).
+4. Formulas are now pinned by tests (118 passing): t-stat exact form,
+   dd order-dependence, t inflation under pooling, per-trade Sharpe
+   known values, bucketed Sharpe vs hand-computed weekly sums,
+   unsorted-timestamp invariance, degenerate inputs.
+
+OPEN CONCERN (the number, not the plumbing): even the honest
+annualized Sharpe of ~10-16 is economically implausible for an hourly
+strategy and per-trade Sharpe >1 is a classic look-ahead smell.  The
+metric FORMULAS are verified; the suspicious part is upstream - the
+r_net stored in the ablation panels (mean -0.027, std 0.858 over 24k
+raw rows is sane, so the inflation appears at SELECTION time: the
+gate picks rows whose outcomes cluster tightly).  Before any
+production decision on the baseline level: audit the ablation panel
+r_net computation for look-ahead (fill price vs decision bar, exit
+indexing) and check the win/timeout/SL mix of the SELECTED trades.
 
 
 

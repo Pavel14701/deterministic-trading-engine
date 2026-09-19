@@ -34,9 +34,11 @@ sys.path.insert(0, str(REPO))
 
 from engine.mtf import resample_ohlcv  # noqa: E402
 from engine.mtf_model import (  # noqa: E402
+    bucketed_sharpe,
     build_features,
     candidate_key,
     fit_rule_table,
+    per_trade_sharpe,
     trade_curve_stats,
 )
 from engine.sim import pess, sim  # noqa: E402
@@ -104,10 +106,11 @@ def replay(panel, d):
         if not np.isfinite(ro):
             continue
         sig.append({"cand": r["_cand"], "decision_idx": int(r["entry_idx"]),
-                    "side": r["side"], "priority": 0.0,
+                    "side": r["side"], "priority": 0.0, "ts": float(r["ts"]),
                     "r_net": float(rp), "r_opt": float(ro), "exit_idx": jx})
     taken, _ = run_state_machine(sig)
-    return np.array([x["r_net"] for x in taken])
+    return (np.array([x["r_net"] for x in taken]),
+            np.array([x["ts"] for x in taken]))
 
 
 def evaluate(d: str, cap: float | None) -> dict:
@@ -175,40 +178,50 @@ def evaluate(d: str, cap: float | None) -> dict:
              range(max(0, (t1 - t0) // fl - N_FOLDS + 1),
                    (t1 - t0) // fl + 1)][-N_FOLDS:]
 
-    fold_means, all_r, detail = [], [], {}
+    fold_means, all_r, all_ts, detail = [], [], [], {}
     for fi, (fs_, fe) in enumerate(folds):
         tr = TS < fs_ - EMBARGO_DAYS * DAY_MS
         te = (TS >= fs_) & (TS < fe)
         sc = ranker(np.where(tr)[0])
-        per_asset = {}
+        per_r, per_ts = {}, {}
         for ai, t in enumerate(TAGS):
             pm = data[t]["panel"].with_columns(
                 pl.Series("s", sc[ASSET_ROW == ai]),
                 pl.Series("is_test", te[ASSET_ROW == ai]))
-            per_asset[t] = replay(pm, data[t])
-        parts = [x for x in per_asset.values() if x.size]
+            per_r[t], per_ts[t] = replay(pm, data[t])
+        parts = [x for x in per_r.values() if x.size]
         eb = np.concatenate(parts) if parts else np.array([])
         fold_means.append(float(eb.mean()) if eb.size else float("nan"))
         all_r.append(eb)
+        all_ts.append(np.concatenate([per_ts[t] for t in TAGS
+                                      if per_r[t].size]))
         detail[fi] = {
             "start": datetime.fromtimestamp(
                 fs_ / 1000, tz=timezone.utc).strftime("%Y-%m-%d"),
             "mean": float(eb.mean()) if eb.size else float("nan"),
             "n": int(eb.size),
-            **{t: float(per_asset[t].mean())
-               if per_asset[t].size else float("nan") for t in TAGS}}
+            **{t: float(per_r[t].mean())
+               if per_r[t].size else float("nan") for t in TAGS}}
         print(f"  f{fi} {detail[fi]['start']}: pess={eb.mean():+.3f} "
               f"(n={eb.size})", flush=True)
 
     pooled = np.concatenate([x for x in all_r if x.size])
+    pooled_ts = np.concatenate([x for x in all_ts if x.size])
+    order = np.argsort(pooled_ts, kind="stable")
+    pooled_chrono = pooled[order]
+    stats = trade_curve_stats(pooled_chrono)
     res = {"mean": float(pooled.mean()), "n": int(pooled.size),
-           "dd": float(trade_curve_stats(pooled)["max_dd_r"]),
+           "dd": stats["max_dd_r"],
+           "t_stat_naive": stats["t_stat"],
+           "sharpe_per_trade": per_trade_sharpe(pooled_chrono),
+           "sharpe_ann_bucketed": bucketed_sharpe(pooled_chrono, pooled_ts),
            "folds": fold_means, "fold_detail": detail,
            "rows_raw": sum(data[t]["rows_raw"] for t in TAGS),
            "rows_kept": sum(data[t]["panel"].height for t in TAGS)}
     print(f"  => {label}: pess={res['mean']:+.3f} (n={res['n']}, "
-          f"dd={res['dd']:.1f}R, rows {res['rows_raw']}->{res['rows_kept']})",
-          flush=True)
+          f"dd={res['dd']:.1f}R, sharpe={res['sharpe_ann_bucketed']:.2f} "
+          f"[per-trade {res['sharpe_per_trade']:.2f}], "
+          f"rows {res['rows_raw']}->{res['rows_kept']})", flush=True)
     return res
 
 
