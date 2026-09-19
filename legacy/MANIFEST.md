@@ -71,6 +71,19 @@ path (`testpaths = ["tests"]`).
 
 ## Second pass (restructure v2, 2026-09-19)
 
+- **Root `dsl/` restored in full** (it had been replaced by a hand-made
+  5-file minimal subset): original `dte-dsl` package again lives at
+  `dsl/` — tokenizer/parser/AST/interpreter/evaluate, all providers
+  (in_process, http), README, docs/, own pyproject (workspace member),
+  and its test suite (26 tests). `dsl/tests` are back in the default
+  pytest run and in CI. Nothing was lost content-wise meanwhile: the
+  archived `legacy/packages/dsl` is byte-identical to the checkpoint
+  root `dsl/` and stays as the monorepo-layout archive.
+- **Ghost dependency fixed**: `pandas` was used by live code
+  (`ai/mtf_model.py`, `scripts/wf_ab.py`, `matrix_2x2.py`,
+  `nested_cv.py`) but declared nowhere — it rode along in the old
+  lockfile via yfinance. Now declared in root + ai pyprojects.
+
 - `ai/transformer.py` moved here (from `ai/transformer.py`);
   `tests/test_transformer.py`
   and the two transformer-reference tests cut from `tests/test_ob_pipeline.py`

@@ -1,4 +1,4 @@
-# t_inv_rag — BTC/ETH/SOL trading research pipeline
+# deterministic-trading-engine — BTC/ETH/SOL trading research pipeline
 
 Research codebase behind a validated, live-defensible EV estimate for a
 zone-geometry trading strategy (stop geometry is universal across assets;
@@ -33,8 +33,10 @@ scripts/     the stage pipeline (semantic names; d-prefixed runs kept):
                         admission.py maker_entry.py
 tests/       unit tests (simulator, maker entry, zones, library)
 ta/          vendored indicator library (upstream; excluded from default run)
-dsl/         minimal live subset (exceptions + provider base/manifest) kept
-             because ta/src/provider imports it
+dsl/         dte-dsl package: declarative trading-conditions DSL
+             (tokenizer -> parser -> AST -> interpreter, manifest providers);
+             ta/src/provider builds on its provider interface; own suite in
+             dsl/tests, part of the default run and CI
 legacy/      archived dead code of the former monorepo — see
              legacy/MANIFEST.md before touching anything in there
 data/ runs/  parquet data and stage artifacts (d-prefixed filenames are
@@ -45,7 +47,7 @@ data/ runs/  parquet data and stage artifacts (d-prefixed filenames are
 
 ```bash
 uv sync --all-packages
-uv run pytest tests            # unit suite
+uv run pytest                 # unit suite (tests/ + dsl/tests)
 uv run ruff check ai tests dsl # lint (scripts: F-class only)
 uv run mypy ai                 # strict on the library
 

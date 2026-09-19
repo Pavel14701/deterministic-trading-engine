@@ -839,8 +839,14 @@ Post-restructure audit pass:
   sim_engine / ranking_baselines / adaptive_tp / execution_costs;
   unused `seq_len`/`cache`/`cfg` in prepare_okx_dataset's split-stage;
   stale T-Invest mentions dropped from prepare_okx_dataset docstrings.
-- **Validation**: 112 passed / 2 skipped (6 transformer tests left with
-  the module), mypy strict clean, ruff clean incl. F/E9 on scripts;
+- **`dsl/` restored in full**: v1 had replaced the original dte-dsl
+  package with a hand-made 5-file subset; the full package (engine,
+  providers, docs, own suite of 26 tests) is live again at `dsl/`,
+  workspace member, tests in the default run and CI. Ghost `pandas`
+  dependency declared explicitly (root + ai pyprojects).
+- **Validation**: 266 passed / 6 skipped (112 research + 154 dsl,
+  6 transformer tests left with the module), mypy strict clean,
+  ruff clean incl. F/E9 on scripts;
   smokes byte-identical: wf_ab A +0.401 / B +0.450 / 2891 signals,
   REPLACE-low +466.0R / 2.44R, maker lift -0.414.
 

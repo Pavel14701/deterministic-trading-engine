@@ -20,4 +20,4 @@ jobs:
       - name: Type check
         run: uv run mypy ai
       - name: Tests
-        run: uv run pytest tests
+        run: uv run pytest tests dsl/tests

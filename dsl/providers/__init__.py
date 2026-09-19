@@ -36,6 +36,8 @@ Example:
 """  # noqa: E501
 
 from .base import AsyncIndicatorProvider, IndicatorProvider
+from .http_provider import AsyncHTTPProvider, HTTPProvider
+from .in_process import InProcessProvider
 from .manifest import (
     IndicatorSchema,
     Manifest,
@@ -45,8 +47,11 @@ from .manifest import (
 
 
 __all__ = (
-        "AsyncIndicatorProvider",
-            "IndicatorProvider",
+    "AsyncHTTPProvider",
+    "AsyncIndicatorProvider",
+    "HTTPProvider",
+    "InProcessProvider",
+    "IndicatorProvider",
     "IndicatorSchema",
     "Manifest",
     "ManifestValidator",

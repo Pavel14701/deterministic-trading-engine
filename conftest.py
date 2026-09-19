@@ -16,7 +16,7 @@ import pytest
 def pytest_collection_modifyitems(items) -> None:
     """Tag every test with the marker of its owning package."""
     root = pathlib.Path(__file__).resolve().parent
-    services = {"tests": "ai", "ai": "ai", "ta": "ta"}
+    services = {"tests": "ai", "ai": "ai", "ta": "ta", "dsl": "dsl"}
     for item in items:
         try:
             rel = pathlib.Path(str(item.path)).resolve().relative_to(root)
