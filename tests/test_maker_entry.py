@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from scripts.maker_entry import maker_sim, market_sim
+from engine.maker import maker_sim, market_sim
 
 
 def _flat_path(n: int = 60, price: float = 100.0):

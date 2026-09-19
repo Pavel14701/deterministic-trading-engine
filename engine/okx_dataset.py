@@ -48,7 +48,6 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-import sys
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -58,34 +57,33 @@ from typing import cast
 import numpy as np
 import polars as pl
 
-
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO))
-
-from engine.config import (  # noqa: E402
+from engine.config import (
     AIConfig,
     load_config,
     risk_kwargs,
 )
-from engine.datatypes import OrderBlock  # noqa: E402
-from engine.features import (  # noqa: E402
+from engine.datatypes import OrderBlock
+from engine.features import (
     compute_atr,
     compute_ob_features,
     compute_tp_sl,
     generate_labels_from_strategy,
 )
-from engine.io import load_order_blocks_parquet  # noqa: E402
-from engine.marketdata.common import (  # noqa: E402
+from engine.io import load_order_blocks_parquet
+from engine.marketdata.common import (
     CandleSource,
     get_source,
     known_sources,
 )
-from engine.marketdata.okx_source import OkxSource  # noqa: E402,F401
-from ta.src.provider import (  # noqa: E402
+from engine.marketdata.okx_source import OkxSource  # noqa: F401  (re-export)
+from ta.src.provider import (
     BINDINGS,
     OutputSpec,
     TaProvider,
 )
+
+
+REPO = Path(__file__).resolve().parents[1]
 
 
 DIST_CAP = 10.0  # cap for distance features (in ATR units)
@@ -965,7 +963,8 @@ def _worker_stage(
             )
 
 
-def _merge_stage(args: argparse.Namespace, out: Path, bases: list[str], multi: bool) -> None:
+def _merge_stage(args: argparse.Namespace, out: Path,
+                 bases: list[str], multi: bool) -> None:
     """Stage 2: join staged per-asset artifacts into final split files.
 
     Reads what ``_worker_stage`` wrote under ``<out>/assets/``,

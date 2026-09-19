@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from scripts.sim_engine import sim
+from engine.sim import sim
 
 
 FLAT = 100.0

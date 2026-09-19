@@ -39,12 +39,12 @@ from engine.features import (  # noqa: E402
     compute_atr,
     generate_labels_from_strategy,
 )
-from scripts.prepare_okx_dataset import (  # noqa: E402
+from engine.okx_dataset import (  # noqa: E402
     detect_order_blocks,
     get_source,
     resolve_assets,
 )
-from scripts.zones import (  # noqa: E402
+from engine.zones import (  # noqa: E402
     build_tp_sl,
     compute_anchors,
     paint_zone,

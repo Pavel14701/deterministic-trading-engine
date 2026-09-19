@@ -34,7 +34,7 @@ from engine.mtf_model import (  # noqa: E402
     trade_curve_stats,
 )
 from engine.state_machine import run_state_machine  # noqa: E402
-from scripts.sim_engine import pess, sim  # noqa: E402
+from engine.sim import pess, sim  # noqa: E402
 
 
 TAGS = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]

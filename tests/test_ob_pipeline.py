@@ -119,7 +119,7 @@ def test_split_chronological_no_overlap_and_context():
     from pathlib import Path
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-    from scripts.prepare_okx_dataset import split_chronological
+    from engine.okx_dataset import split_chronological
 
     n = 4000
     feat = _mk_df(n)
@@ -148,7 +148,7 @@ def test_split_chronological_no_overlap_and_context():
 def test_split_short_history_raises_clear_error():
     import pytest
 
-    from scripts.prepare_okx_dataset import split_chronological
+    from engine.okx_dataset import split_chronological
 
     # 600 bars used to overflow the frame (IndexError) because the gap was
     # added on top of the fractions; it must now fail with a clear
@@ -163,7 +163,7 @@ def test_split_short_history_raises_clear_error():
 
 
 def test_split_segments_fit_frame_and_reserve_gaps():
-    from scripts.prepare_okx_dataset import split_chronological
+    from engine.okx_dataset import split_chronological
 
     n, seq_len = 1200, 128
     feat = _mk_df(n)
@@ -190,7 +190,7 @@ def test_htf_ob_mapping_is_causal_and_drops_future_blocks():
     from pathlib import Path
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-    from scripts.prepare_okx_dataset import map_htf_ob_indices
+    from engine.okx_dataset import map_htf_ob_indices
 
     base_ms, htf_ms = 60_000, 300_000
     base_ts = np.arange(60, dtype=np.int64) * base_ms  # 1m grid
@@ -219,7 +219,7 @@ def test_htf_ob_mapping_never_precedes_htf_close():
     from pathlib import Path
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-    from scripts.prepare_okx_dataset import map_htf_ob_indices
+    from engine.okx_dataset import map_htf_ob_indices
 
     base_ms, htf_ms = 60_000, 900_000  # 1m base, 15m HTF
     base_ts = np.arange(200, dtype=np.int64) * base_ms

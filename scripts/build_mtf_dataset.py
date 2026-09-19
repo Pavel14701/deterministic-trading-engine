@@ -59,7 +59,7 @@ from scripts.build_stop_dataset import (  # noqa: E402
     _paint_zone,
     _simulate_outcome,
 )
-from scripts.prepare_okx_dataset import (  # noqa: E402
+from engine.okx_dataset import (  # noqa: E402
     detect_order_blocks,
     get_source,
     resolve_assets,

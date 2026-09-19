@@ -10,7 +10,12 @@ Live modules (everything else lives in ``legacy/``):
 - ``mtf_dataset``- multi-timeframe panel builder;
 - ``mtf_model``  - LGBM ranker, feature builders, rule tables;
 - ``state_machine``- portfolio slot state machine (FCFS / REPLACE);
-- ``marketdata`` - OKX candle sources.
+- ``marketdata`` - OKX candle sources;
+- ``okx_dataset``- OKX raw dataset builder (detect OBs, features, labels);
+- ``zones``      - zone geometry: overlays, TP/SL grid per stop rule;
+- ``sim``        - unified event simulator (+ D.6 experiment entry);
+- ``maker``      - maker/market entry sims (+ D.12 experiment entry);
+- ``admission``  - portfolio admission policies (+ D.11 entry).
 """
 
 from .config import (

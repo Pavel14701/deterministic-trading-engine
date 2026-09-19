@@ -126,6 +126,8 @@ def build_tp_sl(
     """
     sign = 1.0 if side == "long" else -1.0
     if stop_rule.startswith("zone:"):
+        if zone is None:
+            raise ValueError("zone stop rule requires a zone overlay")
         buffer = float(stop_rule.split(":")[1])
         sl = zone - sign * buffer * atr
     elif stop_rule.startswith("atr:"):
@@ -135,7 +137,7 @@ def build_tp_sl(
         _pfx, name, buffer_s = stop_rule.split(":")
         buffer = float(buffer_s)
         key = anchor_for_side(name, side)
-        level = anchors[key] if key else None
+        level = anchors[key] if (key and anchors is not None) else None
         if level is None:
             # anchor not valid for this side -> no trades for candidate
             sl = np.full(close.shape, np.nan)

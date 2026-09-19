@@ -12,7 +12,7 @@ from dataclasses import dataclass
 import numpy as np
 import pytest
 
-from scripts.zones import (
+from engine.zones import (
     anchor_for_side,
     build_tp_sl,
     paint_zone,
