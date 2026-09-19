@@ -1169,5 +1169,36 @@ expansion (15m, more assets) before freezing conclusions; (5) keep
 detector tuning frozen - the affordable-segment OB edge (+0.064 vs
 +0.049 placebo) is real but small; capacity/robustness work first.
 
+### Stage D.13c — cost-cap grid + AVSL-off on the WF protocol :white_check_mark: (AVSL-off confirmed; cap is a dd lever, not free EV)
+
+Measured the two D.13 actions on the gated WF-B protocol
+(scripts/d13c_cost_cap.py, runs/d13c_cost_cap.json), no rebuild -
+the cap filters (candidate, rule) rows with cost_R = 0.0025*fill /
+risk_unit above the cap, which is deployable live (risk_unit is
+known at signal time):
+
+| config | test pess | n | maxDD |
+|--------|-----------|-----|-------|
+| A (control) | +0.427 | 1026 | 4.3R |
+| A + cap 0.15 | +0.378 | 780 | 4.4R |
+| A + cap 0.10 | +0.393 | 656 | **2.8R** |
+| C = no AVSL | +0.476 | 1281 | 4.8R |
+| C + cap 0.15 | **+0.502** | 970 | 3.6R |
+| C + cap 0.10 | +0.454 | 718 | 3.0R |
+
+Findings: (1) AVSL-off CONFIRMED on the gated protocol: +0.049R and
++25% trades - ship it (drop avsl_bounce + anchor:avsl*/avsr* rules).
+(2) The cap is NOT free EV on the full stack: on A every cap LOWERS
+mean (the gate loses rule options that were net-positive picks on
+train) while cap 0.10 cuts dd 4.3 -> 2.8R; on C, cap 0.15 adds
++0.026R and cuts dd 4.8 -> 3.6R.  Best cell: C + cap 0.15 = +0.502,
+dd 3.6R = +0.075R over control with -16% dd.  (3) The D.13 regime
+fold is identified: fold 2025-10-27..12-22 (A +0.282 vs D +0.639)
+and 2026-04-13..06-08 (A +0.239 vs D +0.502) - A's weak regimes; in
+strong folds A >= D.  Wide-stop geometry matters most exactly where
+the real stack degrades - a regime-aware stop-floor is the natural
+next lever, not a global architecture change.
+
+
 
 
