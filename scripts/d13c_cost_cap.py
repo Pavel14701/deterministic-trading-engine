@@ -48,6 +48,10 @@ TAGS = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
 VARIANT_DIRS = {"A": "A", "C": "C"}
 CAPS = (None, 0.15, 0.10, 0.075)
 N_FOLDS, FOLD_DAYS, EMBARGO_DAYS = 8, 56, 7
+# label-permutation control (D.13e): PERMUTE=0 -> normal run;
+# PERMUTE=<seed> -> shuffle r_net before the table fit; test EV must
+# collapse to ~0.  Usage: python scripts/d13c_cost_cap.py [PERMUTE]
+PERMUTE = int(sys.argv[1]) if len(sys.argv) > 1 else 0
 DAY_MS = 86_400_000
 
 
@@ -86,9 +90,23 @@ def load_asset(d: str, tag: str, cap: float | None):
             "l": l, "c": c, "rows_raw": n0}
 
 
-def replay(panel, d):
-    """Rule-table gate + unified sim + state machine (wf_ab port)."""
-    table = fit_rule_table(panel.filter(~pl.col("is_test")))
+def replay(panel, d, train_mask, permute: int = 0):
+    """Rule-table gate + unified sim + state machine (wf_ab port).
+
+    ``train_mask`` MUST be strictly past-only (ts < fold start -
+    embargo): fitting the table on ``~is_test`` leaks future folds
+    into the gate (D.13e audit finding).
+
+    ``permute`` > 0: seed for permuting ``r_net`` across rows - the
+    label-permutation control.  The table then picks rules blind, and
+    any residual test EV is structural, not information.
+    """
+    work = panel
+    if permute:
+        rng = np.random.default_rng(permute)
+        work = work.with_columns(
+            pl.Series("r_net", rng.permutation(work["r_net"].to_numpy())))
+    table = fit_rule_table(work.filter(train_mask))
     fmt = pl.format("{}|{}", pl.col("regime_dir"), pl.col("side"))
     picks = (panel.sort(["_cand", "s"]).group_by("_cand").last()
              .with_columns(fmt.replace_strict(
@@ -188,7 +206,8 @@ def evaluate(d: str, cap: float | None) -> dict:
             pm = data[t]["panel"].with_columns(
                 pl.Series("s", sc[ASSET_ROW == ai]),
                 pl.Series("is_test", te[ASSET_ROW == ai]))
-            per_r[t], per_ts[t] = replay(pm, data[t])
+            per_r[t], per_ts[t] = replay(pm, data[t],
+                                         tr[ASSET_ROW == ai], PERMUTE)
         parts = [x for x in per_r.values() if x.size]
         eb = np.concatenate(parts) if parts else np.array([])
         fold_means.append(float(eb.mean()) if eb.size else float("nan"))
@@ -244,9 +263,10 @@ def main() -> None:
         print(f"  {k}: {d2}", flush=True)
 
     (REPO / "runs").mkdir(exist_ok=True)
-    (REPO / "runs" / "d13c_cost_cap.json").write_text(
+    suffix = f"_perm{PERMUTE}" if PERMUTE else ""
+    (REPO / "runs" / f"d13c_cost_cap{suffix}.json").write_text(
         json.dumps(results, indent=1))
-    print("saved runs/d13c_cost_cap.json", flush=True)
+    print(f"saved runs/d13c_cost_cap{suffix}.json", flush=True)
 
 
 if __name__ == "__main__":

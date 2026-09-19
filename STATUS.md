@@ -1279,3 +1279,56 @@ indexing) and check the win/timeout/SL mix of the SELECTED trades.
 
 
 
+
+
+### Stage D.13f — look-ahead audit of the gate + permutation-anomaly root cause :white_check_mark:
+
+**Part 1 — REAL LEAK found and fixed.**  The rule table in all three
+protocols (`ablation.py`, `wf_ab.py`, `d13c_cost_cap.py`) was fitted on
+`~is_test` rows, i.e. on folds that are in the FUTURE relative to the
+test fold.  Fixed: train mask is now strictly past-only
+(`ts < fold_start - 7d embargo`).  With the honest table the grid
+collapses: A|None +0.096R, C|cap=0.15 **+0.118R** (n=954, dd 6.1R;
+was +0.427/+0.502R).  ALL prior stage-D numbers are RETIRED.
+
+**Part 2 — permutation anomaly ROOT-CAUSED: the control was
+mis-specified, there is NO residual leakage.**
+
+Symptom: with `PERMUTE=42` (table fitted on shuffled `r_net`) test EV
+stayed at +0.27..+0.36R, far above the honest +0.118.
+
+Diagnosis (`scripts/_diag_perm_trace.py`, since removed, numbers below):
+1. `fit_rule_table` really consumes the permuted `r_net` - the table is
+   blind.  But the LGBMRanker was NOT permuted: it kept training on
+   TRUE past `r_pess` labels.  The control therefore ablated only the
+   table, not the ranker.
+2. On the picks (max-`s` rule row per candidate, rule==table-rule,
+   test folds) the per-rule EV is dramatically above the panel
+   baseline: e.g. `zone:0.5` is -0.088R pess over ALL test panel rows
+   but +0.68R (n=48) among ranker-top picks; `anchor:st:0.5` +0.58..+0.95
+   on picks.  The ranker has genuine out-of-sample candidate-selection
+   skill (entry-time features only - audited).
+3. Pre-state-machine EV of permuted-table picks: +0.146R (n=808);
+   post-SM +0.242R.  That is the ranker's skill flowing through a blind
+   table - not leakage.
+4. Full-pipeline permutation (ranker labels AND table labels shuffled):
+   EV collapses to +0.064 pre-SM / **+0.069R** post-SM (n=441), which is
+   statistically indistinguishable from the panel base rate over the
+   same fold windows (**+0.010R**, n=46k; diff ~2 sigma, and post-SM
+   trades are correlated so effective n is smaller).
+5. Metric consistency check on identical picks: fresh `sim()` pess
+   outcome vs panel `r_pess` differ by only +0.01R - the replay is not
+   measuring a friendlier outcome than the panel.
+
+Side finding (worth D.13g): the INFORMED table is WORSE than a noise
+ table - honest +0.118R vs table-permuted +0.242R.  The train-fitted
+ table almost always picks zone rules (best train EV) while the ranker's
+ strong picks are st/atr-flavored; the `rule == table-rule` filter
+ throws away the ranker's best candidates.  The rule table appears to
+ add zero value on top of the ranker.
+
+Bottom line: honest baseline stands at **C|cap=0.15 = +0.118R**
+(per-trade Sharpe ~1.08, weak folds do not separate).  The edge lives
+entirely in the ranker's walk-forward feature skill and is mediocre.
+NEXT: (a) D.13g ranker-only ablation - drop the table filter, measure;
+(b) decide continue/retire for stage-D on that number.
