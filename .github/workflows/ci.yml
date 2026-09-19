@@ -13,8 +13,7 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - run: uv sync --all-packages
       - name: Lint (library, tests, dsl subset)
-        # scripts/ keeps its research-grade style; only F-class is enforced:
-        - run: uv run ruff check ai tests dsl
+        run: uv run ruff check ai tests dsl
       - name: Lint (scripts, F-class only)
         run: uv run ruff check scripts --select F,E9
       - name: Type check
