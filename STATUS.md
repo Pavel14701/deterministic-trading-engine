@@ -3,6 +3,25 @@
 Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done · ⬜ not started ·
 ⬜=spec only. Full per-task detail: `dev_docs/tz/TZ-00-roadmap.md`.
 
+## 2026-09-19 — package rename ai -> engine, scripts cleanup
+
+- `ai/` -> `engine/` (the package is the whole research engine, not just
+  models): `dte-engine` in the uv workspace, `[tool.mypy-engine]`,
+  pytest marker `engine`, `configs/engine.yaml`.
+- Library-grade scripts moved into the package: `zones`, `sim`
+  (ex `sim_engine`), `maker` (ex `maker_entry`), `admission`,
+  `okx_dataset` (ex `prepare_okx_dataset`).  Their demo pipelines
+  (D.6/D.11/D.12) now run via `python -m engine.<mod>` behind
+  `__main__` guards - importing the package is side-effect free.
+- `scripts/` keeps experiment drivers only (wf_ab, nested_cv,
+  matrix_2x2, ranking_baselines, adaptive_tp, execution_costs,
+  robustness, portfolio, build_*_dataset), linted at F,E9 tier.
+- CI fixed: the lint step had a malformed (nested) YAML list; pushes
+  now trigger on `dev` too.  Lint/mypy retargeted to `engine/`.
+- Numbers re-validated after the move: B pooled 6/8, admission
+  REPLACE-low +466.0R / 2.44R DD, D.6 gated test pess +0.302, D.12
+  maker lift -0.414 - all identical to the pre-refactor state.
+
 ## Implemented ✅ / core 🔨
 
 | Module | Status | Tested/verified |
