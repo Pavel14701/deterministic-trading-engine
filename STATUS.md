@@ -1199,6 +1199,42 @@ strong folds A >= D.  Wide-stop geometry matters most exactly where
 the real stack degrades - a regime-aware stop-floor is the natural
 next lever, not a global architecture change.
 
+### Stage D.13d — regime trigger search: production vector does NOT separate the weak folds :x: (negative result, recorded to stop a wrong stop-floor)
+
+Question before building a regime-aware stop-floor: is there a causal
+signal that distinguishes f2 (2025-10-27..12-22) / f5 (2026-04-13)
+from f1 (2025-09-01), with useful lead time?
+scripts/d13d_regime_diag.py, runs/d13d_regime_diag.json.
+
+Answer: NO at fold granularity.  The production regime vector
+(z50/slope50 from SMA50, vol_pct = ATR% percentile, bbw_pct = BB-width
+percentile, trailing 500 bars - all causal) has near-identical fold
+means everywhere: |z50| 2.02-2.14 in ALL folds, vol_pct 0.41-0.55,
+range% 13-20.  Candidate triggers have ZERO specificity - coverage of
+vol_pct>=0.7: f1 33% vs f2 28% (flagging the GOOD fold more than the
+bad one); |z50|<=0.5: 13-20% uniform; bbw_pct>=0.7: 24-36% uniform.
+
+Latency is NOT the problem: f2 opens with a visible vol episode
+(day 3-7 vol_pct 0.63-0.83 vs fold mean ~0.5) and f5 with a |z50|
+collapse (day 3-7 |z| 0.5-1.1 vs fold mean ~2.0) - the detector sees
+both within days.  The problem is that these episodes are not unique
+to weak folds: f1 day 7 also shows ETH |z|=0.67, and vol spikes occur
+in every fold.
+
+Conclusions: (1) the weak-fold damage is NOT a slow regime the vector
+can catch at fold/feature-mean level - it is episodic, trade-level
+interaction (which candidates fire during intrabar-vol spikes against
+narrow stops); (2) a stop-floor gated on z50/vol_pct/bbw_pct triggers
+would burn EV in f1 without protecting f2/f5 - DO NOT build it on
+these triggers; (3) next diagnostic must be trade-episode level: dump
+per-trade (entry ts, r_pess, cost_R) for A and D, bucket by week, and
+correlate weekly pess R with intra-week vol episodes - find what the
+surviving trades in f2/f5 looked like vs the casualties.
+
+New production baseline (accepted, from D.13c): C + cost_R cap 0.15 =
++0.502R, n=970, dd 3.6R.  Order matters: AVSL-off FIRST, cap second -
+the cap loses EV on the full stack.
+
 
 
 
