@@ -32,7 +32,7 @@ kept **outside** the decision path.
 | `strategies/` — strategy format + validation | ✅ |
 | `backtest/` — execution + portfolio + metrics + baseline-gate validator | ✅ core |
 | `risk/` — config-driven risk engine (TZ-11) | ✅ |
-| `ai/` — Entry-Exit transformer | ✅ core (no trained artifacts yet) |
+| `ai/` — Entry-Exit transformer | ✅ core; first real-data run done — best classifier, edge/gate not yet passed |
 | `infer/` — inference CLI | ✅ |
 | `rag/` — RAG: docs → DSL | 🔨 core; pass@1 not measured on live LLM |
 | `main/` — DI / bridge / REST / PostgreSQL | 🔨 core; no live RabbitMQ/PG/Qdrant |
@@ -94,8 +94,17 @@ kept **outside** the decision path.
   chronological train/val split (no validation leak), model bundle +
   inference contract `predict_p_win` (TZ-06 ✅).
 - YAML config (`configs/ai.yaml`), reproducibility (seed). 71 tests.
-- **Not implemented**: no trained artifacts — model not trained on real data
-  (post-TZ-04 gate); OB-encoder batching and <5 ms measurement remain.
+- **First real-data run (OKX, 7 assets × 4 TF — `dev_docs/ai_baseline_report.md`):**
+  the transformer is the **best classifier** of all tested models — action acc
+  **0.719** / macro-F1 **0.710** vs random floor 0.50/0.49, ahead of RF (0.673),
+  MLP (0.652), LightGBM/XGBoost (0.703) and linear baselines (0.58–0.59).
+- **Not achieved yet: trading edge** — out-of-sample with costs every model loses
+  (transformer −89.8 %/slice vs random floor −90.7); the baseline gate
+  (TZ-04 §4.6.1, > 5–10% Sharpe/PF over the best simple baseline) is **not passed**.
+  Improvement criteria and the next-attempt list (confidence thresholds instead of
+  argmax, cost-sensitivity study, TP/SL-vs-hold horizon alignment, **DSL-driven
+  indicator-config search**) live in `dev_docs/ai_baseline_report.md`.
+  OB-encoder batching and <5 ms measurement remain.
 
 **7. `infer/` — inference CLI (`dte-infer`, TZ-05 ✅)**
 - CLI: candles (synthetic/parquet/yfinance/tinvest) → DSL signals → `--ml` filter by

@@ -162,6 +162,33 @@ def _f1_macro(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return float(np.mean(out))
 
 
+def _fill_missing_sig(df: pl.DataFrame, sig_cols: list[str]) -> pl.DataFrame:
+    """Add union signal columns missing from a per-base frame.
+
+    Uses the same neutral fills as ``train_okx._merge_bases`` so a
+    single set of models fitted on the merged (union) table predicts
+    consistently on every base: 10.0 for ``dist_*`` columns ("zone far
+    away" feature cap) and 0.0 for everything else.
+    """
+    missing = [c for c in sig_cols if c not in df.columns]
+    if not missing:
+        return df
+    return df.hstack(
+        pl.DataFrame(
+            {
+                c: pl.Series(
+                    np.full(
+                        df.height,
+                        10.0 if "dist" in c else 0.0,
+                        dtype=np.float32,
+                    )
+                )
+                for c in missing
+            }
+        )
+    )
+
+
 def _fit_baselines(
     train_df: pl.DataFrame, feature_cols: list[str], seed: int
 ) -> dict:
@@ -324,30 +351,42 @@ def _transformer_signals(
     model.to(dev).eval()
 
     obs = load_order_blocks_parquet(str(tdir / "order_blocks.parquet"))
-    loader, _ = build_loader_from_parquet(
-        features_path=str(tdir / "features.parquet"),
-        labels_path=str(tdir / "labels.parquet"),
-        order_blocks=obs,
-        seq_len=seq_len,
-        price_cols=PRICE_COLS,
-        ind_cols=ind_cols,
-        sig_cols=sig_cols,
-        tp_sl_cols=TP_SL_COLS,
-        batch_size=batch_size,
-        shuffle=False,
-    )
-    sig = np.full(n_rows, -1, dtype=np.int8)
-    with torch.inference_mode():
-        for batch in loader:
-            (prices, inds, sigs, tp, sl, obs_b, _a, _o, _p, sb, _bi) = batch
-            logits, _out, _ = model(
-                prices.to(dev), inds.to(dev), sigs.to(dev),
-                tp.to(dev), sl.to(dev), obs_b,
-            )
-            idx = sb.numpy() + seq_len - 1
-            # Model emits per-position logits (B, T, 3); the signal for
-            # the bar at a window's end is its last position.
-            sig[idx] = logits[:, -1, :].argmax(dim=-1).cpu().numpy()
+    raw = pl.read_parquet(tdir / "features.parquet")
+    feat_filled = _fill_missing_sig(raw, sig_cols)
+    features_path = tdir / "features.parquet"
+    if feat_filled.width != raw.width:
+        features_path = tdir / "features.filled.parquet"
+        feat_filled.write_parquet(features_path)
+    try:
+        loader, _ = build_loader_from_parquet(
+            features_path=str(features_path),
+            labels_path=str(tdir / "labels.parquet"),
+            order_blocks=obs,
+            seq_len=seq_len,
+            price_cols=PRICE_COLS,
+            ind_cols=ind_cols,
+            sig_cols=sig_cols,
+            tp_sl_cols=TP_SL_COLS,
+            batch_size=batch_size,
+            shuffle=False,
+        )
+        sig = np.full(n_rows, -1, dtype=np.int8)
+        with torch.inference_mode():
+            for batch in loader:
+                (prices, inds, sigs, tp, sl, obs_b, _a, _o, _p, sb, _bi) = (
+                    batch
+                )
+                logits, _out, _ = model(
+                    prices.to(dev), inds.to(dev), sigs.to(dev),
+                    tp.to(dev), sl.to(dev), obs_b,
+                )
+                idx = sb.numpy() + seq_len - 1
+                # Model emits per-position logits (B, T, 3); the signal
+                # for the bar at a window's end is its last position.
+                sig[idx] = logits[:, -1, :].argmax(dim=-1).cpu().numpy()
+    finally:
+        if features_path != tdir / "features.parquet":
+            features_path.unlink()
     return sig
 
 
@@ -427,7 +466,9 @@ def main() -> None:
     for b in bases:
         btag = b or "default"
         tdir = data / "test" / b if b else data / "test"
-        feat = pl.read_parquet(tdir / "features.parquet")
+        feat = _fill_missing_sig(
+            pl.read_parquet(tdir / "features.parquet"), sig_cols
+        )
         lbl = pl.read_parquet(tdir / "labels.parquet")
         ts = feat["ts"].to_numpy()
         y_true = lbl["action"].to_numpy()
