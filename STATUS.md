@@ -1091,4 +1091,50 @@ cheap-cost hypothesis: the 0.25R market-cost assumption is not a
 conservative placeholder, it is already favorable.  Execution edge
 must come from elsewhere (REPLACE admission already banked +28%).
 
+### Stage D.13 — OB/AVSL ablation :x: (DETECTORS CARRY NO EDGE - geometry does)
+
+The pre-registered ablation splitting the +0.44R stack edge into
+detector vs non-detector parts (scripts/ablation.py, runs/ablation*.json).
+Four panel variants, identical builder and WF-B protocol (8x56d folds,
+7d embargo, lambdarank, rule-table gate, cap state machine):
+  A  real OB zones + AVSL (control; reproduces the published baseline)
+  B  placebo OB zones + AVSL  (placebo = same side/height/confirm time,
+     level shifted outward by U(0.25,3.0) x ATR(confirm); causal)
+  C  real OB zones, AVSL off  (avsl/avsr NaN end-to-end: no
+     avsl_bounce family, d_avsl features NaN, anchor:avsl* rules dead)
+  D  placebo OB zones, AVSL off (detector-free stack)
+Control check: variant A panel reproduces the production panel exactly
+(235,950 rows BTC, identical market/2R counts) and scores +0.427R
+pooled (n=1026, dd 4.3R) vs published +0.44 - harness calibrated.
+
+Results (test pess R, n, maxDD event):
+| variant | s1 | s2 | s3 |
+|---------|----|----|----|
+| A (real OB+AVSL)   | +0.427 (1026, 4.3R) | - | - |
+| B (placebo+AVSL)   | +0.452 (1031, 3.2R) | +0.448 (997, 2.6R) | +0.477 (1089, 3.7R) |
+| C (real OB, no AVSL)| +0.476 (1281, 4.8R) | - | - |
+| D (placebo, no AVSL)| +0.539 (1490, 2.6R) | +0.541 (1430, 3.4R) | +0.531 (1459, 2.1R) |
+
+Verdict: OB contribution (A-B) = **-0.03R** (negative in every seed);
+AVSL contribution (A-C) = **-0.049R**; the detector-free stack D =
+**+0.53..0.54R** - BETTER than the full stack (+0.11R, n +45%, dd
+lower in 2/3 seeds).  The entire pess edge lives in stop/TP geometry
+(rule table), cost-aware ranking, the gate and the slot state machine;
+real OB level selection and AVSL contribute nothing measurable and
+appear to cost R via candidate clustering (slot contention) and
+low-quality avsl_bounce entries (consistent with D.5 anchor-stops and
+D.12 maker adverse selection).  Corollary: "the OB finds zones that
+hold" is NOT the source of the +0.44R - a random nearby zone does as
+well or better.  Caveats: single regime sample (3 majors, 1h, 1.5y);
+placebo keeps real zone timing/height/side so it ablates LEVEL
+selection, not candidate timing per se; fold dispersion is real but
+the B>A, D>A ordering is stable across all 3 placebo seeds.
+
+Actions: (1) treat OB/AVSL as candidate generators, not edge sources -
+no further detector tuning; (2) test dropping avsl_bounce outright;
+(3) re-run this ablation after the data expansion (15m, more assets)
+before committing to a detector-free architecture; (4) stop-head /
+admission / state machine are the alpha carriers - hardening them
+(and the live execution layer) is the priority.
+
 

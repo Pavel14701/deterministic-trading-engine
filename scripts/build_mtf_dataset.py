@@ -49,20 +49,22 @@ from engine.mtf_dataset import (  # noqa: E402
     rolling_percentile,
     trend_state,
 )
-from scripts.build_stop_dataset import (  # noqa: E402
-    FEATURE_ANCHORS,
-    STOP_PANEL,
-    TARGET_PANEL,
-    _build_tp_sl,
-    _compute_anchors,
-    _excursions,
-    _paint_zone,
-    _simulate_outcome,
-)
 from engine.okx_dataset import (  # noqa: E402
     detect_order_blocks,
     get_source,
     resolve_assets,
+)
+from engine.zones import (  # noqa: E402
+    build_tp_sl as _build_tp_sl,
+    compute_anchors as _compute_anchors,
+    paint_zone as _paint_zone,
+)
+from scripts.build_stop_dataset import (  # noqa: E402
+    FEATURE_ANCHORS,
+    STOP_PANEL,
+    TARGET_PANEL,
+    _excursions,
+    _simulate_outcome,
 )
 
 

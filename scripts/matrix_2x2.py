@@ -36,8 +36,8 @@ from engine.mtf_model import (  # noqa: E402
     fit_rule_table,
     trade_curve_stats,
 )
-from engine.state_machine import run_state_machine
 from engine.sim import pess, sim  # noqa: E402
+from engine.state_machine import run_state_machine
 
 
 DEV = "cuda" if torch.cuda.is_available() else "cpu"
