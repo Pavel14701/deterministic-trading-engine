@@ -242,7 +242,7 @@ def mama_talib(
     close = np.asarray(close, dtype=np.float64)
     close = close.copy()
     replace_inf_with_nan(close)
-    mama, fama = talib.MAMA(close, fastperiod=fastlimit, slowperiod=slowlimit)
+    mama, fama = talib.MAMA(close, fastlimit=fastlimit, slowlimit=slowlimit)
     mama = _apply_offset_fillna(mama, offset, fillna)
     fama = _apply_offset_fillna(fama, offset, fillna)
     return mama, fama

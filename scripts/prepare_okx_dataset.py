@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 
 from dataclasses import dataclass, field
@@ -61,8 +62,13 @@ import polars as pl
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from ai.src.config import AIConfig, risk_kwargs  # noqa: E402
+from ai.src.config import (  # noqa: E402
+    AIConfig,
+    load_config,
+    risk_kwargs,
+)
 from ai.src.datatypes import OrderBlock  # noqa: E402
+from ai.src.io import load_order_blocks_parquet  # noqa: E402
 from ai.src.features import (  # noqa: E402
     compute_atr,
     compute_ob_features,
@@ -211,14 +217,24 @@ def detect_order_blocks(
 
 def compute_indicator_columns(
     df: pl.DataFrame,
+    param_overrides: dict[str, dict] | None = None,
 ) -> tuple[pl.DataFrame, list[str]]:
-    """Compute every registered indicator; returns frame + column names."""
+    """Compute every registered indicator; returns frame + column names.
+
+    ``param_overrides`` maps a binding's DSL name onto a kwargs dict
+    merged over its default params (DSL-search stage 0/1 use this to
+    evaluate candidate indicator configurations without touching the
+    registry).
+    """
+    overrides = param_overrides or {}
     provider = TaProvider(df)
     cols: dict[str, pl.Series] = {}
     for name in sorted(BINDINGS):
         binding = BINDINGS[name]
         try:
-            arr = provider._indicator_array(binding, {})
+            arr = provider._indicator_array(
+                binding, overrides.get(name, {})
+            )
         except Exception as exc:
             print(f"  skip {name}: {exc}")
             continue
@@ -818,6 +834,38 @@ def main() -> None:
         help="override the bar count derived from --years",
     )
     ap.add_argument("--out", default="data/okx")
+    ap.add_argument(
+        "--cache-dir",
+        default=None,
+        help=(
+            "raw candle cache dir (default: --out). Point at an existing "
+            "dataset (e.g. data/okx21) to reuse fetched candles instead "
+            "of re-downloading"
+        ),
+    )
+    ap.add_argument(
+        "--risk-profile",
+        default=None,
+        help=(
+            "named risk profile from configs/ai.yaml: 'default' or e.g. "
+            "'wide' (risk_wide block); default follows the yaml "
+            "risk_profile key. Must match the --risk-profile used at "
+            "backtest time"
+        ),
+    )
+    ap.add_argument(
+        "--stage",
+        choices=["all", "worker", "merge"],
+        default="all",
+        help=(
+            "pipeline split for parallel runs: 'worker' fetches/"
+            "featurises/labels only the assets in --assets, storing "
+            "per-asset artifacts under <out>/assets/<inst>/<base>/; "
+            "'merge' joins staged artifacts into the final split files "
+            "and writes meta.json; 'all' runs worker then merge "
+            "(legacy single-process behaviour)"
+        ),
+    )
     args = ap.parse_args()
 
     default_source = get_source(args.source)
@@ -828,9 +876,10 @@ def main() -> None:
         default_source, args.assets, args.bars, args.years
     )
 
-    cfg = AIConfig()
+    cfg = load_config(risk_profile=args.risk_profile)
     seq_len = cfg.model.seq_len
     out = REPO / args.out
+    cache = REPO / args.cache_dir if args.cache_dir else out
     out.mkdir(parents=True, exist_ok=True)
     for sub in ("train", "val", "test"):
         (out / sub).mkdir(exist_ok=True)
@@ -845,6 +894,100 @@ def main() -> None:
         raise SystemExit(f"--base {unknown} not among --bars {args.bars}")
     multi = len(bases) > 1
 
+    if args.stage == "worker":
+        _worker_stage(args, resolved, out, bases, bars_ms)
+        return
+    if args.stage == "merge":
+        _merge_stage(args, out, bases, multi)
+        return
+    _worker_stage(args, resolved, out, bases, bars_ms)
+    _merge_stage(args, out, bases, multi)
+
+
+def _worker_stage(
+    args: argparse.Namespace,
+    resolved: list[tuple[str, str, CandleSource]],
+    out: Path,
+    bases: list[str],
+    bars_ms: dict[str, int],
+) -> None:
+    """Stage 1: per-asset fetch + featurise + label + chronological split.
+
+    Writes per-asset artifacts under ``<out>/assets/<inst>/<base>/``
+    (``features_<split>.parquet``, ``labels_<split>.parquet``,
+    ``order_blocks_<split>.parquet`` plus ``schema.json``) so several
+    workers can process disjoint ``--assets`` subsets in parallel;
+    ``_merge_stage`` joins them into the final split files.
+    """
+    cfg = load_config(risk_profile=args.risk_profile)
+    seq_len = cfg.model.seq_len
+    cache = REPO / args.cache_dir if args.cache_dir else out
+    for src_name, inst_id, src in resolved:
+        for base_bar in bases:
+            ctx_bars = [
+                b for b in args.bars if bars_ms[b] > bars_ms[base_bar]
+            ]
+            ladder = [base_bar, *ctx_bars]
+            print(
+                f"=== [{inst_id}] base {base_bar} "
+                f"(context: {', '.join(ctx_bars) or 'none'}) ===",
+                flush=True,
+            )
+            max_bars = args.max_bars or int(
+                src.bars_per_year(base_bar) * args.years
+            )
+            df, lbl, obs, icols, scols = prepare_asset(
+                inst_id, ladder, max_bars, cfg, cache, src
+            )
+            df = normalise(df, icols)
+            segments = split_chronological(df, lbl, obs, seq_len)
+            adir = out / "assets" / inst_id / base_bar
+            adir.mkdir(parents=True, exist_ok=True)
+            schema: dict = {
+                "source": src_name,
+                "bars": int(df.height),
+                "ind_cols": list(icols),
+                "sig_cols": list(scols),
+                "segments": {},
+            }
+            for name, (sf, sl, sobs, info) in segments.items():
+                sf.write_parquet(adir / f"features_{name}.parquet")
+                sl.write_parquet(adir / f"labels_{name}.parquet")
+                obs_to_frame(sobs).write_parquet(
+                    adir / f"order_blocks_{name}.parquet"
+                )
+                sinfo = dict(info)
+                sinfo["class_distribution"] = class_distribution(sl)
+                schema["segments"][name] = sinfo
+            (adir / "schema.json").write_text(
+                json.dumps(schema, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            print(
+                f"[{inst_id}/{base_bar}] staged: {df.height} bars -> {adir}",
+                flush=True,
+            )
+
+
+def _merge_stage(args: argparse.Namespace, out: Path, bases: list[str], multi: bool) -> None:
+    """Stage 2: join staged per-asset artifacts into final split files.
+
+    Reads what ``_worker_stage`` wrote under ``<out>/assets/``,
+    validates schema consistency across assets, rebases order-block
+    indices into the joined frames and writes the train/val/test split
+    files + ``meta.json`` (same layout as the legacy single-process
+    run).  Staged files are deleted once their base has been merged.
+    """
+    assets_root = out / "assets"
+    if not assets_root.is_dir():
+        raise SystemExit(
+            f"no staged assets under {assets_root}; run --stage worker first"
+        )
+    staged = sorted(p.name for p in assets_root.iterdir() if p.is_dir())
+    if not staged:
+        raise SystemExit(f"no staged assets under {assets_root}")
+
+    seq_len = AIConfig().model.seq_len
     ind_cols: list[str] | None = None
     base_sig_cols: dict[str, list[str]] = {}
     per_base: dict[str, dict] = {}
@@ -853,11 +996,8 @@ def main() -> None:
     bars_tot = {"train": 0, "val": 0, "test": 0}
 
     for base_bar in bases:
-        ctx_bars = [b for b in args.bars if bars_ms[b] > bars_ms[base_bar]]
-        ladder = [base_bar, *ctx_bars]
         print(
-            f"=== base {base_bar} "
-            f"(context: {', '.join(ctx_bars) or 'none'}) ===",
+            f"=== base {base_bar}: merging {len(staged)} staged assets ===",
             flush=True,
         )
         seg_data: dict[str, SegmentBucket] = {
@@ -868,31 +1008,31 @@ def main() -> None:
         all_obs: list[OrderBlock] = []
         base_assets: dict[str, dict] = {}
         sig_cols: list[str] | None = None
-        for src_name, inst_id, src in resolved:
-            # per-asset bar budget: a mixed dataset derives the count from
-            # each asset's own source (venues may differ in bar duration)
-            max_bars = args.max_bars or int(
-                src.bars_per_year(base_bar) * args.years
-            )
-            df, lbl, obs, icols, scols = prepare_asset(
-                inst_id, ladder, max_bars, cfg, out, src
+        for inst_id in staged:
+            adir = assets_root / inst_id / base_bar
+            schema = json.loads(
+                (adir / "schema.json").read_text(encoding="utf-8")
             )
             if ind_cols is None:
-                ind_cols = icols
-            elif icols != ind_cols:
+                ind_cols = list(schema["ind_cols"])
+            elif list(schema["ind_cols"]) != ind_cols:
                 raise RuntimeError(f"{inst_id}: indicator columns differ")
             if sig_cols is None:
-                sig_cols = scols
-            elif scols != sig_cols:
+                sig_cols = list(schema["sig_cols"])
+            elif list(schema["sig_cols"]) != sig_cols:
                 raise RuntimeError(f"{inst_id}: signal columns differ")
-            df = normalise(df, icols)
-            segments = split_chronological(df, lbl, obs, seq_len)
             base_assets[inst_id] = {
-                "bars": df.height,
-                "source": src_name,
+                "bars": int(schema["bars"]),
+                "source": str(schema["source"]),
                 "segments": {},
             }
-            for name, (sf, sl, sobs, info) in segments.items():
+            for name in ("train", "val", "test"):
+                sf = pl.read_parquet(adir / f"features_{name}.parquet")
+                sl = pl.read_parquet(adir / f"labels_{name}.parquet")
+                sobs = load_order_blocks_parquet(
+                    str(adir / f"order_blocks_{name}.parquet")
+                )
+                info = dict(schema["segments"][name])
                 offset = sum(f.height for f in seg_data[name].feat)
                 seg_obs: list[OrderBlock] = []
                 for ob in sobs:  # rebase OB indices into the joined frame
@@ -925,7 +1065,6 @@ def main() -> None:
                 seg_data[name].feat.append(sf)
                 seg_data[name].lbl.append(sl)
                 seg_data[name].obs.append(seg_obs)
-                info = dict(info)
                 info["class_distribution"] = class_distribution(sl)
                 base_assets[inst_id]["segments"][name] = info
 
@@ -956,6 +1095,12 @@ def main() -> None:
             **{f"total_bars_{n}": totals[n] for n in totals},
             "n_order_blocks": len(all_obs),
         }
+        # staged artifacts for this base are fully consumed — free the
+        # disk (staging doubles the dataset footprint until deleted)
+        for inst_id in staged:
+            bdir = assets_root / inst_id / base_bar
+            if bdir.is_dir():
+                shutil.rmtree(bdir, ignore_errors=True)
         grand_obs += len(all_obs)
         if multi:
             for inst, info in base_assets.items():
@@ -981,7 +1126,7 @@ def main() -> None:
     meta = {
         "assets": meta_assets,
         "bars": args.bars,
-        "bases": bases,
+        "bases": bases if multi else [None],
         "years": args.years,
         "seq_len": seq_len,
         "split": {"train": 0.70, "val": 0.15, "test": 0.15, "gap": seq_len},

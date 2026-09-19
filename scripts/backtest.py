@@ -38,6 +38,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tempfile
 import zlib
 
 from pathlib import Path
@@ -54,15 +55,25 @@ TP_SL_COLS = ["tp", "sl"]
 IGNORE = -100
 
 
-def _load_cfg() -> dict:
-    """Parse the risk block of configs/ai.yaml (no yaml dep needed)."""
+def _load_cfg(profile: str | None = None) -> dict:
+    """Parse the active risk block of configs/ai.yaml (no yaml dep needed).
+
+    ``profile=None`` follows the ``risk_profile:`` key in the yaml;
+    ``"default"`` reads the ``risk`` block, any other name reads
+    ``risk_<name>`` (e.g. ``risk_wide``).
+
+    """
     import re
 
     text = (REPO / "configs" / "ai.yaml").read_text(encoding="utf-8")
+    if profile is None:
+        m = re.search(r"^risk_profile:\s*([^\s#]+)", text, re.M)
+        profile = m.group(1) if m else "default"
+    block = "risk" if profile == "default" else f"risk_{profile}"
     risk: dict = {}
     in_risk = False
     for line in text.splitlines():
-        if re.match(r"^risk:", line):
+        if re.match(rf"^{block}:", line):
             in_risk = True
             continue
         if in_risk:
@@ -313,8 +324,14 @@ def _transformer_signals(
     device: str | None,
     batch_size: int,
     n_rows: int,
+    threshold: float = 0.0,
 ) -> np.ndarray:
-    """Argmax action per bar over one base's test frame (-1 = no window)."""
+    """Argmax action per bar over one base's test frame (-1 = no window).
+
+    ``threshold`` > 0 enables confidence gating: a non-hold argmax is
+    kept only when its softmax probability >= threshold, otherwise the
+    bar is set to hold (0).  0.0 disables gating (pure argmax).
+    """
     import torch
 
     from ai.src.config import load_config
@@ -354,9 +371,19 @@ def _transformer_signals(
     raw = pl.read_parquet(tdir / "features.parquet")
     feat_filled = _fill_missing_sig(raw, sig_cols)
     features_path = tdir / "features.parquet"
+    tmp_path: Path | None = None
     if feat_filled.width != raw.width:
-        features_path = tdir / "features.filled.parquet"
-        feat_filled.write_parquet(features_path)
+        # Unique per-run file: parallel backtests over the same base
+        # must not share (or delete each other's) filled features.
+        with tempfile.NamedTemporaryFile(
+            dir=tdir,
+            prefix="features.filled.",
+            suffix=".parquet",
+            delete=False,
+        ) as tmp:
+            tmp_path = Path(tmp.name)
+        feat_filled.write_parquet(tmp_path)
+        features_path = tmp_path
     try:
         loader, _ = build_loader_from_parquet(
             features_path=str(features_path),
@@ -383,10 +410,19 @@ def _transformer_signals(
                 idx = sb.numpy() + seq_len - 1
                 # Model emits per-position logits (B, T, 3); the signal
                 # for the bar at a window's end is its last position.
-                sig[idx] = logits[:, -1, :].argmax(dim=-1).cpu().numpy()
+                last = logits[:, -1, :]
+                if threshold > 0.0:
+                    probs = torch.softmax(last, dim=-1)
+                    conf, act = probs.max(dim=-1)
+                    act = torch.where(
+                        conf >= threshold, act, torch.zeros_like(act)
+                    )
+                    sig[idx] = act.cpu().numpy()
+                else:
+                    sig[idx] = last.argmax(dim=-1).cpu().numpy()
     finally:
-        if features_path != tdir / "features.parquet":
-            features_path.unlink()
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
     return sig
 
 
@@ -413,6 +449,34 @@ def main() -> None:
     ap.add_argument("--seq-len", type=int, default=None)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument(
+        "--threshold",
+        type=float,
+        default=0.0,
+        help=(
+            "confidence gate for the transformer: keep a non-hold argmax "
+            "only when its softmax prob >= threshold, else hold "
+            "(0.0 = off). Try 0.6 / 0.65 / 0.7"
+        ),
+    )
+    ap.add_argument(
+        "--oracle",
+        action="store_true",
+        help=(
+            "add an 'oracle' model whose signals are the ground-truth "
+            "test labels: upper bound of the simulator; a negative "
+            "oracle means the engine disagrees with the label generator"
+        ),
+    )
+    ap.add_argument(
+        "--risk-profile",
+        default=None,
+        help=(
+            "named risk profile from configs/ai.yaml: 'default' or e.g. "
+            "'wide' (risk_wide block); default follows the yaml "
+            "risk_profile key"
+        ),
+    )
+    ap.add_argument(
         "--skip-transformer",
         action="store_true",
         help="skip the transformer (baselines only)",
@@ -426,7 +490,7 @@ def main() -> None:
     sig_cols = list(meta["sig_cols"] or [])
     feature_cols = PRICE_COLS + ind_cols + sig_cols
     seq_len = args.seq_len or int(meta.get("seq_len") or 128)
-    risk = _load_cfg()
+    risk = _load_cfg(args.risk_profile)
     commission = float(risk.get("commission_pct", 0.001))
     slippage = float(risk.get("slippage_pct", 0.0005))
     max_hold = int(risk.get("max_bars_hold", 20) or 0)
@@ -450,12 +514,14 @@ def main() -> None:
         m
         for m in (
             "transformer", "rf", "logreg", "ridge", "mlp", "lgbm",
-            "xgb", "random",
+            "xgb", "random", "oracle",
         )
         # 'logreg' is always available (its estimator key is 'lr');
         # lgbm/xgb depend on the packages being installed.
         if m in ("transformer", "random", "logreg") or m in estimators
     ]
+    if args.oracle:
+        models.append("oracle")
     acc: dict[str, list[int]] = {m: [0, 0] for m in models}  # hit, n
     f1s: dict[str, list[float]] = {m: [] for m in models}
     trades_n: dict[str, int] = {m: 0 for m in models}
@@ -507,6 +573,7 @@ def main() -> None:
             tf_sig_cache[btag] = _transformer_signals(
                 data, tdir, REPO / args.model, seq_len, args.device,
                 args.batch_size, feat.height,
+                threshold=args.threshold,
             )
         p_in, p_out = 0.02, 0.02
         if btag in tf_sig_cache:
@@ -545,6 +612,14 @@ def main() -> None:
             sig_rand[noise < p_in] = 1
             sig_rand[noise > 1 - p_out] = 2
             signals["random"] = sig_rand
+            if args.oracle:
+                # Ground-truth labels as signals: isolates the simulator
+                # from the model.  Only LONG labels (action == 1) are
+                # entries; short labels (2) must NOT become exit signals
+                # here — the label generator resolves every entry via
+                # TP/SL/max-hold, and mapping 2 -> exit would truncate
+                # ~75% of trades and destroy the geometry under test.
+                signals["oracle"] = (y_true[lo:hi] == 1).astype(np.int64)
 
             for m, sig_m in signals.items():
                 res = simulate(

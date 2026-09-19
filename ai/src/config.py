@@ -124,18 +124,26 @@ def _build(cls: type, data: dict[str, Any] | None):
     return cls(**{k: v for k, v in data.items() if k in known})
 
 
-def load_config(path: str | Path | None = None) -> AIConfig:
+def load_config(
+    path: str | Path | None = None,
+    risk_profile: str | None = None,
+) -> AIConfig:
     """Load configuration from YAML; missing keys fall back to defaults.
 
     Args:
         path: Path to YAML file. If None, ``configs/ai.yaml`` is used when
             present; otherwise pure defaults.
+        risk_profile: Named risk profile overriding the ``risk_profile:``
+            key in the yaml. ``None``/``"default"`` reads the ``risk``
+            block; any other name reads the ``risk_<name>`` block
+            (e.g. ``risk_wide``), falling back to an error if absent.
 
     Returns:
         Populated :class:`AIConfig`.
 
     Raises:
-        ValueError: If the YAML root is not a mapping.
+        ValueError: If the YAML root is not a mapping or a named risk
+            profile block is missing.
 
     """
     file = Path(path) if path is not None else DEFAULT_CONFIG_PATH
@@ -147,9 +155,19 @@ def load_config(path: str | Path | None = None) -> AIConfig:
             if not isinstance(loaded, dict):
                 raise ValueError(f"{file}: root must be a mapping")
             data = loaded
+    profile = risk_profile or data.get("risk_profile", "default")
+    if profile == "default":
+        risk_block = data.get("risk")
+    else:
+        risk_block = data.get(f"risk_{profile}")
+        if not risk_block:
+            raise ValueError(
+                f"{file}: no risk_{profile} block for risk_profile="
+                f"{profile!r}"
+            )
     return AIConfig(
         seed=data.get("seed", 42),
-        risk=_build(RiskConfig, data.get("risk")),
+        risk=_build(RiskConfig, risk_block),
         model=_build(ModelConfig, data.get("model")),
         training=_build(TrainingConfig, data.get("training")),
         compute=_build(ComputeConfig, data.get("compute")),

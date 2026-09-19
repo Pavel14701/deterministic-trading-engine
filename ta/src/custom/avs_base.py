@@ -54,12 +54,13 @@ def _price_v_rolling(
             start = max(0, i - L + 1)
             denom = vpc_c[i] * vpr[start : i + 1]
             valid = (vpc_c[i] != 0) & (vpr[start : i + 1] != 0)
-            values = np.divide(
-                price[start : i + 1],
-                denom,
-                out=np.zeros_like(price[start : i + 1]),
-                where=valid,
-            )
+            # numba does not support np.divide kwargs (where=, out=):
+            # compute the masked division with an explicit loop
+            seg = price[start : i + 1]
+            values = np.zeros_like(seg)
+            for j in range(seg.shape[0]):
+                if valid[j] and denom[j] != 0.0:
+                    values[j] = seg[j] / denom[j]
             out[i] = np.sum(values) / L / 100.0
         else:
             out[i] = price[i]
