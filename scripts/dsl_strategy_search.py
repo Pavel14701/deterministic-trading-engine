@@ -53,6 +53,67 @@ from scripts.prepare_okx_dataset import (  # noqa: E402
 SPLIT_SHARES = (0.7, 0.15, 0.15)  # chronological train/val/test
 PAINT_HORIZON = 2000  # bars a block stays eligible for the zone paint
 
+# Indicator-anchored stop levels: name -> sides it is valid for.
+# Support anchors (below price) stop longs, resistance anchors stop shorts;
+# 'st' (supertrend) is direction-aware and valid for both (invalid
+# geometries are filtered by the RR check anyway).
+ANCHOR_SIDES = {
+    "avsl": ("long",),      # Adaptive Volume Support Level
+    "avsr": ("short",),     # Adaptive Volume Support/Resistance line
+    "hilo": ("long", "short"),  # HiLo activator: long line / short line
+    "st": ("long", "short"),    # supertrend trailing line
+    "bb": ("long", "short"),    # Bollinger band (lower / upper)
+}
+
+BB_LENGTH = 20
+BB_STD = 2.0
+
+
+def _compute_anchors(df: pl.DataFrame) -> dict[str, np.ndarray]:
+    """Causal per-bar anchor levels for indicator-based stops.
+
+    All series are float64 numpy arrays aligned with ``df``; warm-up
+    bars are NaN and simply produce no entries.
+    """
+    from ta.src.custom.avsl import avsl_numpy
+    from ta.src.custom.avsr import avsr_numpy
+    from ta.src.overlap.hilo import hilo_ind
+    from ta.src.overlap.supertrend import supertrend_ind
+
+    high = df["high"].to_numpy()
+    low = df["low"].to_numpy()
+    close = df["close"].to_numpy()
+    volume = df["volume"].to_numpy()
+
+    anchors: dict[str, np.ndarray] = {
+        "avsl": avsl_numpy(high, low, close, volume, fast=52, slow=134),
+        "avsr": avsr_numpy(high, low, close, volume, fast=52, slow=134),
+    }
+    _hilo, hilo_long, hilo_short = hilo_ind(high, low, close)
+    anchors["hilo_l"] = hilo_long
+    anchors["hilo_s"] = hilo_short
+    st_line = supertrend_ind(high, low, close)[0]
+    anchors["st"] = st_line
+    cs = df["close"]
+    mean = cs.rolling_mean(BB_LENGTH)
+    std = cs.rolling_std(BB_LENGTH, ddof=0)
+    anchors["bb_l"] = (mean - BB_STD * std).to_numpy()
+    anchors["bb_u"] = (mean + BB_STD * std).to_numpy()
+    return anchors
+
+
+def _anchor_for_side(name: str, side: str) -> str | None:
+    """Resolve an anchor family name to the concrete level key."""
+    if name in ANCHOR_SIDES:
+        if side not in ANCHOR_SIDES[name]:
+            return None
+        if name == "hilo":
+            return "hilo_l" if side == "long" else "hilo_s"
+        if name == "bb":
+            return "bb_l" if side == "long" else "bb_u"
+        return name
+    return None
+
 
 def _paint_zone(blocks: list, n: int, side: str) -> np.ndarray:
     """First-match zone level per bar for the structural stop rule.
@@ -88,13 +149,19 @@ def _build_tp_sl(
     target_r: float,
     side: str,
     zone: np.ndarray | None,
+    anchors: dict[str, np.ndarray] | None = None,
     min_risk_atr: float = 1.0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Per-bar TP/SL arrays for one (stop_rule, target_r) pair.
 
+    Stop rule formats:
+    - ``atr:m``  -> volatility stop, entry -/+ m*ATR;
+    - ``zone:b`` -> structural stop, behind the block zone +/- b*ATR;
+    - ``anchor:<name>:<b>`` -> indicator anchor level +/- b*ATR beyond.
+
     Bars whose risk unit is below ``min_risk_atr`` ATRs are marked
-    invalid (no entry): a structural stop closer than that cannot
-    survive round-trip costs, so the trade is not part of the strategy.
+    invalid (no entry): a stop closer than that cannot survive
+    round-trip costs, so the trade is not part of the strategy.
     """
     sign = 1.0 if side == "long" else -1.0
     if stop_rule.startswith("zone:"):
@@ -103,6 +170,16 @@ def _build_tp_sl(
     elif stop_rule.startswith("atr:"):
         m = float(stop_rule.split(":")[1])
         sl = close - sign * m * atr
+    elif stop_rule.startswith("anchor:"):
+        _pfx, name, buffer_s = stop_rule.split(":")
+        buffer = float(buffer_s)
+        key = _anchor_for_side(name, side)
+        level = anchors[key] if key else None
+        if level is None:
+            # anchor not valid for this side -> no trades for candidate
+            sl = np.full(close.shape, np.nan)
+        else:
+            sl = level - sign * buffer * atr
     else:  # pragma: no cover - argparse constrains values
         raise ValueError(f"unknown stop rule {stop_rule!r}")
     risk_unit = np.abs(close - sl)
@@ -173,8 +250,12 @@ def main() -> None:
     )
     ap.add_argument(
         "--stops",
-        default="zone:0.5,zone:1.0,atr:14,atr:27",
-        help="comma list of stop rules",
+        default=(
+            "atr:27,avsl:0.5,avsl:1.0,avsr:0.5,avsr:1.0,"
+            "hilo:0.5,st:0.5,bb:0.5,bb:1.0"
+        ),
+        help="comma list of stop rules: atr:m | zone:b | anchor:<name>:<b> "
+        "with name in avsl,avsr,hilo,st,bb (side-aware)",
     )
     ap.add_argument(
         "--targets", default="2,3,4", help="comma list of R multiples"
@@ -194,7 +275,13 @@ def main() -> None:
     max_bars = int(src.bars_per_year(args.bars) * args.years)
 
     entry_variants = [e.strip() for e in args.entries.split(",")]
-    stop_rules = [s.strip() for s in args.stops.split(",")]
+    stop_rules = []
+    for raw in args.stops.split(","):
+        rule = raw.strip()
+        head = rule.split(":")[0]
+        if head in ANCHOR_SIDES and rule.count(":") == 1:
+            rule = f"anchor:{rule}"  # short form 'avsl:0.5'
+        stop_rules.append(rule)
     target_rs = [float(t) for t in args.targets.split(",")]
 
     results: list[dict] = []
@@ -207,6 +294,7 @@ def main() -> None:
         )
         atr = compute_atr(df, risk=base_risk)
         obs = detect_order_blocks(df, atr, timeframe=args.bars)
+        anchors = _compute_anchors(df)
         close = df["close"].to_numpy()
         n = df.height
 
@@ -231,8 +319,11 @@ def main() -> None:
                             target_r,
                             side,
                             zone,
+                            anchors=anchors,
                             min_risk_atr=args.min_risk_atr,
                         )
+                        if not np.isfinite(sl).any():
+                            continue  # anchor invalid for this side
                         d = df.with_columns(
                             pl.Series("tp", tp), pl.Series("sl", sl)
                         )
