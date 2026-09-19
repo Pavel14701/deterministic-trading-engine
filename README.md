@@ -1,4 +1,4 @@
-# t_inv_rag — BTC/ETH/SOL trading research pipeline
+# Determenistic Trading Engine— BTC/ETH/SOL trading research pipeline
 
 Research codebase behind a validated, live-defensible EV estimate for a
 zone-geometry trading strategy (stop geometry is universal across assets;
