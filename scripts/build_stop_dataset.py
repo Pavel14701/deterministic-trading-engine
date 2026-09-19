@@ -21,31 +21,35 @@ from __future__ import annotations
 
 import argparse
 import json
+
 from pathlib import Path
 
 import numpy as np
 import polars as pl
 
+
 REPO = Path(__file__).resolve().parent.parent
 import sys  # noqa: E402
 
+
 sys.path.insert(0, str(REPO))
 
-from ai.src.config import load_config  # noqa: E402
-from ai.src.features import (  # noqa: E402
+from ai.config import load_config  # noqa: E402
+from ai.features import (  # noqa: E402
     compute_atr,
     generate_labels_from_strategy,
-)
-from scripts.dsl_strategy_search import (  # noqa: E402
-    _build_tp_sl,
-    _compute_anchors,
-    _paint_zone,
 )
 from scripts.prepare_okx_dataset import (  # noqa: E402
     detect_order_blocks,
     get_source,
     resolve_assets,
 )
+from scripts.zones import (  # noqa: E402
+    build_tp_sl,
+    compute_anchors,
+    paint_zone,
+)
+
 
 REFERENCE_STOP = "atr:27"
 REFERENCE_TARGET = 2.0
@@ -263,7 +267,7 @@ def main() -> None:
         )
         atr = compute_atr(df, risk=risk)
         obs = detect_order_blocks(df, atr, timeframe=args.bars)
-        anchors = _compute_anchors(df)
+        anchors = compute_anchors(df)
         open_p = df["open"].to_numpy()
         high = df["high"].to_numpy()
         low = df["low"].to_numpy()
@@ -276,8 +280,8 @@ def main() -> None:
                 for ob in obs
                 if (ob.block_type.lower() == "demand") == (side == "long")
             ]
-            zone = _paint_zone(blocks, n, side)
-            tp_a, sl_a = _build_tp_sl(
+            zone = paint_zone(blocks, n, side)
+            tp_a, sl_a = build_tp_sl(
                 close,
                 atr,
                 REFERENCE_STOP,
@@ -302,7 +306,7 @@ def main() -> None:
 
             rule_levels: dict[str, tuple[np.ndarray, np.ndarray]] = {}
             for rule in STOP_PANEL:
-                rule_levels[rule] = _build_tp_sl(
+                rule_levels[rule] = build_tp_sl(
                     close,
                     atr,
                     rule,

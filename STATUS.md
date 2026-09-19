@@ -788,21 +788,46 @@ mined; the sequence-vs-table question is settled for this data size.
 
 
 
-### NEXT (superseded 2026-09-19): fair transformer fight (spec -> ran as D.7)
+### Repo restructure (2026-09-19)
 
-Same four equalizers: (1) features = 33 tabular + rule + risk_pct +
-cost_R per bar appended to each window (patch
-build_transformer_dataset.py: concat feature vector onto every bar of
-the window -> input dim 36+raw channels; store feature names); (2)
-label = pess R (D.3 gap model) via r_pess column, no recalc; (3)
-protocol = LambdaRank head over candidate groups + table gate, same
-as D.4; (4) cost model = unified d5/d6 sim for replay numbers.
-Revival criteria (pre-registered): val AUROC > 0.55 (was 0.40); EV
-bootstrap CI vs LightGBM excluding zero; attention entropy < 5.5/6.0.
-Falsifiable prediction on record: 70% fourth rejection, 30% partial
-revival.  Known handicap even when fair: 3.5k windows vs LGBM rows.
-Steps: patch builder (~20 lines), widen transformer input layer,
-train same epochs, run d3-style replay + bootstrap diff CI.
+After D.12 the repo was rebuilt around the live research pipeline:
+- **Archived to `legacy/`** (documented in `legacy/MANIFEST.md`, nothing deleted):
+  the former monorepo packages (dsl, strategies, infer, rag, risk, backtest,
+  main, tinvest, contracts, migrations, docker/alembic infra), 13 legacy/
+  superseded scripts (train_*, eval_*, dsl_*, d6b, d7, replay, run_pipeline,
+  attention_diagnostics, build_transformer_dataset), 8 dead ai modules
+  (bundle, contracts, dataset, device, losses, metrics, quickstart, training)
+  and their test files.
+- **Flattened**: `ai/src/*` -> `ai/*` (one layer less); `marketdata/` folded
+  into `ai/marketdata/`; okx fetch revived as `ai/marketdata/okx_fetch.py`
+  (it is on the live data path).
+- **Renamed scripts** (d-prefixes dropped, artifacts keep historical names):
+  d3->execution_costs, d4->ranking_baselines, d5->adaptive_tp,
+  d6->sim_engine, d8->matrix_2x2, d8b->wf_ab, d9->portfolio, d9b->robustness,
+  d10->nested_cv, d11->admission, d12->maker_entry. Stop-rule engine
+  extracted from the archived dsl_strategy_search into `scripts/zones.py`.
+- **Root now**: ai/ scripts/ tests/ ta/ dsl/ (minimal subset for ta)
+  legacy/ data/ runs/ dev_docs/ + meta files. 15 dirs -> 9.
+- **Config**: uv workspace members [ai, ta]; pytest testpaths=[tests];
+  mypy strict on ai; CI lint = strict (ai, tests, dsl) + F-class (scripts).
+- **Tests**: live suite pruned to 93 kept + 27 new unit tests for the core
+  (sim_engine cost model, maker_entry fee/geometry, zones stop rules) =
+  118 passed / 2 skipped. Full smoke after restructure: wf_ab.py
+  reproduces A +0.401 / B +0.450 / 2891 signals exactly.
+- Found and fixed along the way: missing numpy.typing import in
+  ai/candidates.py (F821), orphan dead code after return in
+  ai/candidates.py, missing niquests dep declaration (ai/pyproject).
+
+### NEXT
+
+1. **Data expansion** (more assets incl. low-liquidity alts, longer history
+   per asset, 15m bars; LGBM only): the data path
+   (prepare_okx_dataset -> build_mtf_dataset/build_stop_dataset) is the
+   thing to scale; watch the candidate yield on illiquid names.
+2. **Live execution layer**: OKX adapter implementing the REPLACE
+   admission rule (D.11) + state machine, market entries; paper trading
+   first. The archived `legacy/packages/okx/` design (ws/executor/signing,
+   tested) is the starting point.
 
 ### Stage D.7 - FAIR transformer fight :x: (fourth rejection, now fair)
 
@@ -1015,14 +1040,4 @@ cheap-cost hypothesis: the 0.25R market-cost assumption is not a
 conservative placeholder, it is already favorable.  Execution edge
 must come from elsewhere (REPLACE admission already banked +28%).
 
-### NEXT
-
-1. **30k+ data expansion** (ETH+SOL+15m, LGBM only): scale test for
-   the geometry signal; TRF stays parked (pre-registered low
-   expectations, D-C=0).
-2. **Live execution layer**: OKX adapter implementing the REPLACE
-   admission rule (D.11) + state machine, market entries; paper
-   trading first - the validation stack (WF, nested CV, portfolio
-   bootstrap) is complete and every cheap-improvement hypothesis has
-   been tested or banked.
 

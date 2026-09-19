@@ -24,22 +24,25 @@ from __future__ import annotations
 
 import argparse
 import json
+
 from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
 import polars as pl
 
+
 REPO = Path(__file__).resolve().parent.parent
 import sys  # noqa: E402
 
+
 sys.path.insert(0, str(REPO))
 
-from ai.src.config import load_config  # noqa: E402
-from ai.src.candidates import collect_candidates  # noqa: E402
-from ai.src.features import compute_atr  # noqa: E402
-from ai.src.mtf import asof_rows, resample_ohlcv  # noqa: E402
-from ai.src.mtf_dataset import (  # noqa: E402
+from ai.candidates import collect_candidates  # noqa: E402
+from ai.config import load_config  # noqa: E402
+from ai.features import compute_atr  # noqa: E402
+from ai.mtf import asof_rows, resample_ohlcv  # noqa: E402
+from ai.mtf_dataset import (  # noqa: E402
     assign_splits,
     limit_fill,
     nearest_zone_dists,
@@ -50,17 +53,18 @@ from scripts.build_stop_dataset import (  # noqa: E402
     FEATURE_ANCHORS,
     STOP_PANEL,
     TARGET_PANEL,
-    _compute_anchors,
-    _paint_zone,
-    _excursions,
-    _simulate_outcome,
     _build_tp_sl,
+    _compute_anchors,
+    _excursions,
+    _paint_zone,
+    _simulate_outcome,
 )
 from scripts.prepare_okx_dataset import (  # noqa: E402
     detect_order_blocks,
     get_source,
     resolve_assets,
 )
+
 
 EXECUTIONS = ("market", "limit:edge", "limit:mid")
 LTF_BAR = "15m"
@@ -82,13 +86,13 @@ def _anchors_nan_safe(df: pl.DataFrame) -> dict[str, np.ndarray]:
     anchors = _compute_anchors(df)
     if np.isfinite(anchors["avsl"]).any():
         return anchors
-    from ta.src.custom.avs_base import (  # noqa: E402
+    from ta.src.custom.avs_base import (
         _avs_base,
         _compute_len_v,
         _compute_vpcc,
         _price_v_rolling,
     )
-    from ta.src.overlap.sma import sma_ind  # noqa: E402
+    from ta.src.overlap.sma import sma_ind
 
     high = df["high"].to_numpy()
     low = df["low"].to_numpy()
@@ -105,7 +109,6 @@ def _anchors_nan_safe(df: pl.DataFrame) -> dict[str, np.ndarray]:
             dtype=np.float64,
         )
     return anchors
-
 
 
 def _htf_zone_ts(htf_obs: list, htf: pl.DataFrame) -> list[tuple[object, int]]:
@@ -139,6 +142,7 @@ def _htf_asof_state(
         ``trend`` (+1/-1/0), ``slope`` (SMA slope in base ATRs) and
         ``d_below``/``d_above`` (distances to the nearest known HTF
         zone, in base ATRs).
+
     """
     out = {"trend": 0.0, "slope": 0.0, "d_below": np.nan, "d_above": np.nan}
     known = asof_rows(htf, base_ts)
@@ -181,7 +185,7 @@ def _ltf_asof_features(
 
 
 def _entry_feature_row(
-    cand,  # ai.src.candidates.Candidate
+    cand,  # ai.candidates.Candidate
     i: int,
     ts: int,
     open_p: npt.NDArray[np.float64],

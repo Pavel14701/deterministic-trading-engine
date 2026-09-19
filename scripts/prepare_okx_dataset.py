@@ -20,7 +20,7 @@ Steps per asset:
      per-bar OB feature set, mapped onto the base grid **causally**
      (a base bar only sees the last *closed* HTF bar);
   4. compute TP/SL (ATR-based, previous-bar ATR - no look-ahead) and
-     action/outcome labels (ai.src.features, strategy simulation with
+     action/outcome labels (ai.features, strategy simulation with
      costs);
   5. normalise price-domain columns per asset (divide by the asset's
      median close over the first 500 bars - causal per-asset constant);
@@ -62,26 +62,25 @@ import polars as pl
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from ai.src.config import (  # noqa: E402
+from ai.config import (  # noqa: E402
     AIConfig,
     load_config,
     risk_kwargs,
 )
-from ai.src.datatypes import OrderBlock  # noqa: E402
-from ai.src.io import load_order_blocks_parquet  # noqa: E402
-from ai.src.features import (  # noqa: E402
+from ai.datatypes import OrderBlock  # noqa: E402
+from ai.features import (  # noqa: E402
     compute_atr,
     compute_ob_features,
     compute_tp_sl,
     generate_labels_from_strategy,
 )
-from marketdata.common import (  # noqa: E402
+from ai.io import load_order_blocks_parquet  # noqa: E402
+from ai.marketdata.common import (  # noqa: E402
     CandleSource,
     get_source,
     known_sources,
 )
-from marketdata.okx_source import OkxSource  # noqa: E402,F401
-from marketdata.tinvest_source import TInvestSource  # noqa: E402,F401
+from ai.marketdata.okx_source import OkxSource  # noqa: E402,F401
 from ta.src.provider import (  # noqa: E402
     BINDINGS,
     OutputSpec,

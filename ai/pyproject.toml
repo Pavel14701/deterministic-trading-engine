@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Entry-Exit Transformer: P(win) model, dataset, training, model bundle (TZ-06)"
 requires-python = ">=3.12"
 dependencies = [
+    "niquests>=3.20",
     "numpy>=2.0",
     "polars>=1.42.1",
     "pyyaml>=6.0.3",
