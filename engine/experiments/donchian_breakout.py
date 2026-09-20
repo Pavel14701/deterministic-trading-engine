@@ -97,58 +97,67 @@ def _agg(trades):
 
 
 def run() -> None:
+    import sys
+
+    tfs = sys.argv[1:] or ["4H"]
     print(
-        "DONCHIAN(20)+EMA200+2xATR stop+Donchian(10) exit, 4H, 6 majors; "
+        "DONCHIAN(20)+EMA200+2xATR stop+Donchian(10) exit, 6 majors; "
         "walk-forward train 224d / test 224d; both sides primary "
         "(long-only secondary); bench=buy&hold; pre-registered, no "
-        "tuning; kill: <=2/6 positive net R on test.",
+        "tuning; kill per TF: <=2/6 positive net R on test.  Fixed "
+        "WARM=700 bars: on 1D this exceeds the train span (declared "
+        "consequence, not tuning).",
         flush=True,
     )
-    pos_counts = {"TRAIN": 0, "TEST": 0}
-    for sym in ASSETS:
-        if not (REPO / f"data/okx21/raw_{sym}-USDT_4H.parquet").exists():
-            print(f"{sym:>10} SKIP: no 4H data", flush=True)
-            continue
-        ts, op, lp, hp, cp, _vol = _read_okx(f"{sym}-USDT", "4H")
-        ema = ema_ind(cp, 200, use_talib=False, nan_policy="ffill")
-        atr = atr_ind(hp, lp, cp, 14, use_talib=False)
-        # rolling windows END at t-1 (no same-bar look-ahead)
-        hh20 = np.concatenate(([np.nan], _roll(hp, 20, np.max)[:-1]))
-        ll20 = np.concatenate(([np.nan], _roll(lp, 20, np.min)[:-1]))
-        hh10 = np.concatenate(([np.nan], _roll(hp, 10, np.max)[:-1]))
-        ll10 = np.concatenate(([np.nan], _roll(lp, 10, np.min)[:-1]))
-        atrok = _atr_gate(atr)
-        folds = wf_folds(int(ts[0]), int(ts[-1]), 8, 56)
-        segs = (
-            ("TRAIN", int(ts[0]), folds[4][0] - 7 * DAY),
-            ("TEST", folds[4][0], int(ts[-1])),
+    for tf in tfs:
+        print(f"=== TF {tf} ===", flush=True)
+        pos_counts = {"TRAIN": 0, "TEST": 0}
+        for sym in ASSETS:
+            if not (REPO / f"data/okx21/raw_{sym}-USDT_{tf}.parquet").exists():
+                print(f"{sym:>10} SKIP: no {tf} data", flush=True)
+                continue
+            ts, op, lp, hp, cp, _vol = _read_okx(f"{sym}-USDT", tf)
+            ema = ema_ind(cp, 200, use_talib=False, nan_policy="ffill")
+            atr = atr_ind(hp, lp, cp, 14, use_talib=False)
+            # rolling windows END at t-1 (no same-bar look-ahead)
+            hh20 = np.concatenate(([np.nan], _roll(hp, 20, np.max)[:-1]))
+            ll20 = np.concatenate(([np.nan], _roll(lp, 20, np.min)[:-1]))
+            hh10 = np.concatenate(([np.nan], _roll(hp, 10, np.max)[:-1]))
+            ll10 = np.concatenate(([np.nan], _roll(lp, 10, np.min)[:-1]))
+            atrok = _atr_gate(atr)
+            folds = wf_folds(int(ts[0]), int(ts[-1]), 8, 56)
+            segs = (
+                ("TRAIN", int(ts[0]), folds[4][0] - 7 * DAY),
+                ("TEST", folds[4][0], int(ts[-1])),
+            )
+            for name, lo, hi in segs:
+                s_full, tot_full = _agg(
+                    _simulate(cp, op, hh20, ll20, hh10, ll10, ema, atrok,
+                              atr, lo, hi, False, ts)
+                )
+                s_long, _tot_long = _agg(
+                    _simulate(cp, op, hh20, ll20, hh10, ll10, ema, atrok,
+                              atr, lo, hi, True, ts)
+                )
+                i0 = int(np.searchsorted(ts, lo, side="left"))
+                i1 = min(
+                    int(np.searchsorted(ts, hi, side="left")) - 1, len(cp) - 1
+                )
+                risk0 = RISK_K * atr[i0]
+                bh = f"B&H={(cp[i1] / cp[i0] - 1):+.1%}"
+                if np.isfinite(risk0) and risk0 > 0:
+                    bh += f" ({(cp[i1] - cp[i0]) / risk0:+.1f}R)"
+                print(
+                    f"{sym:>10} {name}: full[{s_full}] long[{s_long}] {bh}",
+                    flush=True,
+                )
+                if tot_full is not None and tot_full > 0:
+                    pos_counts[name] += 1
+        print(
+            f"TF {tf}: POSITIVE net-R TRAIN {pos_counts['TRAIN']}/6, "
+            f"TEST {pos_counts['TEST']}/6 (kill <= 2/6 on test)",
+            flush=True,
         )
-        for name, lo, hi in segs:
-            s_full, tot_full = _agg(
-                _simulate(cp, op, hh20, ll20, hh10, ll10, ema, atrok, atr,
-                          lo, hi, False, ts)
-            )
-            s_long, _tot_long = _agg(
-                _simulate(cp, op, hh20, ll20, hh10, ll10, ema, atrok, atr,
-                          lo, hi, True, ts)
-            )
-            i0 = int(np.searchsorted(ts, lo, side="left"))
-            i1 = min(int(np.searchsorted(ts, hi, side="left")) - 1, len(cp) - 1)
-            risk0 = RISK_K * atr[i0]
-            bh = f"B&H={(cp[i1] / cp[i0] - 1):+.1%}"
-            if np.isfinite(risk0) and risk0 > 0:
-                bh += f" ({(cp[i1] - cp[i0]) / risk0:+.1f}R)"
-            print(
-                f"{sym:>10} {name}: full[{s_full}] long[{s_long}] {bh}",
-                flush=True,
-            )
-            if tot_full is not None and tot_full > 0:
-                pos_counts[name] += 1
-    print(
-        f"POSITIVE net-R counts: TRAIN {pos_counts['TRAIN']}/6, "
-        f"TEST {pos_counts['TEST']}/6 (kill <= 2/6 on test)",
-        flush=True,
-    )
 
 
 if __name__ == "__main__":

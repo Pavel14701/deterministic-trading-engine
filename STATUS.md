@@ -2407,4 +2407,26 @@ alpha; (3) close-based Donchian exit gives back a lot in chop
 (BTC test: 47% win, negative EV).  Per pre-registration: swing/
 Donchian track closed.  Next on the board was funding carry.
 
+DONCHIAN ALL-TF ROLLOUT (runs/donchian_all_tf.log; same fixed rules,
+6 majors, per-TF kill <=2/6 test; 1D now has deep okx data ~13y so
+its train = first ~11y of history, test = last 448d; on 1D the fixed
+WARM=700 bars eats part of train -- declared beforehand):
+  5m : TRAIN 0/6, TEST 0/6 -> dead (fee wall, as everything on 5m).
+  15m: TRAIN 0/6, TEST 2/6 -> dead.
+  1H : TRAIN 4/6 (mixed: BTC -38.5R, ETH -12.5R vs XRP +61R),
+       TEST **5/6** (BTC +7.2, ETH +11.3, SOL +28.1, BNB -0.2,
+       XRP +47.1, DOGE +15.5R; evN +0.08..+0.56, win ~50%).
+       Long-only 1H test: 6/6 positive (+5.5..+47.4R).
+       Vs B&H test: beats it where B&H lost (XRP +47 vs -6.2R,
+       DOGE +15.5 vs -9.1R) and on SOL; loses BTC/BNB, ties ETH.
+  4H : TRAIN 6/6, TEST 2/6 -> the PRE-REGISTERED TF is killed.
+  1D : TRAIN 6/6 (11y of history), TEST 1/6 -> dead.
+Read: the pre-registered hypothesis (4H) stays killed; 1H passing is
+a POST-HOC best-of-5 discovery in the same bull window that flattered
+every long-biased test.  EV per trade on 1H test is small (+0.08
+BTC) with heavy train maxDD (27-46R) -- looks like regime survival,
+not breakout alpha.  Worth ONE fresh pre-registered confirmation
+(full 34-asset 1H universe once the loader finishes, or a later
+holdout window), explicitly labelled as such; no tuning of 20/10/200.
+
 
