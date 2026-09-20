@@ -2429,4 +2429,22 @@ not breakout alpha.  Worth ONE fresh pre-registered confirmation
 (full 34-asset 1H universe once the loader finishes, or a later
 holdout window), explicitly labelled as such; no tuning of 20/10/200.
 
+DONCHIAN 1H DD AUDIT (per-asset, runs/donchian_all_tf.log; user rule:
+"DD > 20R on most assets = unacceptable risk regardless of EV").
+TRAIN: DD 27.0..46.1R on **6/6** -> risk-inadmissible by the rule.
+Recovery factor (totR/DD): XRP 2.26, DOGE 1.39, BNB 1.16, SOL 0.85,
+BTC/ETH negative-total.  TEST: DD > 20R on 3/6 (BTC 30.0, ETH 22.5,
+BNB 22.8); winners' path acceptable: XRP DD 7.6R (recov 6.2), SOL
+10.8R (2.6), DOGE 16.9R (0.92).  Test totR distribution: med +13.4,
+q1 +7.2, q3 +28.1, 5/6 positive; noXRP med +11.3 (4/5); XRP = 43% of
+positive sum -- moderate concentration, not a single-asset carrier.
+DD/n is small (0.05-0.33R/trade) -- the big DD_R numbers come from
+hundreds of trades, i.e. they measure cumulative noise + regime, not
+per-trade risk; still, by the pre-agreed 20R rule the TRAIN period
+fails.  Therefore the 34-asset confirmation run carries an added
+pre-registered risk gate (fixed now, before the run): median test
+DD <= 20R AND recovery >= 1.0 on >= 17/34 assets, alongside the
+>= 17/34 positive-net-R criterion.  Loader 1H phase still running
+(no PHASES_DONE); test fires when data lands.
+
 
