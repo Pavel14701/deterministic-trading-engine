@@ -25,7 +25,7 @@ DC_N = 20
 WARM = 700
 
 
-def _simulate(cp, op, hh20, ll20, sma, atr, lo, hi, long_only, ts):
+def _simulate(cp, op, hp, lp, hh20, ll20, sma, atr, lo, hi, long_only, ts):
     """One segment, starts flat.
 
     Exits on CLOSE crossing the trailing stop (stop as of the previous
@@ -140,7 +140,7 @@ def run() -> None:
         )
         test_stats = None
         for name, lo, hi in segs:
-            tr = _simulate(cp, op, hh20, ll20, sma, atr, lo, hi,
+            tr = _simulate(cp, op, hp, lp, hh20, ll20, sma, atr, lo, hi,
                            long_only, ts)
             s_full, stats_full = _agg(tr)
             i0 = int(np.searchsorted(ts, lo, side="left"))

@@ -2530,6 +2530,31 @@ as fabricated and say so.  Regime-beta suspicion is explicit: this is
 an always-in-after-entry trend rider -- the recurring "beta, not
 alpha" pattern of this project applies.
 
+### QUATTRO DONCHIAN 4H -- RESULT :x: (FAIL per prereg, family CLOSED)
+
+One shot, no tuning (runs/quattro_4h_prereg.log, long-only secondary
+runs/quattro_4h_prereg_longonly.log).  TEST segment:
+  full:   G1 4/6 positive (BARE pass), G2 med DD 5.7R (pass),
+          G3 recov>=1 2/6 (FAIL), G4 pooled PF 1.05 (FAIL) -> FAIL.
+  longonly: G1 2/6, G3 0/6, G4 PF 0.99 -> FAIL worse.
+Per-asset test totR (full): BTC -5.2, ETH -5.8, SOL +5.8, BNB +3.4,
+XRP +5.4, DOGE +0.1; BTC/ETH -- the spec's OWN native universe --
+lose on test in both configs.  TRAIN 5/6 positive with tiny evN
+(+0.05..+0.16R, PF 0.88-1.35) in the bull window = regime beta
+again; it does NOT survive walk-forward (train winners BTC/ETH flip
+negative on test).
+
+Claim check (vs "confirmed live" WR 46% / PF 6.7 / 8 positive years):
+measured pooled TEST PF 1.05, per-asset PF 0.62-1.68, WR 30-59%,
+mean hold ~20x4H ~= 3.3 days.  Nothing remotely like the claim; as
+pre-registered, the claim's internal consistency was already
+implausible (a 2.75-ATR trail cannot produce 6.7 avg win/loss) and
+the data falsifies it outright.  The 1.2-ATR "decisive break" margin
+did NOT fix the fakeout problem of the killed Donchian 4H -- same
+verdict, same reason.  QUATTRO FAMILY CLOSED: no parameter tweaks,
+no TF sweep, no further variants.
+
+
 
 
 
