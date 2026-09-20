@@ -1485,3 +1485,35 @@ sl_atr_mult * ATR(signal bar), NOT the main stack's rule risk_unit.
 modes: entry=next_open|signal_close, exit=horizon|sl_hit (window
 ends at stop-touch, hit bar included, sl_hit flag always recorded).
 19 tests in tests/test_mfe_mae.py.
+
+## Protocol extracted to engine (scripts slimmed down)
+
+New engine/protocol.py owns the WF-B mechanics that lived
+(copy-pasted) in wf_ab / ablation / d13c / d13g: protocol-panel
+loading (reference filter + cost_R + cap + r_pess), fold calendar
+(8x56d, 7d embargo), lambdarank train_ranker (past-only groups,
+seed 7), multi-asset assemble_ranker_data, gated replay (top-s per
+candidate, optional rule-table gate, sim + state machine),
+pooled_stats.  Scripts keep only grids + reporting (d13g 272->135
+lines, d13c 273->155).
+
+CRITICAL lesson from the regression runs (all four scripts re-run
+and compared byte-for-byte against pre-refactor JSONs):
+
+  - LightGBM binning is encoding-sensitive.  The D.13 family feeds
+    float32 zero-filled NaNs; wf_ab (D.8b) fed a pandas DataFrame -
+    which silently upcasts to float64 and keeps NaN natively.
+    Training wf_ab on the D.13 encoding flipped exactly 2 of 24
+    ranker fits (fold-5-A BTC, fold-6-B) with visibly different
+    trade counts (nB 20 vs 46).  assemble_ranker_data therefore has
+    explicit fill_nonfinite / x_dtype params, and each experiment
+    family's encoding is pinned in its script.
+  - Original-code determinism verified: wf_ab run twice from git
+    HEAD reproduced its JSON byte-for-byte, so any diff = real.
+
+Final state: d13g/d13c/ablation/wf_ab outputs identical to
+pre-refactor (ablation run with --reuse: only elapsed_s and
+build=None differ, evaluation identical).  13 tests in
+tests/test_protocol.py (folds, embargo boundaries, ranker
+determinism + row-permutation invariance, replay gate/state
+machine, loader filter/cost/pess, encoding variants).

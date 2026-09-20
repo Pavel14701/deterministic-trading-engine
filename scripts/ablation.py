@@ -37,9 +37,7 @@ import zlib
 from dataclasses import replace
 from pathlib import Path
 
-import lightgbm as lgb
 import numpy as np
-import pandas as pd
 import polars as pl
 
 
@@ -56,14 +54,18 @@ from engine.mtf_dataset import (  # noqa: E402
     trend_state,
 )
 from engine.mtf_model import (  # noqa: E402
-    build_features,
-    candidate_key,
     fit_rule_table,
     trade_curve_stats,
 )
 from engine.okx_dataset import detect_order_blocks  # noqa: E402
-from engine.sim import pess, sim  # noqa: E402
-from engine.state_machine import run_state_machine  # noqa: E402
+from engine.protocol import (  # noqa: E402
+    assemble_ranker_data,
+    fold_masks,
+    load_asset as protocol_load_asset,
+    replay,
+    train_ranker,
+    wf_folds,
+)
 from engine.zones import (  # noqa: E402
     build_tp_sl as _build_tp_sl,
     paint_zone as _paint_zone,
@@ -253,56 +255,15 @@ def build_panel(variant: str, tag: str, risk) -> dict:
 
 def load_asset(variant: str, tag: str) -> dict:
     """Load one variant panel exactly like wf_ab's load_asset."""
-    raw = resample_ohlcv(
-        pl.read_parquet(REPO / f"data/okx/raw_{tag}_1m.parquet"), "1h"
-    )
-    o, h, l, c = (raw[k].to_numpy() for k in ("open", "high", "low", "close"))
-    n = len(raw)
-    panel = candidate_key(
-        pl.read_parquet(tag_file(variant, tag)).filter(
-            (pl.col("execution") == "market")
-            & (pl.col("target") == 2.0)
-            & pl.col("r_net").is_not_nan()
-            & (pl.col("exit_idx") >= 0)
-            & pl.col("risk_unit").is_not_nan()
-        )
-    ).sort("_cand")
-    panel = panel.with_columns(
-        pl.struct(pl.exclude("_cand"))
-        .map_elements(pess, return_dtype=pl.Float64)
-        .alias("r_pess")
-    )
-    feats = build_features(panel, ("rule",))
-    feats["risk_pct"] = (panel["risk_unit"] / panel["fill_price"]).to_numpy()
-    feats["cost_R"] = (0.0025 * panel["fill_price"] / panel["risk_unit"]).to_numpy()
-    return {"tag": tag, "panel": panel, "feats": feats,
-            "n": n, "o": o, "h": h, "l": l, "c": c}
+    d = protocol_load_asset(variant + ABL_SUFFIX, tag)
+    d["tag"] = tag
+    return d
 
 
 def replay_panel(panel, d):
     """Rule-table gate + unified sim + state machine (wf_ab port)."""
     table = fit_rule_table(panel.filter(~pl.col("is_test")))
-    fmt = pl.format("{}|{}", pl.col("regime_dir"), pl.col("side"))
-    picks = (panel.sort(["_cand", "s"]).group_by("_cand").last()
-             .with_columns(fmt.replace_strict(
-                 [f"{r}|{s}" for (r, s) in table],
-                 list(table.values()), default="x").alias("tr"))
-             .filter(pl.col("rule") == pl.col("tr"))
-             .sort("entry_idx").filter(pl.col("is_test")))
-    sig = []
-    for r in picks.iter_rows(named=True):
-        i0 = int(r["entry_idx"]) + 1
-        if i0 >= d["n"]:
-            continue
-        ro, rp, jx = sim(d["o"], d["h"], d["l"], d["c"], i0, r["side"],
-                         r["sl_price"], r["tp_price"], 48, r["atr_i"], r["risk_unit"])
-        if not np.isfinite(ro):
-            continue
-        sig.append({"cand": r["_cand"], "decision_idx": int(r["entry_idx"]),
-                    "side": r["side"], "priority": 0.0,
-                    "r_net": float(rp), "r_opt": float(ro), "exit_idx": jx})
-    taken, _ = run_state_machine(sig)
-    r = np.array([x["r_net"] for x in taken])
+    r, _ts, _meta = replay(panel, d, table)
     return r
 
 
@@ -313,69 +274,20 @@ def evaluate(variant: str) -> dict:
     for t, d in data.items():
         print(f"  {t}: rows={d['panel'].height}", flush=True)
 
-    feats_all, asset_row_all, ys_all, ts_all = [], [], [], []
-    for ai, t in enumerate(TAGS):
-        f = data[t]["feats"].copy()
-        f["asset"] = pd.Categorical([t] * len(f))
-        feats_all.append(f)
-        asset_row_all.append(np.full(len(f), ai))
-        ys_all.append(data[t]["panel"]["r_pess"].to_numpy())
-        ts_all.append(data[t]["panel"]["ts"].to_numpy())
-    FEATS_ALL = pd.concat(feats_all, ignore_index=True)
-    for col in FEATS_ALL.columns:
-        if str(FEATS_ALL[col].dtype) == "category":
-            FEATS_ALL[col] = FEATS_ALL[col].cat.codes.astype(np.float32)
-        elif FEATS_ALL[col].dtype == object:
-            FEATS_ALL[col] = pd.Categorical(FEATS_ALL[col]).codes.astype(np.float32)
-    FEATS_ALL = np.nan_to_num(FEATS_ALL.to_numpy().astype(np.float32),
-                              nan=0.0, posinf=0.0, neginf=0.0)
-    ASSET_ROW = np.concatenate(asset_row_all)
-    Y_ALL = np.concatenate(ys_all).astype(np.float32)
-    TS_ALL = np.concatenate(ts_all)
-    row_parts, off = [], 0
-    for t in TAGS:
-        cands = data[t]["panel"]["_cand"].unique(maintain_order=True).to_list()
-        row_parts.append(data[t]["panel"]["_cand"]
-                         .replace_strict(cands, list(range(len(cands))))
-                         .to_numpy() + off)
-        off += len(cands)
-    ROW_ALL = np.concatenate(row_parts)
+    rd = assemble_ranker_data(data, TAGS)
+    FEATS_ALL, ASSET_ROW = rd.x, rd.asset_row
+    Y_ALL, TS_ALL, ROW_ALL = rd.y, rd.ts, rd.row
 
     def lgb_ranker(tr_ix):
-        rel = np.clip(np.round((Y_ALL + 2) * 2), 0, 12).astype(int)
-        order = np.lexsort((np.arange(len(Y_ALL)), ROW_ALL))
-        inv = np.empty(len(Y_ALL), np.int64)
-        inv[order] = np.arange(len(Y_ALL))
-        fs = FEATS_ALL[order]
-        rows_o = ROW_ALL[order]
-        in_tr = np.isin(np.arange(len(rows_o)), inv[tr_ix])
-        gs, i = [], 0
-        while i < len(rows_o):
-            j = i
-            while j < len(rows_o) and rows_o[j] == rows_o[i]:
-                j += 1
-            if in_tr[i]:
-                gs.append(j - i)
-            i = j
-        m = lgb.LGBMRanker(objective="lambdarank", n_estimators=300,
-                           learning_rate=0.05, num_leaves=15,
-                           min_child_samples=30,
-                           label_gain=list(range(13)),
-                           random_state=7, verbosity=-1)
-        m.fit(fs[in_tr], rel[order][in_tr], group=gs, callbacks=[])
-        return m.predict(fs)
+        return train_ranker(FEATS_ALL, Y_ALL, ROW_ALL, tr_ix)
 
     t0 = int(min(data[t]["panel"]["ts"].min() for t in TAGS))
     t1 = int(max(data[t]["panel"]["ts"].max() for t in TAGS))
-    fold_len = FOLD_DAYS * DAY_MS
-    folds = [(t0 + w * fold_len, t0 + (w + 1) * fold_len) for w in
-             range(max(0, (t1 - t0) // fold_len - N_FOLDS + 1),
-                   (t1 - t0) // fold_len + 1)][-N_FOLDS:]
+    folds = wf_folds(t0, t1)
 
     fold_means, all_r = [], []
     for fi, (fs_, fe) in enumerate(folds):
-        tr_mask = TS_ALL < fs_ - EMBARGO_DAYS * DAY_MS
-        te_mask = (TS_ALL >= fs_) & (TS_ALL < fe)
+        tr_mask, te_mask = fold_masks(TS_ALL, fs_, fe)
         sc = lgb_ranker(np.where(tr_mask)[0])
         eb = []
         for ai, t in enumerate(TAGS):

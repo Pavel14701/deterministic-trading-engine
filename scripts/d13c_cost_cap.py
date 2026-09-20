@@ -1,7 +1,7 @@
 """D.13c: cost-aware cap and AVSL-off, measured on the WF-B protocol.
 
 D.13b showed the toxic tail (cost_R > 0.15) is pure round-trip cost
-drag (ev -0.14R) and AVSL is robustly harmful.  This script measures
+ drag (ev -0.14R) and AVSL is robustly harmful.  This script measures
 both fixes on the real panel (A) and the AVSL-off panel (C), no
 rebuild needed:
 
@@ -13,6 +13,10 @@ time risk_unit is known, so "skip if cost_R > cap" is implementable.
 
 Also reports the D.13 regime-fold breakdown (per-asset means per fold)
 and saves runs/d13c_cost_cap.json.
+
+All protocol mechanics (panel loading, fold calendar, ranker, replay,
+pooled stats) live in engine.protocol - this file is only the
+experiment grid, the label-permutation control and reporting.
 """
 
 from __future__ import annotations
@@ -23,75 +27,35 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-import lightgbm as lgb
 import numpy as np
-import pandas as pd
 import polars as pl
 
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from engine.mtf import resample_ohlcv  # noqa: E402
-from engine.mtf_model import (  # noqa: E402
-    bucketed_sharpe,
-    build_features,
-    candidate_key,
-    fit_rule_table,
-    per_trade_sharpe,
-    trade_curve_stats,
+from engine.mtf_model import fit_rule_table  # noqa: E402
+from engine.protocol import (  # noqa: E402
+    assemble_ranker_data,
+    fold_masks,
+    load_asset,
+    pooled_stats,
+    replay,
+    train_ranker,
+    wf_folds,
 )
-from engine.sim import pess, sim  # noqa: E402
-from engine.state_machine import run_state_machine  # noqa: E402
 
 TAGS = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
 VARIANT_DIRS = {"A": "A", "C": "C"}
 CAPS = (None, 0.15, 0.10, 0.075)
-N_FOLDS, FOLD_DAYS, EMBARGO_DAYS = 8, 56, 7
 # label-permutation control (D.13e): PERMUTE=0 -> normal run;
 # PERMUTE=<seed> -> shuffle r_net before the table fit; test EV must
 # collapse to ~0.  Usage: python scripts/d13c_cost_cap.py [PERMUTE]
 PERMUTE = int(sys.argv[1]) if len(sys.argv) > 1 else 0
-DAY_MS = 86_400_000
 
 
-def load_asset(d: str, tag: str, cap: float | None):
-    """wf_ab-style loader with an extra cost_R <= cap row filter."""
-    raw = resample_ohlcv(
-        pl.read_parquet(REPO / f"data/okx/raw_{tag}_1m.parquet"), "1h"
-    )
-    o, h, l, c = (raw[k].to_numpy() for k in ("open", "high", "low", "close"))
-    n = len(raw)
-    panel = candidate_key(
-        pl.read_parquet(
-            REPO / "data" / "ablation" / d / f"{tag.replace('-', '')}_1h.parquet"
-        ).filter(
-            (pl.col("execution") == "market")
-            & (pl.col("target") == 2.0)
-            & pl.col("r_net").is_not_nan()
-            & (pl.col("exit_idx") >= 0)
-            & pl.col("risk_unit").is_not_nan()
-        )
-    ).with_columns(
-        (0.0025 * pl.col("fill_price") / pl.col("risk_unit")).alias("cost_R")
-    )
-    n0 = panel.height
-    if cap is not None:
-        panel = panel.filter(pl.col("cost_R") <= cap)
-    panel = panel.sort("_cand").with_columns(
-        pl.struct(pl.exclude("_cand"))
-        .map_elements(pess, return_dtype=pl.Float64)
-        .alias("r_pess")
-    )
-    feats = build_features(panel, ("rule",))
-    feats["risk_pct"] = (panel["risk_unit"] / panel["fill_price"]).to_numpy()
-    feats["cost_R"] = panel["cost_R"].to_numpy()
-    return {"panel": panel, "feats": feats, "n": n, "o": o, "h": h,
-            "l": l, "c": c, "rows_raw": n0}
-
-
-def replay(panel, d, train_mask, permute: int = 0):
-    """Rule-table gate + unified sim + state machine (wf_ab port).
+def replay_table(panel, bars, train_mask, permute: int = 0):
+    """Rule-table gate + replay (wf_ab port).
 
     ``train_mask`` MUST be strictly past-only (ts < fold start -
     embargo): fitting the table on ``~is_test`` leaks future folds
@@ -107,28 +71,8 @@ def replay(panel, d, train_mask, permute: int = 0):
         work = work.with_columns(
             pl.Series("r_net", rng.permutation(work["r_net"].to_numpy())))
     table = fit_rule_table(work.filter(train_mask))
-    fmt = pl.format("{}|{}", pl.col("regime_dir"), pl.col("side"))
-    picks = (panel.sort(["_cand", "s"]).group_by("_cand").last()
-             .with_columns(fmt.replace_strict(
-                 [f"{r}|{s}" for (r, s) in table],
-                 list(table.values()), default="x").alias("tr"))
-             .filter(pl.col("rule") == pl.col("tr"))
-             .sort("entry_idx").filter(pl.col("is_test")))
-    sig = []
-    for r in picks.iter_rows(named=True):
-        i0 = int(r["entry_idx"]) + 1
-        if i0 >= d["n"]:
-            continue
-        ro, rp, jx = sim(d["o"], d["h"], d["l"], d["c"], i0, r["side"],
-                         r["sl_price"], r["tp_price"], 48, r["atr_i"], r["risk_unit"])
-        if not np.isfinite(ro):
-            continue
-        sig.append({"cand": r["_cand"], "decision_idx": int(r["entry_idx"]),
-                    "side": r["side"], "priority": 0.0, "ts": float(r["ts"]),
-                    "r_net": float(rp), "r_opt": float(ro), "exit_idx": jx})
-    taken, _ = run_state_machine(sig)
-    return (np.array([x["r_net"] for x in taken]),
-            np.array([x["ts"] for x in taken]))
+    r, ts, _ = replay(panel, bars, table)
+    return r, ts
 
 
 def evaluate(d: str, cap: float | None) -> dict:
@@ -136,78 +80,22 @@ def evaluate(d: str, cap: float | None) -> dict:
     label = f"{d}/cap={cap}"
     print(f"=== evaluating {label} ===", flush=True)
     data = {t: load_asset(d, t, cap) for t in TAGS}
-
-    feats_all, asset_row_all, ys_all, ts_all = [], [], [], []
-    for ai, t in enumerate(TAGS):
-        f = data[t]["feats"].copy()
-        f["asset"] = pd.Categorical([t] * len(f))
-        feats_all.append(f)
-        asset_row_all.append(np.full(len(f), ai))
-        ys_all.append(data[t]["panel"]["r_pess"].to_numpy())
-        ts_all.append(data[t]["panel"]["ts"].to_numpy())
-    X = pd.concat(feats_all, ignore_index=True)
-    for col in X.columns:
-        if str(X[col].dtype) == "category":
-            X[col] = X[col].cat.codes.astype(np.float32)
-        elif X[col].dtype == object:
-            X[col] = pd.Categorical(X[col]).codes.astype(np.float32)
-    X = np.nan_to_num(X.to_numpy().astype(np.float32),
-                      nan=0.0, posinf=0.0, neginf=0.0)
-    ASSET_ROW = np.concatenate(asset_row_all)
-    Y = np.concatenate(ys_all).astype(np.float32)
-    TS = np.concatenate(ts_all)
-    row_parts, off = [], 0
-    for t in TAGS:
-        cands = data[t]["panel"]["_cand"].unique(maintain_order=True).to_list()
-        row_parts.append(data[t]["panel"]["_cand"]
-                         .replace_strict(cands, list(range(len(cands))))
-                         .to_numpy() + off)
-        off += len(cands)
-    ROW = np.concatenate(row_parts)
-
-    def ranker(tr_ix):
-        rel = np.clip(np.round((Y + 2) * 2), 0, 12).astype(int)
-        order = np.lexsort((np.arange(len(Y)), ROW))
-        inv = np.empty(len(Y), np.int64)
-        inv[order] = np.arange(len(Y))
-        fs = X[order]
-        rows_o = ROW[order]
-        in_tr = np.isin(np.arange(len(rows_o)), inv[tr_ix])
-        gs, i = [], 0
-        while i < len(rows_o):
-            j = i
-            while j < len(rows_o) and rows_o[j] == rows_o[i]:
-                j += 1
-            if in_tr[i]:
-                gs.append(j - i)
-            i = j
-        m = lgb.LGBMRanker(objective="lambdarank", n_estimators=300,
-                           learning_rate=0.05, num_leaves=15,
-                           min_child_samples=30,
-                           label_gain=list(range(13)),
-                           random_state=7, verbosity=-1)
-        m.fit(fs[in_tr], rel[order][in_tr], group=gs, callbacks=[])
-        return m.predict(fs)
-
+    rd = assemble_ranker_data(data, TAGS)
     t0 = int(min(data[t]["panel"]["ts"].min() for t in TAGS))
     t1 = int(max(data[t]["panel"]["ts"].max() for t in TAGS))
-    fl = FOLD_DAYS * DAY_MS
-    folds = [(t0 + w * fl, t0 + (w + 1) * fl) for w in
-             range(max(0, (t1 - t0) // fl - N_FOLDS + 1),
-                   (t1 - t0) // fl + 1)][-N_FOLDS:]
+    folds = wf_folds(t0, t1)
 
     fold_means, all_r, all_ts, detail = [], [], [], {}
     for fi, (fs_, fe) in enumerate(folds):
-        tr = TS < fs_ - EMBARGO_DAYS * DAY_MS
-        te = (TS >= fs_) & (TS < fe)
-        sc = ranker(np.where(tr)[0])
+        tr, te = fold_masks(rd.ts, fs_, fe)
+        sc = train_ranker(rd.x, rd.y, rd.row, np.where(tr)[0])
         per_r, per_ts = {}, {}
         for ai, t in enumerate(TAGS):
             pm = data[t]["panel"].with_columns(
-                pl.Series("s", sc[ASSET_ROW == ai]),
-                pl.Series("is_test", te[ASSET_ROW == ai]))
-            per_r[t], per_ts[t] = replay(pm, data[t],
-                                         tr[ASSET_ROW == ai], PERMUTE)
+                pl.Series("s", sc[rd.asset_row == ai]),
+                pl.Series("is_test", te[rd.asset_row == ai]))
+            per_r[t], per_ts[t] = replay_table(
+                pm, data[t], tr[rd.asset_row == ai], PERMUTE)
         parts = [x for x in per_r.values() if x.size]
         eb = np.concatenate(parts) if parts else np.array([])
         fold_means.append(float(eb.mean()) if eb.size else float("nan"))
@@ -226,17 +114,11 @@ def evaluate(d: str, cap: float | None) -> dict:
 
     pooled = np.concatenate([x for x in all_r if x.size])
     pooled_ts = np.concatenate([x for x in all_ts if x.size])
-    order = np.argsort(pooled_ts, kind="stable")
-    pooled_chrono = pooled[order]
-    stats = trade_curve_stats(pooled_chrono)
-    res = {"mean": float(pooled.mean()), "n": int(pooled.size),
-           "dd": stats["max_dd_r"],
-           "t_stat_naive": stats["t_stat"],
-           "sharpe_per_trade": per_trade_sharpe(pooled_chrono),
-           "sharpe_ann_bucketed": bucketed_sharpe(pooled_chrono, pooled_ts),
-           "folds": fold_means, "fold_detail": detail,
-           "rows_raw": sum(data[t]["rows_raw"] for t in TAGS),
-           "rows_kept": sum(data[t]["panel"].height for t in TAGS)}
+    res = pooled_stats(pooled, pooled_ts)
+    res["folds"] = fold_means
+    res["fold_detail"] = detail
+    res["rows_raw"] = sum(data[t]["rows_raw"] for t in TAGS)
+    res["rows_kept"] = sum(data[t]["panel"].height for t in TAGS)
     print(f"  => {label}: pess={res['mean']:+.3f} (n={res['n']}, "
           f"dd={res['dd']:.1f}R, sharpe={res['sharpe_ann_bucketed']:.2f} "
           f"[per-trade {res['sharpe_per_trade']:.2f}], "
