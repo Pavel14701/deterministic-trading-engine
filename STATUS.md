@@ -1847,4 +1847,34 @@ folds 4-6 are burned for this config family.  Next: maker entry
 model on the working point, then fresh-data validation on another
 asset (15m AVAX/BNB) as the real holdout.
 
+Holdout verdict - the pocket does NOT replicate (runs/
+ob_holdout_assets.log, engine/experiments/ob_holdout_assets.py;
+fixed point delay [5,10), L=30 static, TP {4,6}R, gross, zero
+tuning on holdout):
+
+  PRIMARY   n     EV4R/win    EV6R/win   delay med
+  AVAX      197  +0.024/29%  -0.038/28%     6
+  BNB       109  -0.177/27%  -0.191/26%     7
+  SOL       237  -0.069/28%  -0.120/27%     6
+  ETH       275  +0.178/36%  +0.139/34%     7
+  SECONDARY (bonus, same fixed point)
+  DOGE      217  +0.270/39%  +0.265/38%     7
+  LINK      100  +0.044/32%  -0.008/31%     6
+  LTC       229  -0.155/31%  -0.135/30%     6
+  NEAR      191  -0.119/28%  -0.096/27%     7
+  XRP        85  +0.105/34%  +0.186/34%     7
+
+Pre-registered criterion: >=3/4 primary gross>0 -> maker; <=1 ->
+close.  Result: 1-2/4 (clearly positive only ETH; AVAX ~0; BNB/SOL
+negative).  All 9 assets pooled per-trade: 4R ~ +0.02R, 6R ~ +0.00R
+- zero, below taker.  Delay med 6-7 replicates the BTC mechanism
+timing but carries no edge outside BTC.  The BTC +0.35R working
+point was selection-inflated + asset-specific.
+
+DECISION: close the OB directional track per the pre-registered
+rule.  No maker study (would model net on inflated gross).  Pivot:
+funding carry.  Negative result is clean: pipeline semantics now
+causal, the fast-retest mechanism timing is real and replicates,
+the profitability does not.
+
 
