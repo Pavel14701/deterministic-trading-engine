@@ -1560,3 +1560,22 @@ Diagnostics on real panels (runs/probe_rel_seeds.log):
   (staleness is a legitimate known-at-decision-time input).
   NOTE: resample_ohlcv buckets align to the epoch - MTF tests must
   use a grid-aligned base ts (T0Q in tests).
+
+## Audit: visit() semantics, backward compat, warm-up
+
+- visit() audit: exactly two production consumers of the BOOLEAN
+  signal interpreter - engine/mfe_mae.py (signal) and
+  dsl/evaluate.py evaluate_dsl.  Both are bool-by-contract; no
+  consumer expects numbers from visit().  Numeric path is
+  Interpreter.visit_numeric (feature_spec only).
+- backward compat: no production module imports engine.mfe_mae
+  (only its own tests); d13c/d13g/wf_ab unaffected by the
+  dsl_feed extraction.
+- dsl_feed: make_bar_context split into make_bar_provider (provider)
+  + make_bar_context (Context wrapper) so hybrid contexts can
+  combine bar DSL with extra column providers.
+- warm-up pinned: close[3]/close[5] at idx 0 -> NaN, NaN comparison
+  -> 0.0 flag; boolean feature cols are Float64 (schema asserted).
+- asof_join_features staleness policy documented: adapter never
+  filters stale HTF bars; freshness caps belong to FeatureSpec /
+  event filtering, explicit and testable.

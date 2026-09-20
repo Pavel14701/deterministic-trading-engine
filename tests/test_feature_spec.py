@@ -110,6 +110,15 @@ def test_collect_values_hand_computed():
     out = collect_features(bars, spec, [4, 5])
     assert out["event_idx"].to_list() == [4, 5]
     assert out["event_ts"].to_list() == [T0 + 4 * STEP, T0 + 5 * STEP]
+    # boolean expressions must land as Float64 flags, not Boolean cols
+    assert out.schema == {
+        "event_idx": pl.Int64,
+        "event_ts": pl.Int64,
+        "mom3": pl.Float64,
+        "above_sma2": pl.Float64,
+        "rng": pl.Float64,
+        "down": pl.Float64,
+    }
     assert out["mom3"].to_list() == [11.0, 12.0]
     # sma(2) at bar 4 = 13.5 <= 14 -> 1.0; bar 5 = 14.5 <= 15 -> 1.0
     assert out["above_sma2"].to_list() == [1.0, 1.0]
@@ -131,10 +140,19 @@ def test_numeric_arithmetic_keeps_value():
 
 
 def test_warmup_nan_not_error():
+    """Historical reads before series start are NaN, never an error."""
     bars = make_bars([10, 11, 12])
-    spec = FeatureSpec(features=(FeatureDef("back", "close[5]"),))
+    spec = FeatureSpec(
+        features=(
+            FeatureDef("back3", "close[3]"),
+            FeatureDef("back5", "close[5]"),
+            FeatureDef("back3_cmp", "close[3] > 0.0"),
+        )
+    )
     out = collect_features(bars, spec, [0])
-    assert out["back"][0] != out["back"][0]  # NaN, not an exception
+    for col in ("back3", "back5"):
+        assert out[col][0] != out[col][0]  # NaN, not an exception
+    assert out["back3_cmp"][0] == 0.0  # NaN comparison -> False -> 0.0
 
 
 def test_unknown_indicator_fails_fast():

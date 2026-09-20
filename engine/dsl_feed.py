@@ -22,7 +22,12 @@ from dsl.exceptions import ProviderError
 from engine.features import compute_atr
 
 
-__all__ = ("BAR_DSL_MANIFEST", "SeriesCache", "make_bar_context")
+__all__ = (
+    "BAR_DSL_MANIFEST",
+    "SeriesCache",
+    "make_bar_context",
+    "make_bar_provider",
+)
 
 BAR_COLUMNS = ("open", "high", "low", "close", "volume")
 COMPUTED_INDICATORS = ("sma", "ema", "rsi", "atr")
@@ -130,8 +135,8 @@ class SeriesCache:
         return out
 
 
-def make_bar_context(cache: SeriesCache, bar_idx: int) -> Context:
-    """Build a DSL ``Context`` bound to bar ``bar_idx``.
+def make_bar_provider(cache: SeriesCache, bar_idx: int) -> InProcessProvider:
+    """Build a bar-DSL provider bound to bar ``bar_idx``.
 
     ``name[k]`` resolves to the value at bar ``bar_idx - k``; a
     reference before the series start yields NaN (comparisons against
@@ -165,4 +170,16 @@ def make_bar_context(cache: SeriesCache, bar_idx: int) -> Context:
             raise ProviderError(f"{indicator}[{offset}] out of range")
         return float(cache.get(indicator, params)[j])
 
-    return Context([InProcessProvider(BAR_DSL_MANIFEST, resolver)])
+    return InProcessProvider(BAR_DSL_MANIFEST, resolver)
+
+
+def make_bar_context(cache: SeriesCache, bar_idx: int) -> Context:
+    """Build a DSL ``Context`` bound to bar ``bar_idx``.
+
+    Convenience wrapper around :func:`make_bar_provider`; combine it
+    with additional providers (e.g.
+    :class:`engine.feature_provider.ColumnProvider`) via
+    ``Context([make_bar_provider(...), extra_provider])`` or the
+    :class:`engine.feature_provider.HybridContextFactory` hook.
+    """
+    return Context([make_bar_provider(cache, bar_idx)])

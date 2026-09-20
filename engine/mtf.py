@@ -160,6 +160,14 @@ def asof_join_features(
             legitimate input - the staleness itself is known at
             decision time).
 
+    Staleness policy: the adapter NEVER filters or masks stale HTF
+    bars - an old but closed bar is still causal information, and
+    dropping it here would silently change feature semantics.  If a
+    family needs a freshness cap, express it at the FeatureSpec /
+    event-filtering level (e.g. a ``{prefix}age_ms < cap`` flag via
+    :mod:`engine.feature_spec`, or drop events where the age column
+    exceeds the cap) so the decision is explicit and testable.
+
     Returns:
         ``base`` sorted by ``ts`` with the attached columns.
 
