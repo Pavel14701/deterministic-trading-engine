@@ -15,13 +15,24 @@ from .config import OrderBlockConfig
 
 
 def precompute_indicators(
+    open_: np.ndarray,
     high: np.ndarray,
     low: np.ndarray,
     close: np.ndarray,
     volume: np.ndarray,
     cfg: OrderBlockConfig,
 ) -> dict[str, np.ndarray]:
-    """Compute every indicator the pipeline needs, once, up front."""
+    """Compute every indicator the pipeline needs, once, up front.
+
+    Zone arrays are indexed by bar and resolved at the *pivot* bar
+    (``idx``) during validation.  Per ``cfg.zone_source``:
+
+    - ``range``      - ``[low - m*ATR, high + m*ATR]`` (classic OB);
+    - ``body``       - ``[min(o,c) - m*ATR, max(o,c) + m*ATR]``;
+    - ``close_band`` - legacy ``[close - m*ATR, close + m*ATR]``.
+
+    where ``m = cfg.zone_atr_multiplier``.
+    """
     atr = atr_ind(
         high,
         low,
@@ -32,8 +43,18 @@ def precompute_indicators(
     avg_volume = sma_ind(volume, cfg.volume_window, use_talib=cfg.use_talib)
     local_highs = _rolling_max_numba(high, cfg.liquidity_window)
     local_lows = _rolling_min_numba(low, cfg.liquidity_window)
-    zone_low = close - cfg.zone_atr_multiplier * atr
-    zone_high = close + cfg.zone_atr_multiplier * atr
+    m = cfg.zone_atr_multiplier
+    if cfg.zone_source == "range":
+        zone_low = low - m * atr
+        zone_high = high + m * atr
+    elif cfg.zone_source == "body":
+        body_lo = np.minimum(open_, close)
+        body_hi = np.maximum(open_, close)
+        zone_low = body_lo - m * atr
+        zone_high = body_hi + m * atr
+    else:  # "close_band" (legacy volatility band)
+        zone_low = close - m * atr
+        zone_high = close + m * atr
     result = {
         "atr": atr,
         "avg_volume": avg_volume,

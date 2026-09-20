@@ -115,31 +115,42 @@ def check_zone_entry(
     max_zone_penetration: float,
     zone_entry_mode: str,
 ) -> bool:
-    """True if bar j enters the zone per the entry mode."""
+    """True if bar j enters the zone per the entry mode.
+
+    Wick semantics are side-aware: a supply zone (resistance above)
+    is tested when the bar's **high** reaches into it, a demand zone
+    (support below) when its **low** does.  The penetration guard
+    rejects bars that punched through the far side of the zone.
+    """
     zone_span = zone_high - zone_low
     if zone_entry_mode == "wick":
         if is_supply:
-            if not (zone_low <= low[j] <= zone_high):
+            # the bar's high must reach into the zone...
+            if high[j] < zone_low:
                 return False
-            if low[j] < zone_low - max_zone_penetration * zone_span:
-                return False
-        else:
-            if not (zone_low <= high[j] <= zone_high):
-                return False
+            # ...without punching far through its far edge
             if high[j] > zone_high + max_zone_penetration * zone_span:
                 return False
-        return True
+            return True
+        else:
+            # the bar's low must reach into the zone...
+            if low[j] > zone_high:
+                return False
+            # ...without punching far through its far edge
+            if low[j] < zone_low - max_zone_penetration * zone_span:
+                return False
+            return True
     elif zone_entry_mode == "close":
         if not (zone_low <= close[j] <= zone_high):
             return False
         return True
     else:  # "any"
         if is_supply:
-            return (zone_low <= low[j] <= zone_high) or (
+            return (zone_low <= high[j] <= zone_high) or (
                 zone_low <= close[j] <= zone_high
             )
         else:
-            return (zone_low <= high[j] <= zone_high) or (
+            return (zone_low <= low[j] <= zone_high) or (
                 zone_low <= close[j] <= zone_high
             )
 
@@ -217,40 +228,52 @@ def check_orderflow_shift(
     low: np.ndarray,
     idx: int,
     j: int,
-    shift_lookforward: int,
+    pivot_confirm: dict[int, int],
     is_supply: bool,
     shift_require_extremes: bool,
 ) -> bool:
-    """True when structure shifted in the block direction."""
-    future_end = j + shift_lookforward
-    start_peaks = bisect.bisect_right(peak_list, j)
-    end_peaks = bisect.bisect_left(peak_list, future_end)
-    future_peaks = peak_list[start_peaks:end_peaks]
-    start_valleys = bisect.bisect_right(valley_list, j)
-    end_valleys = bisect.bisect_left(valley_list, future_end)
-    future_valleys = valley_list[start_valleys:end_valleys]
-    if not future_peaks and not future_valleys:
+    """True when structure shifted in the block direction (causal).
+
+    Only extremes formed **between the pivot and the retest bar**
+    (``idx < p < j``) that were already confirmed strictly before the
+    retest bar (``pivot_confirm[p] < j``) are considered - the filter
+    never reads a bar at or after ``j``.  The most recent such extreme
+    is compared against the prior extreme of the same kind: a lower
+    high confirms a bearish (supply) shift, a higher low a bullish
+    (demand) one.
+    """
+    recent_peaks = [
+        p
+        for p in peak_list
+        if idx < p < j and pivot_confirm.get(p, j) < j
+    ]
+    recent_valleys = [
+        v
+        for v in valley_list
+        if idx < v < j and pivot_confirm.get(v, j) < j
+    ]
+    if not recent_peaks and not recent_valleys:
         return not shift_require_extremes
-    all_future = future_peaks + future_valleys
-    first_idx = min(all_future)
-    is_peak = first_idx in future_peaks
+    all_recent = recent_peaks + recent_valleys
+    last_idx = max(all_recent)
+    is_peak = last_idx in recent_peaks
     pos_peak = bisect.bisect_left(peak_list, idx) - 1
     last_peak = peak_list[pos_peak] if pos_peak >= 0 else None
     pos_valley = bisect.bisect_left(valley_list, idx) - 1
     last_valley = valley_list[pos_valley] if pos_valley >= 0 else None
     if is_peak:
         if is_supply:
-            return last_peak is not None and high[first_idx] < high[last_peak]
+            return last_peak is not None and high[last_idx] < high[last_peak]
         else:
-            return last_peak is not None and high[first_idx] > high[last_peak]
+            return last_peak is not None and high[last_idx] > high[last_peak]
     else:
         if is_supply:
             return (
-                last_valley is not None and low[first_idx] < low[last_valley]
+                last_valley is not None and low[last_idx] < low[last_valley]
             )
         else:
             return (
-                last_valley is not None and low[first_idx] > low[last_valley]
+                last_valley is not None and low[last_idx] > low[last_valley]
             )
 
 

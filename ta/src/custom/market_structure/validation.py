@@ -34,6 +34,7 @@ def validate_block_candidates(
     existing_blocks: list[OrderBlock],
     pivot_confirm: dict[int, int] | None = None,
     pivot_next_extreme: dict[int, int] | None = None,
+    pivot_next_extreme_confirm: dict[int, int | None] | None = None,
 ) -> list[OrderBlock]:
     """Validate candidates and search their first valid retest.
 
@@ -43,11 +44,28 @@ def validate_block_candidates(
       bar (``confirm_idx < break_idx``): the block was already tradable
       at the breakout, i.e. the underlying extreme could not repaint;
     - the distance from the pivot to the next confirmed extreme must
-      exceed ``cfg.min_extreme_gap``;
+      exceed ``cfg.min_extreme_gap`` - applied only when that next
+      extreme was itself confirmed before the breakout bar (never
+      filtered on hindsight information);
     - when ``cfg.require_complete_window`` is set, the full retest
       confirmation window must fit inside the history
       (``end_idx < len(close)``).
+
+    Raises
+    ------
+    ValueError
+        If ``cfg.check_orderflow_shift`` is set without online pivots
+        (``pivot_confirm is None``): the causal orderflow filter needs
+        confirm indices, and silently running it on hindsight pivots
+        would be a look-ahead leak.
+
     """
+    if cfg.check_orderflow_shift and pivot_confirm is None:
+        raise ValueError(
+            "check_orderflow_shift requires the online ZigZag "
+            "(use_online_extremes=True): confirm-guarded pivots are "
+            "needed for a look-ahead-free structure filter"
+        )
     confirmed = existing_blocks.copy()
     avg_vol = indicators["avg_volume"]
     zone_low_arr = indicators["zone_low"]
@@ -73,8 +91,18 @@ def validate_block_candidates(
             if pivot_next_extreme is not None:
                 next_extreme_idx = pivot_next_extreme.get(idx)
                 if next_extreme_idx is not None and next_extreme_idx >= 0:
-                    if next_extreme_idx - idx <= cfg.min_extreme_gap:
-                        continue
+                    # Causal gap filter: only when the next extreme was
+                    # itself confirmed before the breakout bar - at
+                    # decision time an unconfirmed next extreme was
+                    # simply unknown, so it must not reject the block.
+                    next_confirm = (
+                        pivot_next_extreme_confirm.get(idx)
+                        if pivot_next_extreme_confirm is not None
+                        else None
+                    )
+                    if next_confirm is not None and next_confirm < break_idx:
+                        if next_extreme_idx - idx <= cfg.min_extreme_gap:
+                            continue
         # Market structure filter
         if cfg.use_market_structure_filter:
             rel_peaks = [p for p in peak_list if p <= idx]
@@ -158,6 +186,7 @@ def validate_block_candidates(
             avg_vol,
             peak_list,
             valley_list,
+            pivot_confirm,
             cfg,
         ):
             continue
@@ -192,6 +221,7 @@ def _find_retest(
     avg_vol: np.ndarray,
     peak_list: list[int],
     valley_list: list[int],
+    pivot_confirm: dict[int, int] | None,
     cfg: OrderBlockConfig,
 ) -> bool:
     """Search the first valid retest; append the block when found."""
@@ -245,7 +275,7 @@ def _find_retest(
             cfg.min_reaction_size,
         ):
             continue
-        # Orderflow shift
+        # Orderflow shift (causal: past window, confirm-guarded)
         if cfg.check_orderflow_shift:
             if not check_orderflow_shift(
                 peak_list,
@@ -254,7 +284,7 @@ def _find_retest(
                 low,
                 idx,
                 j,
-                cfg.shift_lookforward,
+                pivot_confirm,
                 is_supply,
                 cfg.shift_require_extremes,
             ):

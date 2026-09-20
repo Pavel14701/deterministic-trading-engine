@@ -3,12 +3,20 @@
 
 Tuning rationale
 ----------------
-- Low timeframes (1m/5m): noisy, mean-reverting -> tight ZigZag
-  (small distance/prominence), short dynamic-lookback bounds, short
-  confirmation windows, clustering on to merge overlapping zones.
-- Mid timeframes (15m/1h): balanced defaults with ADX trend filter.
-- High timeframes (4h/1d): strong trends -> wider ZigZag, ADX + market
-  structure filters, RSI confirmation, age penalty for freshness.
+- Zone basis is the **source pivot bar** (``zone_source="range"``),
+  extended by a small ``zone_atr_multiplier`` (0.2 ATR) so the zone is
+  not a single-bar sliver.
+- The ZigZag reversal is **ATR-calibrated**
+  (``reversal_atr_multiple=2.5``): the reversal/ATR ratio stays
+  constant across timeframes instead of decaying with bar size.
+- ADX trend filters and RSI "confirmation" are disabled everywhere:
+  ADX > threshold keeps only strong-trend bars where zones break
+  instead of retest, and the RSI gate demanded overbought/oversold at
+  the retest bar - exactly the repeated-high case, not a zone retest.
+- ``confirmation_window`` scales with the observed retest-delay
+  distribution (retests typically arrive several bars after the
+  breakout), and low-timeframe clustering is off (it blurred distinct
+  zones into one wide band).
 All presets use the repaint-free online ZigZag.
 """
 
@@ -23,73 +31,80 @@ TIMEFRAME_CONFIGS: dict[str, OrderBlockConfig] = {
     # --- scalping: noise dominates, keep it fast and tight -------------
     "1m": OrderBlockConfig(
         use_online_extremes=True,
-        online_reversal_pct=0.0015,
+        reversal_atr_multiple=2.5,
         zigzag_distance=3,
         min_extreme_gap=3,
         lookback_min=3,
         lookback_max=20,
         confirmation_window=8,
         volume_window=30,
-        cluster_blocks=True,
+        cluster_blocks=False,
         max_cluster_time_gap=None,
+        zone_atr_multiplier=0.2,
     ),
     "5m": OrderBlockConfig(
         use_online_extremes=True,
-        online_reversal_pct=0.003,
+        reversal_atr_multiple=2.5,
+        multiple_breakouts=True,
         zigzag_distance=4,
         min_extreme_gap=4,
         lookback_min=5,
         lookback_max=30,
-        confirmation_window=10,
+        confirmation_window=36,
         volume_window=24,
-        cluster_blocks=True,
+        cluster_blocks=False,
+        zone_atr_multiplier=0.2,
     ),
-    # --- intraday: balanced defaults + trend filter --------------------
+    # --- intraday: structural zones, no trend/RSI gates ----------------
     "15m": OrderBlockConfig(
         use_online_extremes=True,
-        online_reversal_pct=0.005,
+        reversal_atr_multiple=2.5,
+        multiple_breakouts=True,
         zigzag_distance=5,
         min_extreme_gap=5,
-        use_adx_filter=True,
-        adx_period=14,
-        adx_threshold=20.0,
+        lookback_min=5,
+        lookback_max=30,
+        confirmation_window=36,
+        volume_window=20,
+        cluster_blocks=False,
+        zone_atr_multiplier=0.2,
     ),
     "1h": OrderBlockConfig(
         use_online_extremes=True,
-        online_reversal_pct=0.008,
+        reversal_atr_multiple=2.5,
         zigzag_distance=6,
         min_extreme_gap=6,
-        use_adx_filter=True,
-        use_rsi_confirmation=True,
+        lookback_min=5,
+        lookback_max=30,
+        confirmation_window=15,
+        volume_window=20,
+        cluster_blocks=False,
         strength_age_penalty=True,
+        zone_atr_multiplier=0.2,
     ),
-    # --- swing: trends dominate, favour freshness and structure --------
+    # --- swing: favour freshness and structure --------------------------
     "4h": OrderBlockConfig(
         use_online_extremes=True,
-        online_reversal_pct=0.012,
+        reversal_atr_multiple=2.5,
         zigzag_distance=8,
         min_extreme_gap=8,
-        use_adx_filter=True,
-        adx_threshold=25.0,
         use_market_structure_filter=True,
         structure_lookback=8,
-        use_rsi_confirmation=True,
         strength_age_penalty=True,
         require_complete_window=True,
+        zone_atr_multiplier=0.2,
     ),
     "1d": OrderBlockConfig(
         use_online_extremes=True,
-        online_reversal_pct=0.02,
+        reversal_atr_multiple=2.5,
         zigzag_distance=10,
         min_extreme_gap=10,
-        use_adx_filter=True,
-        adx_threshold=25.0,
         use_market_structure_filter=True,
-        use_rsi_confirmation=True,
         max_extreme_age=30,
         strength_age_penalty=True,
         strength_age_halflife=40,
         require_complete_window=True,
+        zone_atr_multiplier=0.2,
     ),
 }
 

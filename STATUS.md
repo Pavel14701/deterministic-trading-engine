@@ -1714,3 +1714,56 @@ Saved: runs/d14_feature_family.json, runs/d14_feature_family.log.
 Env: repo ruff currently fails on pre-existing pyproject RUF067
 selector (unrelated); pytest 327 passed.
 
+## D.15: honest order-block rework (ta pipeline) + raw EV
+
+Semantic bug fixes in ta/src/custom/market_structure (engine okx.py
+untouched - engine panel uses its own detect_order_blocks):
+
+- Zone = source pivot bar range [low, high] + zone_atr_multiplier*ATR
+  extension (zone_source: range|body|close_band, default range;
+  close_band = legacy close +/- m*ATR).  Old default was a
+  close +/- 1 ATR band, not an order block.
+- Wick entry symmetry: supply tested by high[j], demand by low[j]
+  (was inverted for supply).  Penetration guard now meaningful.
+- check_orderflow_shift made causal: past window (idx, j] only,
+  confirm-guarded pivots, ValueError when online ZigZag is off
+  (offline pivots + shift filter = look-ahead leak).
+- min_extreme_gap filter now confirm-guarded: rejects only when the
+  next extreme was confirmed before the breakout bar.
+- reversal_atr_multiple (k * median ATR, default preset k=2.5)
+  replaces per-TF online_reversal_pct constants (reversal/ATR ratio
+  decayed 4.05 -> 0.67 ATR across TFs in the old presets).
+- Presets recalibrated: ADX filter off, RSI confirmation off,
+  cluster_blocks off (1m-1h), confirmation_window 36 on 5m/15m
+  (retest-delay p90 ~ 35), zone_atr_multiplier 0.2,
+  use_online_extremes default True (honest by default).
+- multiple_breakouts=True on 5m/15m, lookback_max=30: semantic bug -
+  with multiple_breakouts=False the "break" was tested at exactly one
+  bar (lookback after pivot), i.e. all candidates had a constant
+  break delay (5 on 5m, 20 on 15m) and lookback_max was a no-op clamp,
+  not a search window.  Natural first-break delay: med 8, p90 28.
+
+Raw EV (in-sample, BTC-USDT only, 35070/9360 bars 15m/5m, taker 5bp
+both legs, entry at retest close, stop beyond zone edge + 0.25 ATR,
+TP in R, horizon 48 bars, conservative within-bar ambiguity):
+
+  15m: blocks 567, gross EV +0.019/+0.044/+0.031 R at TP 1/3/6R
+       (net -0.16/-0.13/-0.15R); win 47/16/3.5%
+  5m:  blocks 1559, gross EV -0.045/+0.026/+0.034 R (net ~-0.25R)
+
+Preliminary positive gross, pending walk-forward.  Do NOT read as
+"OB works": single asset, in-sample, gross only.  Note: pre-fix runs
+on the fixed-delay semantics showed 15m/6R +0.140R gross - mostly an
+artifact of the constant break delay, not an OB edge.
+
+Known anomaly (diagnostic for WF train folds, not an in-sample loop):
+validated blocks skew to late breaks (pivot age med 32 vs natural
+first-break med 8).  Hypothesis: early breaks are impulses (zone
+consumed), OB retest works on post-consolidation reversals.  To be
+checked via EV vs (break_idx - idx) on train folds.
+
+WF: engine/experiments/ob_wf_ev.py - 8x56d folds (protocol::wf_folds,
+embargo 7d), causal prefix detection, gross per fold; go/no-go:
+>=6/8 folds gross > 0 -> maker-entry study; <4/8 -> close OB track.
+
+
