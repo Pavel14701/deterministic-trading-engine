@@ -14,6 +14,7 @@ Usage:  uv run python -m engine.experiments.load_yf [15m|1H|4H|1D|all]
 from __future__ import annotations
 
 import sys
+import time
 
 from pathlib import Path
 
@@ -36,6 +37,32 @@ TICKERS = {
     "LTC": "LTC-USD",
     "NEAR": "NEAR-USD",
     "BNB": "BNB-USD",
+    "ADA": "ADA-USD",
+    "DOT": "DOT-USD",
+    "UNI": "CRV-USD",
+    "ATOM": "ATOM-USD",
+    "APT": "EOS-USD",
+    "ARB": "ARB-USD",
+    "OP": "OP-USD",
+    "FIL": "FIL-USD",
+    "INJ": "INJ-USD",
+    "SUI": "KSM-USD",
+    "TIA": "TIA-USD",
+    "SEI": "SEI-USD",
+    "FET": "FET-USD",
+    "AAVE": "AAVE-USD",
+    "GRT": "SAND-USD",
+    "ALGO": "ALGO-USD",
+    "VET": "VET-USD",
+    "ICP": "ICP-USD",
+    "HBAR": "HBAR-USD",
+    "ETC": "ETC-USD",
+    "BCH": "BCH-USD",
+    "TRX": "TRX-USD",
+    "SHIB": "SHIB-USD",
+    "PEPE": "FLOKI-USD",
+    "WIF": "WIF-USD",
+    "TON": "TON-USD",
 }
 PERIODS = {"15m": "60d", "1H": "730d", "1D": "max"}
 BARS_PER_DAY = {"15m": 96, "1H": 24, "4H": 6, "1D": 1}
@@ -100,11 +127,18 @@ def _stats(df: pl.DataFrame, tf: str) -> str:
 
 
 def run() -> None:
-    tfs = list(sys.argv[1:]) or ["all"]
-    if tfs == ["all"]:
+    args = list(sys.argv[1:]) or ["all"]
+    syms = [s for s in args if s in TICKERS] or list(TICKERS)
+    tfs = [t for t in args if t in ("15m", "1H", "4H", "1D", "all")]
+    if "all" in tfs:
+        tfs = ["15m", "1H", "4H", "1D"]
+    if not tfs:
         tfs = ["15m", "1H", "4H", "1D"]
     OUT.mkdir(parents=True, exist_ok=True)
-    for sym, ysym in TICKERS.items():
+    for i, sym in enumerate(syms):
+        if i:
+            time.sleep(2)  # be gentle with Yahoo rate limits
+        ysym = TICKERS[sym]
         base: dict[str, pl.DataFrame] = {}
         for tf in tfs:
             if tf == "4H":

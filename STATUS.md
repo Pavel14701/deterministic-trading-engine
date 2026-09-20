@@ -2213,4 +2213,15 @@ Anything volume-dependent (AVSL uses VWMA/VM) run on okx21 data
 or 1D yf only; use yf intraday for price-only statistics or with
 a volume-quality filter.
 
+Universe expanded 10 -> 36 assets (3.6x).  144/144 files present
+(36 x 15m/1H/4H/1D).  Yahoo rate-limits intermittently (different
+symbols come back EMPTY per sweep; 2s pause + targeted re-runs
+filled all holes).  Swaps after persistent Yahoo empties: UNI ->
+CRV-USD, APT -> EOS-USD, SUI -> KSM-USD, GRT -> SAND-USD, PEPE ->
+FLOKI-USD.  Final universe: BTC ETH SOL XRP DOGE AVAX LINK LTC
+NEAR BNB ADA DOT UNI(CRV) ATOM APT(EOS) ARB OP FIL INJ SUI(KSM)
+TIA SEI FET AAVE GRT(SAND) ALGO VET ICP HBAR ETC BCH TRX SHIB
+PEPE(FLOKI) WIF TON.  Loader supports symbol filter args
+(load_yf UNI APT 1H) + 2s throttle for targeted re-runs.
+
 
