@@ -1594,3 +1594,33 @@ End-to-end smoke: 1m bars -> 1h resample -> asof join -> DSL features
 (htf_gap numeric, in_hrange/stale flags) verified live.
 NOTE: DSL numeric literals do not support underscores (3600000, not
 3_600_000).
+
+## D.14: feature-family A/B (scripts/d14_feature_family.py)
+
+Same panel rows / fold calendar / pess labels as the D.13 protocol;
+only the ranker feature matrix changes.  Four arms, ranker-only free
+gate, 8x56d folds, 3 assets, main panel:
+
+  d13|enc=d13  pess=-0.057 (dd 41.0R)  decile spread +0.708  [baseline]
+  d13|enc=d8b  pess=-0.062 (dd 43.6R)  spread +0.682
+  d14|enc=d8b  pess=-0.293 (dd 285.1R) spread -0.051  [no signal alone]
+  combo|enc=d8b pess=-0.038 (dd 26.0R) spread +0.697  [best]
+
+Findings:
+- encoding effect isolated and small (d13: -0.057 vs -0.062 under
+  d8b) - families stay on their pinned encodings.
+- D.14 family alone (13 scale-free bar-DSL + 4h-asof features, no
+  side/zone/structure context) does NOT rank: flat decile ladder.
+  Side-neutral market-state features are necessary but not
+  sufficient; D.13's power comes from zone/side/structure features.
+- combo: D.14 columns add ~+0.024R pess over d13|d8b and cut max DD
+  43.6 -> 26.0R; top decile -0.04 vs -0.05 (conditional EV edge).
+  Direction worth pursuing, not yet decision-grade.
+
+Notes: D14 spec renames atr_pct -> atr_pct24 (D.13 build_features
+already emits atr_pct; duplicate column labels crash pandas concat).
+NaN share of D14 matrix is 0.000 - event bars sit past warm-up.
+Saved: runs/d14_feature_family.json, runs/d14_feature_family.log.
+Env: repo ruff currently fails on pre-existing pyproject RUF067
+selector (unrelated); pytest 327 passed.
+
