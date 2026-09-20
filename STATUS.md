@@ -32,10 +32,17 @@ Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done ·
   the pre-move location) — experiments had not been re-run since the
   move, first caught by the ensemble_ab smoke run.
 - Quick smoke (last 3 folds, catboost 60 iters): lgbm_only leads
-  (pess −0.020, spread +0.169); no blend beats it yet.  Full 8-fold
-  grid (catboost 300 iters) is running; verdict lands in
-  `runs/ensemble_ab.json` (TZ acceptance: ensemble must beat the best
-  single component, else keep LightGBM-only).
+  (pess −0.020, spread +0.169); no blend beats it yet.
+- FULL run verdict (8/8 folds, all configs, catboost 300 iters,
+  runs/ensemble_ab.json): the whole grid is negative (dead pool —
+  TZ item 8 predicted the ensemble cannot revive it).  lgbm_only:
+  −0.017R (dd 12.6).  No config passes acceptance: lgbm+catboost is
+  the only positive-peak-gate head (+0.001 vs −0.014) with the best
+  top-decile EV (−0.002) and spread +0.131 (vs +0.062), but worse dd
+  (18.1R) and mean R; stacking edges mean R (−0.014) with equal dd
+  but weak spread.  DECISION (per TZ item 6): keep LightGBM-only;
+  the ensemble package stays as infrastructure, lgbm+catboost 0.5/0.5
+  is the only blend worth re-visiting if the pool turns positive.
 
 ## 2026-09-20 — tests co-located in engine/, CI subordinated to the layout
 
