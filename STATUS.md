@@ -2486,5 +2486,50 @@ Also verified: risk_ref normalization scales costs exactly inversely
 ignored (hardcoded i0+47 == HOLD-1 in maker); semantics identical,
 no change made.
 
+### QUATTRO DONCHIAN 4H -- PRE-REGISTRATION (2026-09-20, fixed BEFORE run)
+
+Variant of the KILLED Donchian 4H (TEST 2/6 -> closed).  External
+spec ("Quattro Donchian" / "Bitcoin Comet" family), claimed but
+UNVERIFIABLE live stats (WR 46%, PF 6.7, 8/8 positive years).  This
+is a POST-HOC filter addition after a failed test = data-mining risk;
+declared.  ONE shot, no parameter tuning, per the standing discipline.
+
+Pinned spec (taken from the external claim as-is, NO tuning):
+  Universe: 6 majors (BTC ETH SOL BNB XRP DOGE) on okx21 4H
+  (the spec's native universe is BTC/ETH only; 6 avoids cherry-pick).
+  Indicators: Donchian(20) prior-bars high/low (ending t-1), SMA(200)
+  closes (simple, NOT the EMA200 of the killed run -- that is part of
+  the claimed spec), ATR(14) Wilder.
+  LONG entry at bar t close: cp[t] > hh20[t] AND
+    cp[t] > sma200[t] + 1.2 * atr14[t]  ("decisive break" margin).
+  SHORT mirror: cp[t] < ll20[t] AND cp[t] < sma200[t] - 1.2 * atr14[t].
+  Fill at the signal close (same convention as the killed 4H run,
+  for comparability).  Initial stop entry -/+ 2.75 * ATR(entry),
+  ATR FROZEN at entry.  Trailing: stop = max(init, runmax -
+  2.75*ATR_frozen) from the running extreme since entry.  NO TP, no
+  time exit (segment end closes at segment close).  Exits evaluated
+  on CLOSE crossing the stop as of the previous bar (conservative,
+  no intrabar stop-tightening look-ahead; matches the killed
+  harness).  Costs: 2*TAKER_FEE*entry / (2.75*ATR_e); R denominator
+  = 2.75*ATR_e (initial risk).  Same TRAIN/TEST split as the killed
+  run (wf_folds 8x56d, TEST = fold 4 start .. end, WARM=700).
+  Both sides primary; long-only secondary; bench = buy&hold in R.
+
+PRE-REGISTERED verdict gates (all must PASS on TEST, else the whole
+Quattro family is closed with no tweaks):
+  G1: >= 4/6 assets positive net R on TEST
+      (stricter than the old kill <= 2/6: family already failed once)
+  G2: median TEST maxDD <= 20R  (user's standing risk rule)
+  G3: recovery >= 1.0 on >= 4/6 TEST assets
+  G4: pooled TEST profit factor (net) >= 1.3
+Expectation checks (NOT gates): claimed WR ~46% and PF ~6.7 on TEST;
+NOTE a 2.75-ATR trailing stop cannot plausibly produce avgWin/avgLoss
+= 6.7 (the trail caps winners on a 2.75-ATR retrace); if measured WR
+/PF wildly exceed the claim's internal consistency, treat the claim
+as fabricated and say so.  Regime-beta suspicion is explicit: this is
+an always-in-after-entry trend rider -- the recurring "beta, not
+alpha" pattern of this project applies.
+
+
 
 
