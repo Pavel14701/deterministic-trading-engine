@@ -2076,4 +2076,20 @@ runs/avsl_align.log; stand_div=2.0, config 70/345):
 Path A verdict: DEAD per pre-registration.  Path B (stop-flip exit
 rule, separate experiment) or close the track.
 
+Swap arm (for fun / diagnostic; runs/avsl_swap.log): entry line
+= SMA(345), stop line = AVSL(70,345) - inverted config, same
+protocol, stand_div=2.0.  Also fixed a NaN hazard: AVSL has
+leading NaNs (~bar 400-710 in train), `risk <= 0` does not catch
+NaN comparisons; entry loop now guards np.isfinite(risk).
+  TRAIN (flat -0.5%): n=1089 gross +0.03/-0.00/+0.01
+    [long -0.06..-0.11; short +0.19..+0.23]
+  TEST (+8.4%):       n=248  gross -0.12/-0.23/-0.12
+    [long -0.11/-0.21/+0.07; short -0.15/-0.27/-0.40]
+Reading: swap is WORSE, and the beta pattern breaks - long is
+negative even in a +8.4% segment.  Mechanism: SMA345 cross entry
+is late (3.6d into the move), AVSL stop hugs price (tight risk)
+-> stopped before continuation; net ~ -1.0R again.  Both configs
+of AVSL/SMA cross-as-entry are dead; strengthens the B-or-C fork
+(stop-flip exit rule vs closing the track).
+
 

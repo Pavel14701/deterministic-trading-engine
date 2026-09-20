@@ -84,18 +84,24 @@ def _fast_line(lp, cp, vol, stand_div: float = 2.0):
 
 def run() -> None:
     stand_div = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
-    align = len(sys.argv) > 2 and sys.argv[2] == "align"
+    mode = sys.argv[2] if len(sys.argv) > 2 else "base"
+    align = mode == "align"
+    swap = mode == "swap"
     df = pl.read_parquet(REPO / FILE).rename({"ts": "date"})
     ts = df["date"].to_numpy().astype(np.int64)
     lp = df["low"].to_numpy().astype(np.float64)
     hp = df["high"].to_numpy().astype(np.float64)
     cp = df["close"].to_numpy().astype(np.float64)
     vol = df["volume"].to_numpy().astype(np.float64)
-    fast = _fast_line(lp, cp, vol, stand_div)
-    slow = sma_ind(cp, SLOW, use_talib=False, nan_policy="ffill")
+    avsl = _fast_line(lp, cp, vol, stand_div)
+    sma345 = sma_ind(cp, SLOW, use_talib=False, nan_policy="ffill")
+    if swap:
+        fast, slow = sma345, avsl  # inverted config: entry on SMA cross
+    else:
+        fast, slow = avsl, sma345
     slope = np.zeros_like(slow)
     slope[4:] = slow[4:] - slow[:-4]  # 1h slow-line slope
-    print(f"stand_div={stand_div} align={align}", flush=True)
+    print(f"stand_div={stand_div} mode={mode}", flush=True)
     up = (cp[1:] > fast[1:]) & (cp[:-1] < fast[:-1])
     dn = (cp[1:] < fast[1:]) & (cp[:-1] > fast[:-1])
     cross_idx = np.nonzero(up | dn)[0] + 1
@@ -105,8 +111,9 @@ def run() -> None:
         ("TEST", folds[4][0], folds[-1][1]),
     )
     print(
-        f"AVSL cross {'alignment' if align else 'baseline'}: "
-        f"fast=avsl(70,345), slow=sma(345), "
+        f"AVSL cross {'alignment' if align else 'swap' if swap else 'baseline'}: "
+        f"fast={'sma' if swap else 'avsl'}(70,345), "
+        f"slow={'avsl' if swap else 'sma'}(345), "
         f"TP {TPS}, horizon {HORIZON}, taker 5bp x2",
         flush=True,
     )
@@ -123,7 +130,7 @@ def run() -> None:
             is_long = bool(up[t - 1])
             stop = slow[t]
             risk = cp[t] - stop if is_long else stop - cp[t]
-            if risk <= 0:
+            if not np.isfinite(risk) or risk <= 0:
                 n_skipped += 1
                 continue
             if align and ((is_long and slope[t] <= 0) or (not is_long and slope[t] >= 0)):
