@@ -2140,4 +2140,29 @@ net-negative on every asset.  TRACK DEAD as entry signal.  The
 only untested mechanism left is AVSL as exit (Path B stop-flip);
 funding carry remains the standing pivot.
 
+Path B stop-flip trailing (pre-registered, runs/avsl_trailing.log):
+entry=cross, initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal;
+v1 time N=10 / v2 profit 1R / v3 AVSL>entry; bench=always-in;
+10 assets, train folds 0-3.  Success criterion: trailing EV >
+bench EV + 0.05R on train, replicated on test.
+RESULT: 0/10 assets pass on train.  Best trailing vs bench EV
+(train): BTC +0.148 vs +0.167, AVAX +0.202 vs +0.258, BNB +0.124
+vs +0.082 (+0.042, <0.05), DOGE +0.150 vs +0.156, ETH +0.164 vs
++0.153 (+0.011), LINK +0.000 vs -0.022, LTC +0.006 vs +0.018,
+NEAR +0.110 vs +0.084 (+0.026), SOL +0.119 vs +0.120, XRP +0.231
+vs +0.183 (+0.048, <0.05).  Bench >= trailing on 6/10 outright;
+no variant clears +0.05R-over-bench anywhere.
+DD: trailing does cut maxDD (BTC 129-144R vs 178R; DOGE 45-53 vs
+71; NEAR 57-61 vs 89) but only by cutting exposure - EV drops
+proportionally.  No DD-free lunch.
+Test replication: moot (nothing to replicate); test nets are
+mostly negative, bench still generally >= trailing.
+VERDICT: FAIL per pre-registration - trailing is beta with extra
+steps.  AVSL track CLOSED in full: cross-as-entry dead (edge
+~0.05R gross < costs ~0.2-0.3R), cross-as-exit no better than
+always-in.  The always-in benchmark being the best arm is itself
+the summary: the AVSL(70,345) line carries mild trend exposure
+(beta), no tradable alpha at 15m taker costs.  Pivot: funding
+carry recon.
+
 

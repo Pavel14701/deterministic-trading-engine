@@ -92,7 +92,7 @@ def avsr_polars(
     fast: int,
     slow: int,
     high_col: str = "high",
-    close_col: str = "low",
+    close_col: str = "close",
     volume_col: str = "volume",
     date_col: str = "date",
     stand_div: float = 1.0,
