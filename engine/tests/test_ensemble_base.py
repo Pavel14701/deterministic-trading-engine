@@ -76,6 +76,12 @@ def test_rank_normalize_ties_get_distinct_positions():
     assert len(set(r.tolist())) == 5  # deterministic tie-breaking
 
 
+def test_rank_normalize_degenerate_inputs():
+    """0- and 1-row inputs: zeros, no crash."""
+    assert rank_normalize(np.array([])).tolist() == []
+    assert rank_normalize(np.array([3.0])).tolist() == [0.0]
+
+
 def test_build_component_registry():
     x, y, groups, _ = make_synthetic(n=120)
     for name, cls in (

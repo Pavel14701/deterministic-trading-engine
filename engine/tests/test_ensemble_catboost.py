@@ -52,6 +52,7 @@ def test_catboost_feature_importance():
 
     x, y, groups, _, leaky_idx = make_leaky(n=500)
     m = _comp()
+    assert m.feature_importance() is None  # not fitted yet
     m.fit(x, y, groups)
     imp = m.feature_importance()
     assert imp is not None and imp.shape == (x.shape[1],)
