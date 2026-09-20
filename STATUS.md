@@ -2182,4 +2182,23 @@ VERDICT: unchanged - no orientation/exit combo produces EV > bench
 + 0.05R robustly across assets.  XRP/NEAR flagged only as the
 least-uninteresting cases; not actionable.  Track stays CLOSED.
 
+HTF arms (runs/avsl_trail_htf.log): same combined design on 1H
+(10 assets) and 4H (7 assets; no data for BNB/LINK/XRP).
+1H NORMAL: bench (always-in) BEATS trailing on 8/10 train and
+most of test (BTC test bench +0.29 net +0.20 vs trail -0.08;
+SOL test +0.30 net vs -0.05).  Trailing still strictly dominated.
+The only cross-TF pattern that is net-positive on multiple assets
+in BOTH segments is the 1H ALWAYS-IN BENCH itself (train net:
+BNB +0.48, DOGE +0.15, NEAR +0.14, SOL +0.12, XRP +0.07; test
+net: XRP +0.74, SOL +0.30, LINK +0.27, BTC +0.20) - i.e. the
+AVSL(70,345) line on 1H works as a plain trend-regime position
+(long above / short below), which is beta-style directional
+exposure, not per-trade alpha.  1H REVERSED: gross +7/10 test but
+train only 4/10, different assets - noise.  4H: n too small
+(test n=1..26 per arm; single trades dominate, e.g. ETH test
+n=1 +7.6R) - no inference possible.
+SUMMARY: AVSL(70,345) has one defensible use: 1H always-in regime
+direction (beta overlay).  As entry signal, exit rule, or fade at
+15m/1h/4h taker costs: closed.
+
 

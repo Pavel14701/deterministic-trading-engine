@@ -42,8 +42,8 @@ ASSETS = (
 TAKER_FEE = 0.0005
 
 
-def _read(sym: str):
-    df = pl.read_parquet(REPO / f"data/okx21/raw_{sym}_15m.parquet").rename(
+def _read(sym: str, tf: str = "15m"):
+    df = pl.read_parquet(REPO / f"data/okx21/raw_{sym}_{tf}.parquet").rename(
         {"ts": "date"}
     )
     return (

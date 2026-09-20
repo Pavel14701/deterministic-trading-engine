@@ -156,17 +156,24 @@ def _fmt(s: dict) -> str:
 
 
 def run() -> None:
-    rev = len(sys.argv) > 1 and sys.argv[1] == "rev"
+    rev = False
+    tf = "15m"
+    for a in sys.argv[1:]:
+        if a == "rev":
+            rev = True
+        elif a in ("15m", "1H", "4H"):
+            tf = a
     tag = "REVERSED" if rev else "NORMAL"
+    syms = [a for a in ASSETS if (REPO / f"data/okx21/raw_{a}_{tf}.parquet").exists()]
     print(
         f"AVSL cross-entry + immediate AVSL trailing (config 70/345, "
-        f"{tag}): entry=cross, initSL=2xATR14, trail=AVSL-0.3ATR "
-        "monotonic causal from bar 1; bench=always-in same orientation; "
-        "exit=SL|reverse-cross; R=2xATR",
+        f"{tag}, tf={tf}, assets={len(syms)}): entry=cross, "
+        "initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal from bar 1; "
+        "bench=always-in same orientation; exit=SL|reverse-cross; R=2xATR",
         flush=True,
     )
-    for sym in ASSETS:
-        ts, lp, hp, cp, vol = _read(sym)
+    for sym in syms:
+        ts, lp, hp, cp, vol = _read(sym, tf)
         line = _fast_line(lp, cp, vol, 2.0)
         atr = atr_ind(hp, lp, cp, 14, use_talib=False)
         up = (cp[1:] > line[1:]) & (cp[:-1] < line[:-1])
