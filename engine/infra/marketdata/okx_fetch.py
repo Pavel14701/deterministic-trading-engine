@@ -135,7 +135,15 @@ def fetch_candles(
         }
         if cursor is not None:
             params["after"] = cursor
-        page = _get(endpoint, params)
+        try:
+            page = _get(endpoint, params)
+        except RuntimeError:
+            if endpoint == "/market/candles":
+                # Some instruments persistently fail the recent endpoint;
+                # history-candles still serves them.
+                endpoint = "/market/history-candles"
+                continue
+            raise
         if not page:
             # A transient empty page (rate-limit blips return empty data
             # with code "0" sometimes) must not be mistaken for the end

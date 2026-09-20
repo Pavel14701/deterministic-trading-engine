@@ -34,12 +34,14 @@ BASE = [
     "BTC", "ETH", "SOL", "XRP", "DOGE",
     "AVAX", "LINK", "LTC", "NEAR", "BNB",
 ]
-# ... and the 26 added for the 36-asset stats universe (all exist as
-# OKX spot {SYM}-USDT; unlike Yahoo, no aliases / dead tickers needed).
+# ... and the 24 added for the stats universe (all verified against
+# /public/instruments SPOT).  VET-USDT and TON-USDT are NOT on OKX
+# (delisted; code 51001) -- those two exist only in the yf set, so the
+# okx universe is 34 assets vs 36 on yf.
 NEW = [
     "ADA", "DOT", "UNI", "ATOM", "APT", "ARB", "OP", "FIL", "INJ",
-    "SUI", "TIA", "SEI", "FET", "AAVE", "GRT", "ALGO", "VET", "ICP",
-    "HBAR", "ETC", "BCH", "TRX", "SHIB", "PEPE", "WIF", "TON",
+    "SUI", "TIA", "SEI", "FET", "AAVE", "GRT", "ALGO", "ICP",
+    "HBAR", "ETC", "BCH", "TRX", "SHIB", "PEPE", "WIF",
 ]
 ALL = BASE + NEW
 MAX_BARS = {"15m": 100_000, "1H": 40_000, "4H": 20_000, "1D": 5_000}
