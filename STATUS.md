@@ -1579,3 +1579,18 @@ Diagnostics on real panels (runs/probe_rel_seeds.log):
 - asof_join_features staleness policy documented: adapter never
   filters stale HTF bars; freshness caps belong to FeatureSpec /
   event filtering, explicit and testable.
+
+## FeatureProvider (engine/feature_provider.py)
+
+ColumnProvider + HybridContextFactory: expose bar-aligned feature
+columns (e.g. asof_join_features output) to DSL expressions via the
+context_factory hook of collect_features / collect_mfe_mae.
+Causal guards: col[k] -> row bar_idx-k; pre-row-0 reads are NaN;
+negative offsets and out-of-range reads raise; row alignment
+(height + ts equality) enforced once on first call; collisions with
+bar-DSL indicator names rejected at construction.  Causality of
+column VALUES is the producer's contract (known_ts <= ts for MTF).
+End-to-end smoke: 1m bars -> 1h resample -> asof join -> DSL features
+(htf_gap numeric, in_hrange/stale flags) verified live.
+NOTE: DSL numeric literals do not support underscores (3600000, not
+3_600_000).
