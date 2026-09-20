@@ -189,6 +189,12 @@ def _gate_long(op, lp, hp, cp, vol, ts, tf, filters):
             macd[badm] = macd[np.argmax(~badm)]
         sig = ema_ind(macd, 9, use_talib=False, nan_policy="raise")
         gate &= (macd - sig) > 0.0
+    if "rsi50" in filters:  # control: plain momentum, RSI(close) > 50
+        r = rsi_ind(cp, length=14, use_talib=False, nan_policy="ffill")
+        gate &= np.nan_to_num(r, nan=0.0) > 50.0
+    if "rand" in filters:  # control: random gate, same ~50% capacity
+        rng = np.random.default_rng(42)
+        gate &= rng.random(n) < 0.5
     if "ob" in filters:
         df = pl.DataFrame(
             {
@@ -356,7 +362,7 @@ def run() -> None:
             tf = a
         elif a.startswith("cfg="):
             fast, slow = (int(x) for x in a[4:].split("/"))
-        elif a in ("adx", "ob", "stoch", "rsi"):
+        elif a in ("adx", "ob", "stoch", "rsi", "rsi50", "rand"):
             filters.add(a)
     tag = "REVERSED" if rev else "NORMAL"
     if long_only:

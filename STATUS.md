@@ -2341,4 +2341,29 @@ block-bootstrap/holdout on the full 34-asset universe, NOT yet a
 verdict.  ADX gate and OB veto rejected; ADX also worsens plain
 always-in.  OB stays a standalone entry system, not a filter.
 
+RSI-GATE TEARDOWN (steps 1-2 of the pre-agreed kill chain;
+'rsi50' = plain RSI(close,14)>50 and 'rand' = seeded random 50%
+gate added as controls; runs/avsl_okx_1h_filters.log tail).
+Step 1 no-XRP + distribution (test diffs trail-gated_bench):
+  clouds ALL med +0.388 (7/10 pos, q1 -0.118, q3 +0.715);
+  clouds noXRP med +0.229 (6/9) -- passes the >+0.15 stop but XRP
+  alone is 41% of the effect; breadth real (BTC .77 BNB .79 DOGE
+  .55 LINK .55 NEAR .23 LTC .14), lower quartile negative.
+Step 2 controls:
+  rand 50%: med diff -0.042 (4/10), trail EV negative on 7/10 ->
+  capacity-matched noise does NOT reproduce; gate is not a trade-
+  count artifact.
+  rsi50:   med diff +0.406 ALL, +0.405 NO-XRP (7/10) -- plain
+  RSI>50 fully reproduces clouds WITHOUT the XRP crutch (clouds
+  noXRP +0.229 vs rsi50 noXRP +0.405).  Trail test EV med ~+0.39R,
+  7/10 positive, XRP only 0.86.
+VERDICT: RSI-clouds machinery is redundant -- the effect is a coarse
+momentum-regime gate (RSI>50), i.e. "beta with a momentum filter"
+(hypothesis 2 of 3), not a clouds-specific timing edge.  Per the
+kill chain: STOP on RSI-clouds as a signal.  The residual pattern
+"gated 1H long trail beats gated always-in ~+0.4R/trade, XRP-robust"
+is the same trailing DD-trim/regime story as before; it inherits the
+old verdict (beta overlay) unless a bear-window holdout says
+otherwise.  Do not spend bootstrap hours on clouds.
+
 
