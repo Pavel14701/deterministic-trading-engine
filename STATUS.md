@@ -1814,4 +1814,37 @@ inflated by selection, trust the cross-segment consistency instead.
 Gross target (+0.10R) reached by the cut alone: delay in [5,10) -
 proceed to lookback calibration and TP grid, then maker model.
 
+Steps 2-3 - lookback grid + TP grid (runs/ob_lookback_grid.log,
+engine/experiments/ob_lookback_grid.py; delay-cut [5,10) fixed;
+static lookback via use_dynamic_lookback=False; train decides):
+
+  L   TRAIN n  EV3R   EV4R   EV5R | TEST n  EV3R   EV4R   EV5R
+  15      75  +0.102 +0.124 +0.126 |  37  +0.330 +0.438 +0.476
+  20      70  +0.049 -0.023 -0.021 |  33  +0.493 +0.281 +0.341
+  25      69  +0.058 +0.080 +0.071 |  36  +0.218 +0.064 +0.091
+  30      60  +0.229 +0.425 +0.451 |  31  +0.242 +0.198 +0.230
+  35      65  -0.070 -0.009 -0.097 |  20  +0.206 +0.283 +0.332
+  40      68  +0.043 -0.007 -0.001 |  27  +0.329 +0.255 +0.254
+
+Verdict: L=30 (the current dynamic preset clamps to exactly this) is
+the train argmax - preset unchanged.  Train L-surface is jagged
+(L=35 negative), i.e. weak identifiability; test column is noisy
+(n=20-37) and NOT used for the decision.
+
+TP surface at L=30, delay [5,10) saturates (extended run, gross):
+
+  TP      3R     4R     5R     6R     8R
+  TRAIN +0.229 +0.425 +0.451 +0.478 +0.495   win 40/40/38/38/38%
+  TEST  +0.242 +0.198 +0.230 +0.262 +0.327   win 35/32/32/32/32%
+
+Pooled train+test (n=91) at 4R: +0.35R, at 6R: +0.40R gross ->
+~+0.19..+0.25R net after taker round trip.  SE ~0.17R (t ~ 2-2.5).
+Working point: delay in [5,10), lookback 30, TP 4-6R, horizon 48.
+
+Warning: selections are stacking (4 delay buckets x 6 lookbacks x
+6+5 TPs scanned on train) - the working-point EV is upward biased;
+folds 4-6 are burned for this config family.  Next: maker entry
+model on the working point, then fresh-data validation on another
+asset (15m AVAX/BNB) as the real holdout.
+
 
