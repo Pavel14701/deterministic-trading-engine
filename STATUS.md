@@ -1460,3 +1460,28 @@ Caveats: 96 days only (OKX history limit), a calm low-funding regime,
 funding spikes > hurdle, hold until normalization) is untested and
 is a different strategy.  Steady funding carry: NO-GO for now.
 
+
+## Panel rebuild closed; interim filters removed; mfe/mae collector
+
+Full panel rebuild with the builder wrong-side guard is DONE.
+Re-run on clean panels, no load-time filtering:
+
+  - ablation: A -0.038, B -0.081, C -0.112, D -0.063 (all negative;
+    placebo stack B/D worse than real A/C - poison was in the labels,
+    not the detectors).  runs/ablation.json
+  - d13g grid identical to the interim-filtered run to the digit,
+    same per-cell n (640/634/627/615/627/620/618/601); hold<=1 n=0.
+  - d13c re-run OK.
+
+=> interim wrong-side filters removed from d13g/d13c (dead code;
+   single source of truth = builder guard).  Stage-D verdict
+   UNCHANGED and now grounded entirely in rebuilt panels.
+
+New infra: engine/mfe_mae.py - universal DSL-configured MFE/MAE
+collector (signal = any dsl expression evaluated bar-by-bar on a
+prefix-bound context; causal by construction; prefix-invariance
+tested).  Outputs abs/atr/R excursions per event.  R unit here is
+sl_atr_mult * ATR(signal bar), NOT the main stack's rule risk_unit.
+modes: entry=next_open|signal_close, exit=horizon|sl_hit (window
+ends at stop-touch, hit bar included, sl_hit flag always recorded).
+19 tests in tests/test_mfe_mae.py.

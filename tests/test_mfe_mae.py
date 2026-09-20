@@ -209,6 +209,7 @@ def test_spec_validation_and_roundtrip() -> None:
         {"signal": "close > 0", "side": "both"},
         {"signal": "close > 0", "entry": "open"},
         {"signal": "close > 0", "incomplete": "skip"},
+        {"signal": "close > 0", "exit": "stop"},
         {"signal": "close > 0", "horizon": 0},
         {"signal": "close > 0", "sl_atr_mult": 0.0},
     ):
@@ -216,7 +217,7 @@ def test_spec_validation_and_roundtrip() -> None:
             MfeMaeSpec(**kwargs)
     spec = MfeMaeSpec(signal="close >= sma(period=5)", side="short",
                       horizon=2, entry="signal_close", atr_period=5,
-                      sl_atr_mult=1.5, incomplete="drop")
+                      sl_atr_mult=1.5, incomplete="drop", exit="sl_hit")
     out = collect_mfe_mae(make_bars(**SCENARIO),
                           MfeMaeSpec.from_dict(spec.to_dict()))
     # flat closes: signal fires on every bar; drop keeps bars 0..3
@@ -245,7 +246,7 @@ def test_empty_result_schema() -> None:
     assert out.columns == [
         "signal_ts", "entry_ts", "entry_idx", "entry_price",
         "bars_measured", "mfe_abs", "mae_abs", "mfe_atr", "mae_atr",
-        "mfe_r", "mae_r",
+        "mfe_r", "mae_r", "sl_hit",
     ]
     assert out.schema["signal_ts"] == pl.Int64
     assert out.schema["mfe_r"] == pl.Float64
@@ -288,3 +289,74 @@ def test_volume_column_optional_but_usable() -> None:
         MfeMaeSpec(signal="close > 0", horizon=1),
     )
     assert out2.height == 2
+
+
+def test_exit_sl_hit_truncates_window() -> None:
+    """Window ends at the first stop-touch bar (independent oracle)."""
+    bars = make_bars(**SCENARIO)  # signal at bar 1, entry open[2] = 10
+    spec = MfeMaeSpec(signal="high == 10.4", horizon=24, atr_period=3,
+                      sl_atr_mult=1.0, exit="sl_hit")
+    ev = single_row(collect_mfe_mae(bars, spec))
+    atr1 = float(compute_atr(bars, period=3)[1])
+    stop = 10.0 - 1.0 * atr1  # long stop under entry
+    lows = [9.5, 10.0, 9.95, 10.0]  # window bars 2..5
+    hit = next(k for k, lo in enumerate(lows) if lo <= stop)
+    assert ev["sl_hit"] is True
+    assert ev["bars_measured"] == hit + 1
+    assert ev["mae_abs"] == pytest.approx(10.0 - min(lows[:hit + 1]))
+    # MFE counts only bars up to the hit
+    highs = [11.2, 10.8, 10.1, 10.0]
+    assert ev["mfe_abs"] == pytest.approx(max(highs[:hit + 1]) - 10.0)
+
+
+def test_exit_sl_hit_not_triggered_runs_full_window() -> None:
+    bars = make_bars(**SCENARIO)
+    spec = MfeMaeSpec(signal="high == 10.4", horizon=24, atr_period=3,
+                      sl_atr_mult=2.0, exit="sl_hit")  # stop far below
+    ev = single_row(collect_mfe_mae(bars, spec))
+    assert ev["sl_hit"] is False
+    assert ev["bars_measured"] == 4
+    assert ev["mfe_abs"] == pytest.approx(1.2)
+    assert ev["mae_abs"] == pytest.approx(0.5)
+
+
+def test_sl_hit_mid_window_and_horizon_mode_flag() -> None:
+    bars = make_bars(
+        closes=[10, 10, 10, 10, 10, 10],
+        highs=[10.0, 10.4, 10.3, 10.2, 10.6, 10.0],
+        lows=[9.9, 9.8, 9.7, 9.0, 9.1, 9.9],
+    )
+    # signal at bar 1, entry open[2] = 10; atr(3)[1] = (0.1 + 0.6) / 2
+    atr1 = float(compute_atr(bars, period=3)[1])
+    stop = 10.0 - 2.0 * atr1
+    assert 9.7 > stop >= 9.0  # hit lands on the 3rd window bar
+    ev = single_row(collect_mfe_mae(
+        bars,
+        MfeMaeSpec(signal="high == 10.4", horizon=24, atr_period=3,
+                   sl_atr_mult=2.0, exit="sl_hit"),
+    ))
+    assert ev["sl_hit"] is True
+    assert ev["bars_measured"] == 2  # bars 2..3; bar 3 low 9.0 hits stop
+    assert ev["mfe_abs"] == pytest.approx(10.3 - 10.0)  # pre-hit highs
+    # horizon mode: same window fully walked, sl_hit is informational
+    ev = single_row(collect_mfe_mae(
+        bars,
+        MfeMaeSpec(signal="high == 10.4", horizon=24, atr_period=3,
+                   sl_atr_mult=2.0, exit="horizon"),
+    ))
+    assert ev["sl_hit"] is True
+    assert ev["bars_measured"] == 4
+    assert ev["mfe_abs"] == pytest.approx(10.6 - 10.0)
+    assert ev["mae_abs"] == pytest.approx(10.0 - 9.0)
+
+
+def test_exit_sl_hit_short_side() -> None:
+    bars = make_bars(**SCENARIO)  # short entry 10 at bar 2
+    spec = MfeMaeSpec(signal="high == 10.4", side="short", horizon=24,
+                      atr_period=3, sl_atr_mult=1.0, exit="sl_hit")
+    ev = single_row(collect_mfe_mae(bars, spec))
+    atr1 = float(compute_atr(bars, period=3)[1])
+    assert ev["entry_price"] == pytest.approx(10.0 + 0.0)
+    assert ev["sl_hit"] is bool(11.2 >= 10.0 + 1.0 * atr1)
+    assert ev["mfe_abs"] == pytest.approx(10.0 - 9.5)  # first bar only
+    assert ev["bars_measured"] == 1

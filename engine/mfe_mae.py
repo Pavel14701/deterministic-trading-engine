@@ -35,7 +35,25 @@ Execution semantics (no look-ahead by construction):
    print); for ``signal_close`` it is not.
 4. Normalization uses ``ATR(signal bar i)`` (house causal ATR from
    :func:`engine.features.compute_atr`): ``*_atr = *_abs / ATR`` and
-   ``*_r = *_abs / (sl_atr_mult * ATR)``.
+   ``*_r = *_abs / (sl_atr_mult * ATR)``.  IMPORTANT: the R unit here
+   is ``sl_atr_mult * ATR(signal bar)`` - a fixed ATR stop.  It is
+   NOT the main stack's rule-based ``risk_unit`` (``zone:1.0``,
+   ``anchor:st:0.5``, ...); ``mfe_r``/``mae_r`` from this collector
+   are therefore not directly comparable to EV-R numbers from the
+   stage-D pipeline.  Use ``*_atr``/``*_abs`` as features, or wire a
+   rule-based risk unit through ``context_factory`` if needed.
+5. ``exit="sl_hit"`` ends the excursion window at the first bar the
+   stop is touched (long: ``low <= stop``, short: ``high >= stop``;
+   ``stop = entry -/+ sl_atr_mult * ATR(signal bar)``).  The hit bar
+   itself is included (its high may print after the intrabar stop
+   fill - a slightly generous MFE, the conservative direction for
+   stop-head work is to also check ``mae_r``).  ``sl_hit`` records
+   whether the stop was touched inside the window in either mode.
+
+Execution caveats: ``entry="signal_close"`` fills at the close of the
+signal bar; in live trading that requires a market order in the final
+moments of the bar (or an extra bar of slippage) - use it only when
+that cost model is acceptable.
 
 MFE/MAE are non-negative magnitudes (clamped at 0).  Available DSL
 names: ``open`` ``high`` ``low`` ``close`` ``volume`` plus causal
@@ -101,6 +119,7 @@ _SCHEMA: dict[str, Any] = {  # pl.DataType classes (runtime schema)
     "mae_atr": pl.Float64,
     "mfe_r": pl.Float64,
     "mae_r": pl.Float64,
+    "sl_hit": pl.Boolean,
 }
 SIGNAL_TS = "signal_ts"  # join key for downstream feature merges
 
@@ -116,9 +135,13 @@ class MfeMaeSpec:
     atr_period: int = 14
     sl_atr_mult: float = 1.0
     incomplete: str = "partial"
+    exit: str = "horizon"
 
     def __post_init__(self) -> None:
         """Validate enum-ish fields and positive numerics eagerly."""
+        if self.exit not in ("horizon", "sl_hit"):
+            raise ValueError(
+                f"exit must be horizon|sl_hit, got {self.exit!r}")
         if self.side not in ("long", "short"):
             raise ValueError(f"side must be long|short, got {self.side!r}")
         if self.entry not in ("next_open", "signal_close"):
@@ -320,23 +343,34 @@ def collect_mfe_mae(
         else:
             entry_idx, entry_price = i, float(cache.arrays["close"][i])
             walk_start = i + 1  # nothing after the close within bar i
-        last = min(walk_start + spec.horizon - 1, full_window_end)
+        walk_end = min(walk_start + spec.horizon - 1, full_window_end)
         if spec.incomplete == "drop" and (
                 walk_start + spec.horizon - 1 > full_window_end):
             continue
-        bars_measured = max(last - walk_start + 1, 0)
-        if bars_measured == 0:
-            mfe = mae = 0.0
-        else:
-            highs = cache.arrays["high"][walk_start:last + 1]
-            lows = cache.arrays["low"][walk_start:last + 1]
-            if spec.side == "long":
-                mfe = max(float(np.max(highs)) - entry_price, 0.0)
-                mae = max(entry_price - float(np.min(lows)), 0.0)
-            else:
-                mfe = max(entry_price - float(np.min(lows)), 0.0)
-                mae = max(float(np.max(highs)) - entry_price, 0.0)
         a = float(atr_ref[i])
+        if spec.side == "long":
+            stop = entry_price - r_unit * a
+        else:
+            stop = entry_price + r_unit * a
+        mfe = mae = 0.0
+        sl_hit = False
+        bars_measured = 0
+        for j in range(walk_start, walk_end + 1):
+            bars_measured += 1
+            hi = float(cache.arrays["high"][j])
+            lo = float(cache.arrays["low"][j])
+            if spec.side == "long":
+                mfe = max(mfe, hi - entry_price)
+                mae = max(mae, entry_price - lo)
+                touched = lo <= stop
+            else:
+                mfe = max(mfe, entry_price - lo)
+                mae = max(mae, hi - entry_price)
+                touched = hi >= stop
+            if touched:
+                sl_hit = True
+                if spec.exit == "sl_hit":
+                    break  # window ends at the stop-touch bar (included)
         rows.append({
             "signal_ts": int(ts[i]),
             "entry_ts": int(ts[entry_idx]),
@@ -349,6 +383,7 @@ def collect_mfe_mae(
             "mae_atr": mae / a,
             "mfe_r": mfe / (r_unit * a),
             "mae_r": mae / (r_unit * a),
+            "sl_hit": sl_hit,
         })
 
     return pl.DataFrame(rows, schema=_SCHEMA).sort("signal_ts")

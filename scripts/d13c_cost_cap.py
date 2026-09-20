@@ -71,12 +71,6 @@ def load_asset(d: str, tag: str, cap: float | None):
             & pl.col("r_net").is_not_nan()
             & (pl.col("exit_idx") >= 0)
             & pl.col("risk_unit").is_not_nan()
-            # D.13g interim: drop wrong-side stops (entry gapped through
-            # the stop level; poisoned +1R labels) until panel rebuild
-            & (
-                ((pl.col("side") == "long") & (pl.col("fill_price") > pl.col("sl_price")))
-                | ((pl.col("side") == "short") & (pl.col("fill_price") < pl.col("sl_price")))
-            )
         )
     ).with_columns(
         (0.0025 * pl.col("fill_price") / pl.col("risk_unit")).alias("cost_R")
