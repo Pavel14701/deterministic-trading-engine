@@ -2201,4 +2201,16 @@ SUMMARY: AVSL(70,345) has one defensible use: 1H always-in regime
 direction (beta overlay).  As entry signal, exit rule, or fade at
 15m/1h/4h taker costs: closed.
 
+yfinance data pipeline (engine/experiments/load_yf.py, data/yf/):
+yfinance installed; 40 parquet files loaded (10 assets x 15m/1H/4H/
+1D) in the okx21 schema (ts epoch-ms Int64 + OHLCV Float64), so
+engine experiments run unchanged.  1H = 730d (17326 bars), 4H
+resampled from 1H (4335), 15m = 60d (5742), 1D = full history
+(2192-4387 bars, up to 12y).  Hour-aligned, gaps <= 7 on 1H.
+DATA QUALITY WARNING: yfinance intraday crypto VOLUME is ~half
+zeros (1H: ~8800/17326 zero-volume bars; 15m ~30%; 1D fine).
+Anything volume-dependent (AVSL uses VWMA/VM) run on okx21 data
+or 1D yf only; use yf intraday for price-only statistics or with
+a volume-quality filter.
+
 
