@@ -24,6 +24,7 @@ REPO = Path(__file__).resolve().parent.parent.parent
 
 from engine.backtest.protocol import FOLD_DAYS, N_FOLDS, wf_folds
 from engine.experiments.avsl_baseline import DAY, TPS, WARMUP, _fast_line, _sim
+from ta.src.volatility.atr import atr_ind
 
 
 ASSETS = (
@@ -54,7 +55,7 @@ def _read(sym: str):
     )
 
 
-def _arm_stats(hp, lp, cp, ts, line, up, dn, lo, hi, reverse: bool):
+def _arm_stats(hp, lp, cp, ts, line, atr, up, dn, lo, hi, reverse: bool):
     stats = {tp: [] for tp in TPS}
     n_tot = n_skipped = 0
     for t in np.nonzero((up | dn))[0] + 1:
@@ -62,8 +63,8 @@ def _arm_stats(hp, lp, cp, ts, line, up, dn, lo, hi, reverse: bool):
             continue
         n_tot += 1
         is_long = bool(dn[t - 1]) if reverse else bool(up[t - 1])
-        stop = line[t]
-        risk = cp[t] - stop if is_long else stop - cp[t]
+        risk = atr[t]
+        stop = cp[t] - risk if is_long else cp[t] + risk
         if not np.isfinite(risk) or risk <= 0:
             n_skipped += 1
             continue
@@ -78,12 +79,13 @@ def _arm_stats(hp, lp, cp, ts, line, up, dn, lo, hi, reverse: bool):
 def run() -> None:
     print(
         "AVSL price-cross (no SMA): entry=close crossing avsl(70,345), "
-        f"stop=avsl@entry, TP {TPS}, horizon 192, taker 5bp x2",
+        f"stop=1xATR(14)@entry, TP {TPS}, horizon 192, taker 5bp x2",
         flush=True,
     )
     for sym in ASSETS:
         ts, lp, hp, cp, vol = _read(sym)
         line = _fast_line(lp, cp, vol, 2.0)
+        atr = atr_ind(hp, lp, cp, 14, use_talib=False)
         up = (cp[1:] > line[1:]) & (cp[:-1] < line[:-1])
         dn = (cp[1:] < line[1:]) & (cp[:-1] > line[:-1])
         folds = wf_folds(int(ts[0]), int(ts[-1]), N_FOLDS, FOLD_DAYS)
@@ -94,7 +96,7 @@ def run() -> None:
         for name, lo, hi in segs:
             for label, rev in (("normal", False), ("reverse", True)):
                 stats, n_tot, n_skipped = _arm_stats(
-                    hp, lp, cp, ts, line, up, dn, lo, hi, rev
+                    hp, lp, cp, ts, line, atr, up, dn, lo, hi, rev
                 )
                 parts = []
                 for tp_r in TPS:

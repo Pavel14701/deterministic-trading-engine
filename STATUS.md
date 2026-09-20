@@ -2112,4 +2112,32 @@ economically void (risk -> 0).  Sane no-SMA designs are: (a) stop
 = line + min-risk distance filter (bps of price, pre-registered),
 or (b) Path B cross-to-cross flip, MTM, no fixed stop.
 
+Price-cross v2, stop=1xATR(14)@entry (runs/avsl_price_cross_atr.log):
+same 10 assets, normal + reverse, sane risk -> sane costs (net
+-0.1..-0.6R).  Readout, 3R gross normal vs reverse:
+  TRAIN: BTC +0.00/-0.02, AVAX +0.06/+0.01, BNB 0.00/-0.02,
+  DOGE +0.04/-0.01, ETH +0.04/+0.02, LINK +0.12/-0.00,
+  LTC +0.00/-0.03, NEAR -0.04/+0.02, SOL +0.10/+0.02,
+  XRP -0.02/-0.01.
+  TEST: BTC +0.02/-0.00, AVAX +0.01/-0.07, BNB +0.11/-0.02,
+  DOGE +0.06/+0.00, ETH +0.00/+0.07, LINK +0.15/-0.00,
+  LTC -0.02/-0.03, NEAR -0.07/-0.00, SOL -0.00/+0.03,
+  XRP +0.12/+0.12.
+Findings:
+1. Normal beats reverse on ~7/10 assets in BOTH segments: the
+   cross DOES carry directional info, but it is tiny, ~+0.03..+0.05R
+   gross at 3R.
+2. Absolute level ~ 0: 3R break-even win rate is 25%, observed
+   24-29% -> EV ~ 0.  8R break-even is 11.1%; observed 12-15% ->
+   small positive EV that is a property of the TP/ATR geometry
+   (lottery payoff), present in BOTH orientations - not signal.
+3. Taker costs on 1xATR(14) 15m risk (~0.3-0.5% price) are
+   ~0.2-0.3R per trade -> every arm net-negative everywhere.
+FINAL VERDICT, AVSL cross as entry (all configs tried: vs SMA345
+stop, alignment, swap, price-cross ATR stop, both orientations,
+10 assets): directional edge <= +0.05R gross, costs >= 0.2R ->
+net-negative on every asset.  TRACK DEAD as entry signal.  The
+only untested mechanism left is AVSL as exit (Path B stop-flip);
+funding carry remains the standing pivot.
+
 
