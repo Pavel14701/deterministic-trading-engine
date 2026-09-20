@@ -1949,4 +1949,31 @@ Hypothesis "lookback was masking edge" rejected.  Next: funding
 carry recon (top-20 assets, funding history, annualized carry /
 pct_positive / std), then baseline carry strategy.
 
+Pre-closure diagnostics (runs/ob_ldgrid.log,
+engine/experiments/ob_ldgrid.py) - all four confirm closure:
+
+1. L x delay grid (5 L x 3 delay buckets, EV4R/EV6R, train vs test):
+   NO coherent surface.  Cells flip sign between segments (L=13
+   [5,10): train +0.51 -> test -0.10; L=35 [5,10): train -0.28 ->
+   test +0.39; L=25 [8,15): train +0.22 -> test +0.84).  Train-best
+   cells do not replicate; test-best cells were train-flat.  The
+   "+0.35R working point" was a train-max artifact on a noise
+   surface, as suspected.
+2. Per-fold EV4R, delay [5,10): L=30 positive in 5/7 folds, L=13 in
+   3/7; L=13 worse in 5 of 7 folds.  Consistent with the arm test,
+   direction stable, magnitudes tiny-n noisy.
+3. Age anomaly resolved: total validated blocks barely move with L
+   (train 354 vs 355, test 179 vs 169; age med 40-41 vs 22-24, min
+   age = L as expected).  The test survivor drop 31 -> 23 is delay-
+   cut pool composition, not a missing population.
+4. Null bootstrap of the holdout asset pattern: with true EV = 0 and
+   per-asset SE from trade counts, P(>=5 of 9 positive) = 0.50,
+   P(>=3 of 9) = 0.91.  Observed 5/9 positive at 4R (3/9 at 6R) is
+   a coin flip - the "works on BTC/ETH/DOGE/XRP" pattern is
+   statistically indistinguishable from noise.  Asset-segregation
+   hypotheses (basis, beta, retail, depth) are moot.
+
+OB-retest 15m: CLOSED, now with a defensible basis (grid incoherent,
+bootstrap null-consistent).  Funding carry next.
+
 
