@@ -2284,4 +2284,15 @@ same "always-in regime beta" as before with a DD-reduction side
 effect; no alpha.  RE-RUN 4H/1H/15m over the full 34-asset universe
 once the okx expansion finishes.
 
+5M LONG-ONLY ON OKX (runs/avsl_okx_5m_long.log; "5m" added to
+avsl_trailing TFs): 10 base assets, 2.5-3y depth (BNB/LINK/XRP 1y ->
+wf_folds gives 7 folds, test 168d).  n_test=6801 trades.  Result:
+fee wall, exactly as pre-diagnosed on 15m.  Test medians: trail
+evG +0.051R/trade vs evN -0.289R (cost drag 0.34R = 0.1% round trip
+over 2xATR14(5m) risk unit); bench evG -0.004 / evN -0.308.  Trail
+"beats" bench 8/10 and cuts DD ~15%, but both are deeply net
+negative on every asset (test evN -0.04..-0.35R).  Even at maker
+0.02%/side the drag (~0.14R) still exceeds the +0.05R gross edge.
+5m closed at taker AND maker costs; no further 5m work planned.
+
 

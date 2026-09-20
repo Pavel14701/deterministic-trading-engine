@@ -223,7 +223,7 @@ def run() -> None:
             rev = True
         elif a in ("long", "longonly"):
             long_only = True
-        elif a in ("15m", "1H", "4H", "1D"):
+        elif a in ("5m", "15m", "1H", "4H", "1D"):
             tf = a
     tag = "REVERSED" if rev else "NORMAL"
     if long_only:
