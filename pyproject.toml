@@ -134,6 +134,13 @@ disallow_untyped_defs = true
 warn_return_any = true
 check_untyped_defs = true
 
+# Research-grade zones (former scripts/): unannotated by design, style is
+# not library-grade (see ruff per-file-ignores).  Typed checking adds noise
+# only - suppressed entirely; ruff still catches real bugs there (F, E9).
+[[tool.mypy.overrides]]
+module = ["engine.experiments.*", "engine.datasets.*"]
+ignore_errors = true
+
 [tool.pytest.ini_options]
 # Single source of pytest config (TZ-14 п.2.3): per-package pytest.ini
 # files are removed. Runs identically from the root and from a package:

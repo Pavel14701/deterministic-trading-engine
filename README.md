@@ -1,4 +1,4 @@
-# Determenistic Trading Engine — BTC/ETH/SOL trading research pipeline
+# Deterministic Trading Engine — BTC/ETH/SOL trading research pipeline
 
 Research codebase behind a validated, live-defensible EV estimate for a
 zone-geometry trading strategy (stop geometry is universal across assets;
@@ -58,6 +58,31 @@ uv run python -m engine.experiments.admission_policies  # REPLACE-low vs FCFS
 uv run python -m engine.experiments.maker_entry         # maker-entry study
 ```
 
+## Experiments
+
+Every experiment is a library module in `engine/experiments/` — runnable,
+pinned to its data variant / encoding / metrics, writing artifacts into
+`runs/` and logging its verdict in **STATUS.md**:
+
+| module | question it answers |
+|---|---|
+| `walk_forward_ab` | multi-asset LGBM (B) vs per-asset (A) — the baseline |
+| `cost_cap` | cost-aware row cap + AVSL-off on the WF protocol |
+| `ranker_only` | free ranker gate vs rule-table gate |
+| `feature_family` | DSL feature family A/B vs hand-built features |
+| `funding_carry` | delta-neutral funding carry feasibility |
+| `ablation` / `ablation_diag` | which stack layer carries the edge |
+| `matrix_2x2` | per-asset vs multi-asset × LGBM vs transformer |
+| `nested_cv` | model-selection bias discount |
+| `execution_costs` | optimistic vs pessimistic execution spread |
+| `adaptive_tp` | MFE/MAE-driven take-profit rules |
+| `ranking_baselines` | cost-aware stop-rule ranking head |
+| `portfolio` | portfolio layer on WF trade series |
+| `robustness` | follow-up robustness checks |
+| `joint_rank` | joint ranking over (stop rule × TP target) pairs |
+| `admission_policies` | FCFS vs REPLACE slot policies |
+| `maker_entry` | maker-or-skip vs always-market execution |
+
 ## Validation protocol (why the numbers are defensible)
 
 - **Walk-forward**: 8 folds × 56d, expanding train, 7d embargo, pre-registered 6+/8 rule.
@@ -71,12 +96,23 @@ uv run python -m engine.experiments.maker_entry         # maker-entry study
   tabular features, D−C = 0), maker entries rejected (total adverse selection,
   −0.41 R/signal), kill-switch at 2R is pure EV loss.
 
+## Documentation
+
+- **STATUS.md** — the single evidence trail: what is implemented, every
+  experiment's verdict, negative results kept on purpose.
+- `engine/` module docstrings — the API reference; the package layout is
+  described in `engine/__init__.py`.
+- `legacy/MANIFEST.md` — the archive manifest: what died, why, and how
+  to revive it. Read it before touching anything under `legacy/`.
+- `legacy/dev_docs/` — archived design docs: TZ-00…TZ-15 specs, the
+  indicator baseline report, the quant checklist, testing conventions.
+
 ## History
 
 The repo started as a deterministic trading engine monorepo (DSL strategies,
 RAG strategy generation, T-Bank/OKX adapters, service infrastructure — the
-`TZ-*` docs in `dev_docs/`). After the geometry pivot the whole monorepo was
-archived under `legacy/` (documented in `legacy/MANIFEST.md`); only the
-research library, the stage pipeline and the data path survived. The OKX
-adapter design lives in `legacy/packages/okx/` and is the starting point for
-the future live-execution layer.
+archived `TZ-*` docs under `legacy/dev_docs/`). After the geometry pivot the
+whole monorepo was archived under `legacy/` (documented in
+`legacy/MANIFEST.md`); only the research library and the data path survived.
+The OKX adapter design lives in `legacy/packages/okx/` and is the starting
+point for the future live-execution layer.

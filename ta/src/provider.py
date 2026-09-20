@@ -184,7 +184,7 @@ _register(
         outputs={"value": OutputSpec(index=0)},
         # canonical orientation fast < slow; the registered stage-0
         # hypothesis inverts them (fast=134, slow=52) — see
-        # dev_docs/ai_baseline_report.md criterion 5
+        # legacy/dev_docs/ai_baseline_report.md criterion 5
         default_params={"fast": 52, "slow": 134, "stand_div": 1.0},
     )
 )
