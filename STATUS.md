@@ -1906,4 +1906,47 @@ real confirmation lag, so the Phase-1 formula (lookback = 1.5 x
 pivot_p90 ~ 9-14, cw = 2 x retest_p90 ~ 42-54) would produce a
 genuinely different configuration, not a cosmetic one.
 
+PHASE 1 (reduced, PRE-REGISTERED before the run): the original
+formula is broken - vol half-life ~1 bar cannot set a delay range
+(conceptually wrong measure), and min_extreme_gap = 0.5 x pivot_p50
+would disable the filter (p50 = 1-2).  What survives is a BTC-only
+lookback recalibration:
+
+  BTC only, 15m:
+    lookback = int(1.5 x pivot_p90 = 9) = 13   (was 30, static)
+    cw       = round(2.0 x retest_p90 = 27) = 54   (was 36)
+    delay    = [5, 10)   (NOT adapted, kept from step 1)
+    min_extreme_gap = 6 (default, NOT adapted)
+    revATR = 2.5, zone_atr_multiplier = 0.2, TP = {4R, 6R}
+  Secondary ablation arm (pre-registered, diagnostic only):
+    lookback=13 with cw=36 (isolates the lookback effect).
+  Decision on TRAIN (folds 0-3 + 7d embargo); test folds 4-6 are the
+  readout vs the L=30/cw=36 baseline (train n=60 EV4 +0.425, test
+  n=31 EV4 +0.198).  Criterion on EV_test: > +0.05R better -> the
+  9-asset test with per-asset lookback/cw is allowed; within noise
+  or worse -> phase 1 closed, OB track closed, funding carry.
+
+PHASE 1 RESULT (runs/ob_lookback13.log, engine/experiments/
+ob_lookback13.py): RECALIBRATION FAILS, criterion is a clean FAIL.
+
+  arm                TRAIN n  EV4R/EV6R        TEST n  EV4R/EV6R
+  A: L=30, cw=36        60  +0.425 / +0.478     31  +0.198 / +0.262
+  B: L=13, cw=36 (abl)  73  +0.177 / +0.397     23  -0.171 / -0.241
+  C: L=13, cw=54 (prim) 73  +0.177 / +0.397     23  -0.171 / -0.241
+
+- EV_test drops -0.37R vs baseline (criterion was > +0.05R better);
+  EV_train also lower.  Shorter lookback admits younger pivots whose
+  fast retests are junk, not signal.
+- B == C exactly: cw is irrelevant once the delay cut [5,10) is
+  applied (all retests are < 10 bars after break anyway); cw only
+  gates which blocks find a retest at all.
+- Pivot-lag insight stands as a fact (real confirmation p90 = 6-9),
+  but the "excess" lookback=30 was acting as a beneficial quality
+  filter on pivot maturity, not as ballast.
+
+FINAL: OB-retest on 15m is CLOSED per the pre-registered rule.
+Hypothesis "lookback was masking edge" rejected.  Next: funding
+carry recon (top-20 assets, funding history, annualized carry /
+pct_positive / std), then baseline carry strategy.
+
 
