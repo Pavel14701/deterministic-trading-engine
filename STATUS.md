@@ -2265,4 +2265,23 @@ Also: run the whole expansion as ONE python process (bash "; " chains
 survive python kills and respawn the next phase -> concurrent writers
 on the same parquets).
 
+LONG-ONLY ON OKX (runs/avsl_okx_long.log; avsl_trailing grew a "long"
+flag + 1D support + min-bars guard, universe = load_okx.ALL 34): same
+pre-registered config (cross entry 70/345, initSL 2xATR14, immediate
+AVSL-0.3ATR trail), short entries skipped, long exits at SL|reverse
+cross; bench = always-in long-only.  Net EV, train/test 224d+224d:
+1D  x32: 1/32 pass, trail>bench test 5/32, med diff -0.011R -> null.
+15m x10: 0/10 pass, 8/10 trail>bench but med diff -0.032R -> null.
+1H  x10: 2/10 pass, 6/10 trail>bench, med diff +0.168R, but raw EVs
+         are beta: trail/bench both strongly + in the 2026 BTC bull
+         (BTC +0.94/+0.81R, XRP +1.18/+1.03R per trade), trail WORSE
+         on choppy recoveries (ETH -0.21 vs +0.25, SOL -0.18 vs +0.60
+         -- trailing cuts winners), better only in downtrends (AVAX
+         -0.29 vs -0.41, DD cut ~30%).
+4H  x8:  thin (n_test=74), 4/8, med +0.105R -- no inference.
+Read: long-only changes nothing material -- the 1H long trail is the
+same "always-in regime beta" as before with a DD-reduction side
+effect; no alpha.  RE-RUN 4H/1H/15m over the full 34-asset universe
+once the okx expansion finishes.
+
 

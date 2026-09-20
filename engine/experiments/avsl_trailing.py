@@ -30,7 +30,6 @@ REPO = Path(__file__).resolve().parent.parent.parent
 
 from engine.backtest.protocol import FOLD_DAYS, N_FOLDS, wf_folds
 from engine.experiments.avsl_baseline import DAY, WARMUP, _fast_line
-from engine.experiments.avsl_price_cross import ASSETS as OKX_ASSETS
 from engine.experiments.load_yf import TICKERS
 from ta.src.volatility.atr import atr_ind
 
@@ -105,7 +104,10 @@ def _active(variant, t, t0, cp, entry, line, sign, risk):
     return False
 
 
-def _run_arm(cp, lp, hp, ts, atr, line, up, dn, lo, hi, variant, rev=False):
+def _run_arm(
+    cp, lp, hp, ts, atr, line, up, dn, lo, hi, variant, rev=False,
+    long_only=False,
+):
     n = len(cp)
     crosses = np.nonzero(up | dn)[0] + 1
     trades = []  # (pnl_gross_r, fee_r, hold_bars)
@@ -121,6 +123,9 @@ def _run_arm(cp, lp, hp, ts, atr, line, up, dn, lo, hi, variant, rev=False):
         if ts[t0] >= hi or t0 >= n - 2:
             break
         side = bool(up[t0 - 1]) != rev  # rev flips entry orientation
+        if long_only and not side:
+            i += 1  # long-only: skip short entries (stay flat)
+            continue
         sign = 1.0 if side else -1.0
         entry = cp[t0]
         risk = K_ATR * atr[t0]
@@ -211,18 +216,28 @@ def _fmt(s: dict) -> str:
 
 def run() -> None:
     rev = False
+    long_only = False
     tf = "15m"
     for a in sys.argv[1:]:
         if a == "rev":
             rev = True
-        elif a in ("15m", "1H", "4H"):
+        elif a in ("long", "longonly"):
+            long_only = True
+        elif a in ("15m", "1H", "4H", "1D"):
             tf = a
     tag = "REVERSED" if rev else "NORMAL"
+    if long_only:
+        tag += " LONG-ONLY"
     src = "yf" if "yf" in sys.argv[1:] else "okx21"
     read = _read_yf if src == "yf" else _read_okx
-    universe = [t for t in TICKERS if t != "TON"] if src == "yf" else OKX_ASSETS
-    # TON excluded from yf stats: corrupt Yahoo series (636 bars stuck at
-    # $0.017 after a fake -99.5% 1H print, Aug 2025) -- not fixable.
+    if src == "yf":
+        # TON excluded from yf stats: corrupt Yahoo series (636 bars
+        # stuck at $0.017 after a fake -99.5% 1H print, Aug 2025).
+        universe = [t for t in TICKERS if t != "TON"]
+    else:
+        from engine.experiments.load_okx import ALL  # 34 okx spot assets
+
+        universe = [f"{s}-USDT" for s in ALL]
     syms = [
         a
         for a in universe
@@ -232,11 +247,15 @@ def run() -> None:
         f"AVSL cross-entry + immediate AVSL trailing (config 70/345, "
         f"{tag}, tf={tf}, assets={len(syms)}): entry=cross, "
         "initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal from bar 1; "
-        "bench=always-in same orientation; exit=SL|reverse-cross; R=2xATR",
+        "bench=always-in same orientation; exit=SL|reverse-cross; R=2xATR"
+        + ("; LONG-ONLY: short entries skipped, long exits at SL|cross" if long_only else ""),
         flush=True,
     )
     for sym in syms:
         ts, lp, hp, cp, vol = read(sym, tf)
+        if len(cp) < WARMUP + 110:  # AVSL(345) needs history; skip shorts
+            print(f"{sym:>10} SKIP: {len(cp)} bars < warm-up", flush=True)
+            continue
         line = _fast_line(lp, cp, vol, 2.0)
         atr = atr_ind(hp, lp, cp, 14, use_talib=False)
         up = (cp[1:] > line[1:]) & (cp[:-1] < line[:-1])
@@ -249,7 +268,8 @@ def run() -> None:
         for name, lo, hi in segs:
             for variant, label in ((4, "trail"), (0, "bench")):
                 s = _run_arm(
-                    cp, lp, hp, ts, atr, line, up, dn, lo, hi, variant, rev
+                    cp, lp, hp, ts, atr, line, up, dn, lo, hi, variant, rev,
+                    long_only=long_only,
                 )
                 print(f"{sym:>10} {name} {label:>8}: {_fmt(s)}", flush=True)
 
