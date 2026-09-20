@@ -1762,8 +1762,34 @@ first-break med 8).  Hypothesis: early breaks are impulses (zone
 consumed), OB retest works on post-consolidation reversals.  To be
 checked via EV vs (break_idx - idx) on train folds.
 
-WF: engine/experiments/ob_wf_ev.py - 8x56d folds (protocol::wf_folds,
-embargo 7d), causal prefix detection, gross per fold; go/no-go:
->=6/8 folds gross > 0 -> maker-entry study; <4/8 -> close OB track.
+WF (runs/ob_wf_ev.log, engine/experiments/ob_wf_ev.py): 7x56d folds
+(history
+holds 6.5 such windows; embargo 7d; causal prefix detection, ATR
+median on prefix; fixed params - nothing fitted, folds measure
+stability only).  Gross EV per fold (blocks per fold 39-100):
+
+  fold     0      1      2      3      4      5      6   pos  mean
+  1R   +0.001 +0.001 +0.013 +0.011 +0.026 -0.111 +0.103  6/7 +0.006
+  3R   -0.053 +0.007 +0.091 +0.026 +0.082 +0.134 -0.024  5/7 +0.038
+  6R   +0.141 -0.020 +0.187 -0.069 +0.062 -0.002 -0.101  3/7 +0.028
+
+Verdict vs the pre-registered criteria (6/8+ -> maker; 4-5/8 ->
+boundary, dig delay/age; <4/8 -> close): BOUNDARY.  1R is stable but
+EV ~ 0; 3R positive in 5/7 with the best pooled gross; 6R pooled
+positive but only 3/7 folds.  Gross is far below the ~0.16-0.18R
+taker round trip everywhere - any continuation requires maker entry.
+
+Age anomaly RESOLVED, no selection effect: validated ages span
+[30, 60) with min=p10=30 - exactly the dynamic lookback (30 on 15m).
+In candidates.py the break search starts at bar i = idx + lookback:
+lookback is the pivot CONFIRMATION lag (causality - an online zigzag
+pivot is not knowable earlier), so every tradable break is >= lookback
+by construction.  The "natural med 8" distribution is offline and
+untradeable.  Hypothesis 3 ("OB works on reversals, not impulses") is
+not testable as posed; the real knob is the confirmation depth
+(lookback) - a train-fold tuning question, after WF, not a bug.
+
+Retest delay did not shift: break->retest med 5, p90 23 - cw=36 now
+covers p90 with margin (in-sample p90 was censored at the window).
 
 
