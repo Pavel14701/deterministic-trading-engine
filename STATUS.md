@@ -2247,4 +2247,13 @@ block bootstrap over asset-level diffs + fresh window.  Verdict
 unchanged pending that test: AVSL = beta overlay, not alpha; the
 only new candidate is "AVSL trail on 4H" as DD-reducer.
 
+OKX DATA EXPANSION (engine/experiments/load_okx.py, IN PROGRESS -> see
+runs/load_okx_expand.log): breadth 10 -> 36 assets (BASE + NEW lists;
+all 26 new exist as OKX spot {SYM}-USDT -- no Yahoo-style aliases),
+depth caps raised to 15m 100k bars (~2.9y), 1H 40k (~4.6y), 4H 20k
+(~9y), 1D 5000 (~13.7y, listing-capped).  Uses the existing resumable
+okx_fetch page-cache: re-runs walk backwards from the oldest cached
+bar, so depth grows run over run; interrupted runs lose <= 5000 bars.
+First proof: BTC 1D 916d -> 8.94y (3265 bars) on the first invocation.
+
 
