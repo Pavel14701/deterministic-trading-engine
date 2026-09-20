@@ -1,0 +1,10 @@
+AVSL cross-entry + immediate AVSL trailing (config 70/345, NORMAL, tf=15m, assets=35): entry=cross, initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal from bar 1; bench=always-in same orientation; exit=SL|reverse-cross; R=2xATR
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\Pashtet\Desktop\projects\t_inv_rag\engine\experiments\avsl_trailing.py", line 258, in <module>
+    run()
+  File "C:\Users\Pashtet\Desktop\projects\t_inv_rag\engine\experiments\avsl_trailing.py", line 246, in run
+    ("TRAIN", 0, folds[4][0] - 7 * DAY),
+                 ~~~~~^^^
+IndexError: list index out of range

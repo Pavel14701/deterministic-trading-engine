@@ -2224,4 +2224,27 @@ TIA SEI FET AAVE GRT(SAND) ALGO VET ICP HBAR ETC BCH TRX SHIB
 PEPE(FLOKI) WIF TON.  Loader supports symbol filter args
 (load_yf UNI APT 1H) + 2s throttle for targeted re-runs.
 
+TRAILING ON YF UNIVERSE (runs/avsl_yf_{15m,1h,4h}.log; avsl_trailing
+now accepts "yf" flag -> data/yf + 35-asset list): yf-specific
+read path added: zero-volume ffill (see warning above) + bad-tick
+excision (|1-bar logret|>50% bars -> OHLC := prev close, iterated).
+TON EXCLUDED from yf stats: corrupt Yahoo series (636 bars stuck
+at $0.017 after a fake -99.5% 1H print, Aug 2025); isolated spikes
+in APT/ARB/TIA (1-5 bars) are excised.  15m yf not runnable: 60d
+history < 448d walk-forward span (15m scale remains covered by
+okx21).  Results (35 assets, net EV, pre-reg pass = train & test
+both >= +0.05R, vs always-in bench same orientation):
+1H NORMAL: 13/35 pass, trail>bench test 20/35, med diff +0.02R.
+4H NORMAL: 11/35 pass, trail>bench test 25/35, med diff +0.16R.
+1H/4H REVERSED: 6/35 and 3/35 pass, test med diff negative.
+Reading: 4H NORMAL beats bench out-of-sample in 25/35 - nominally
+binomial p~0.017, but (a) 6 configs tried, (b) 35 crypto assets
+over one overlapping window are NOT independent trials, (c) trail
+cuts exposure so bench DD (up to 200R on TRX) dominates gross
+comparisons, (d) aggregate net-R is unusable (single 100x-trend
+trades in SHIB/FLOKI give hundreds of R).  Before believing 4H:
+block bootstrap over asset-level diffs + fresh window.  Verdict
+unchanged pending that test: AVSL = beta overlay, not alpha; the
+only new candidate is "AVSL trail on 4H" as DD-reducer.
+
 

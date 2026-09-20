@@ -23,14 +23,68 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import polars as pl
 
 
 REPO = Path(__file__).resolve().parent.parent.parent
 
 from engine.backtest.protocol import FOLD_DAYS, N_FOLDS, wf_folds
 from engine.experiments.avsl_baseline import DAY, WARMUP, _fast_line
-from engine.experiments.avsl_price_cross import ASSETS, _read
+from engine.experiments.avsl_price_cross import ASSETS as OKX_ASSETS
+from engine.experiments.load_yf import TICKERS
 from ta.src.volatility.atr import atr_ind
+
+
+def _read_okx(sym: str, tf: str = "15m"):
+    df = pl.read_parquet(REPO / f"data/okx21/raw_{sym}_{tf}.parquet").rename(
+        {"ts": "date"}
+    )
+    return (
+        df["date"].to_numpy().astype(np.int64),
+        df["low"].to_numpy().astype(np.float64),
+        df["high"].to_numpy().astype(np.float64),
+        df["close"].to_numpy().astype(np.float64),
+        df["volume"].to_numpy().astype(np.float64),
+    )
+
+
+def _read_yf(sym: str, tf: str):
+    df = pl.read_parquet(REPO / f"data/yf/raw_{sym}_{tf}.parquet")
+    # yfinance intraday volume is ~half zeros -> AVSL (VWMA/VM) breaks.
+    # Documented fill: forward-fill zeros, leading NaNs -> median.
+    vol = (
+        df.select(
+            pl.when(pl.col("volume") <= 0)
+            .then(None)
+            .otherwise(pl.col("volume"))
+            .alias("v")
+        )
+        .select(pl.col("v").forward_fill().fill_null(pl.col("v").median()))
+        .to_series()
+        .to_numpy()
+        .astype(np.float64)
+    )
+    cp = df["close"].to_numpy().astype(np.float64)
+    # Yahoo bad-tick spikes: |1-bar logret| > 50%.  Replace the corrupt
+    # bar's OHLC with the previous close; iterate while spikes remain
+    # (handles multi-bar corrupt stretches by flatlining them).
+    lp = df["low"].to_numpy().astype(np.float64)
+    hp = df["high"].to_numpy().astype(np.float64)
+    op = df["open"].to_numpy().astype(np.float64)
+    for _ in range(64):
+        lr = np.abs(np.diff(np.log(cp, where=cp > 0, out=np.full_like(cp, np.nan))))
+        bad = np.where(lr > np.log(1.5))[0] + 1
+        if not len(bad):
+            break
+        for i in bad:
+            op[i] = lp[i] = hp[i] = cp[i] = cp[i - 1]
+    return (
+        df["ts"].to_numpy().astype(np.int64),
+        lp,
+        hp,
+        cp,
+        vol,
+    )
 
 
 TAKER_FEE = 0.0005
@@ -164,7 +218,16 @@ def run() -> None:
         elif a in ("15m", "1H", "4H"):
             tf = a
     tag = "REVERSED" if rev else "NORMAL"
-    syms = [a for a in ASSETS if (REPO / f"data/okx21/raw_{a}_{tf}.parquet").exists()]
+    src = "yf" if "yf" in sys.argv[1:] else "okx21"
+    read = _read_yf if src == "yf" else _read_okx
+    universe = [t for t in TICKERS if t != "TON"] if src == "yf" else OKX_ASSETS
+    # TON excluded from yf stats: corrupt Yahoo series (636 bars stuck at
+    # $0.017 after a fake -99.5% 1H print, Aug 2025) -- not fixable.
+    syms = [
+        a
+        for a in universe
+        if (REPO / f"data/{src}/raw_{a}_{tf}.parquet").exists()
+    ]
     print(
         f"AVSL cross-entry + immediate AVSL trailing (config 70/345, "
         f"{tag}, tf={tf}, assets={len(syms)}): entry=cross, "
@@ -173,7 +236,7 @@ def run() -> None:
         flush=True,
     )
     for sym in syms:
-        ts, lp, hp, cp, vol = _read(sym, tf)
+        ts, lp, hp, cp, vol = read(sym, tf)
         line = _fast_line(lp, cp, vol, 2.0)
         atr = atr_ind(hp, lp, cp, 14, use_talib=False)
         up = (cp[1:] > line[1:]) & (cp[:-1] < line[:-1])
