@@ -27,6 +27,7 @@ from dsl.exceptions import ProviderError
 from dsl.providers.base import IndicatorProvider
 
 from .candle.cdl_engulfing import cdl_engulfing
+from .custom.avsl import avsl_ind
 from .custom.ott import ott_ind
 from .momentum.rsi import rsi_ind
 from .overlap.ema import ema_ind
@@ -173,6 +174,18 @@ _register(
             "ott": OutputSpec(index=4),
         },
         default_params={"length": 5, "percent": 2.0},
+    )
+)
+_register(
+    IndicatorBinding(
+        dsl_name="avsl",
+        func=avsl_ind,
+        sources=("low", "close", "volume"),
+        outputs={"value": OutputSpec(index=0)},
+        # canonical orientation fast < slow; the registered stage-0
+        # hypothesis inverts them (fast=134, slow=52) — see
+        # dev_docs/ai_baseline_report.md criterion 5
+        default_params={"fast": 52, "slow": 134, "stand_div": 1.0},
     )
 )
 # Price series bindings (direct column access, not computed indicators)

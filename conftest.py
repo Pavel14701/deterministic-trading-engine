@@ -1,8 +1,10 @@
 """Root pytest configuration.
 
-Applies per-service markers so `-m dsl`, `-m ta`, ... work from anywhere
-(TZ-14 п.2.3). Markers are registered once at the root pyproject and here
-mapped onto collection paths; tests must NOT mark themselves manually.
+Tags every collected test with the marker of its owning package so
+``-m engine`` / ``-m ta`` work from the repo root.  The research suite
+lives in ``tests/`` (package ``engine``); ``ta/`` is vendored and
+excluded from the default run (one known upstream failure, see
+legacy/MANIFEST.md).
 """
 
 from __future__ import annotations
@@ -16,16 +18,10 @@ def pytest_collection_modifyitems(items) -> None:
     """Tag every test with the marker of its owning package."""
     root = pathlib.Path(__file__).resolve().parent
     services = {
-        "dsl": "dsl",
+        "tests": "engine",
+        "engine": "engine",
         "ta": "ta",
-        "ai": "ai",
-        "infer": "infer",
-        "rag": "rag",
-        "risk": "risk",
-        "main": "main",
-        "strategies": "strategies",
-        "okx": "okx",
-        "tinvest": "tinvest",
+        "dsl": "dsl",
     }
     for item in items:
         try:
@@ -33,6 +29,6 @@ def pytest_collection_modifyitems(items) -> None:
         except ValueError:
             continue
         for svc, marker in services.items():
-            if svc in {part for part in rel.parts}:
+            if svc in rel.parts:
                 item.add_marker(getattr(pytest.mark, marker))
                 break

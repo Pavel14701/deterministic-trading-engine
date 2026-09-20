@@ -1,7 +1,7 @@
 [project]
 name = "deterministic-trading-engine"
 version = "0.1.0"
-description = "Deterministic algorithmic trading system: DSL, ta indicators, Transformer P(win), RAG as an auxiliary layer"
+description = "BTC/ETH/SOL trading research pipeline: zone-geometry EV, walk-forward validation, rank-based admission"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -12,25 +12,13 @@ requires-python = ">=3.12"
 # См. dev_docs/tz/TZ-00-roadmap.md п. «Монорепозиторий».
 dependencies = [
     "lightgbm",
+    "pandas>=2.2,<3",  # validated on 2.3.3; pandas 3 str-dtype breaks feature encode
     "scikit-learn>=1.8.0",
     "xgboost",
 ]
 
 [tool.uv.workspace]
-members = [
-    "ta",
-    "dsl",
-    "strategies",
-    "ai",
-    "infer",
-    "rag",
-    "risk",
-    "backtest",
-    "contracts",
-    "main",
-    "okx",
-    "tinvest",
-]
+members = ["engine", "ta", "dsl"]
 
 [dependency-groups]
 dev = [
@@ -67,7 +55,7 @@ constraint-dependencies = ["torch==2.4.1"]
 [tool.ruff]
 line-length = 79
 target-version = "py312"
-exclude = [".venv/", "**/migrations/*", ".mypy_cache/", "__pycache__/"]
+exclude = [".venv/", "legacy/", ".mypy_cache/", "__pycache__/"]
 fix = true
 
 [tool.ruff.lint]
@@ -99,14 +87,16 @@ preview = true
 # RUF069 is relaxed here: exact-literal float checks (== 0.0, == 1.0) in
 # tests are intentional for IEEE-semantics assertions; new tests should
 # prefer pytest.approx (see dev_docs/testing_convention.md section 4).
-"tests/**" = ["D", "RUF069"]
+"tests/**" = ["D", "RUF069", "E501"]
 "**/tests/**" = ["D", "RUF069"]
 "test_*.py" = ["D", "RUF069"]
 "conftest.py" = ["D", "RUF069"]
-"**/__init__.py" = ["RUF067"]
-# Легаси-адаптеры strategies/src/infrastructure: переписываются в TZ-02;
-# держим только критичные правила (F, E, RUF).
-"strategies/src/infrastructure/**" = ["D", "N"]
+# Research-grade zones (former scripts/, pre-dating the library
+# standards): readability fixes welcome, but docstrings, line length
+# and style pedantry are not enforced there.  The library core
+# (infra/features/structure/sim/backtest/model/metrics) is fully clean.
+"engine/experiments/**" = ["E501", "D", "B905", "RUF069", "B007", "N", "E402", "E741", "E702"]
+"engine/datasets/**" = ["E501", "B905", "RUF069", "B007"]
 
 [tool.ruff.format]
 indent-style = "space"
@@ -137,42 +127,19 @@ python_version = "3.12"
 ignore_missing_imports = true
 explicit_package_bases = true
 namespace_packages = true
-exclude = ["migrations", ".venv", "ta/tests", "dsl/tests", "ai/src/tests", "ai/tests", "rag/tests", "risk/tests", "strategies/tests", "infer/tests", "main/src/tests"]
+exclude = ["legacy", ".venv", "ta/tests", "data", "runs"]
 
-# Wave 1 (done): new packages are born strict.
-[tool.mypy-risk]
+[tool.mypy-engine]
 disallow_untyped_defs = true
 warn_return_any = true
 check_untyped_defs = true
-
-# Wave 2 (planned): ai, infer - promote when error count reaches zero.
-[tool.mypy-ai.src]
-disallow_untyped_defs = true
-warn_return_any = true
-check_untyped_defs = true
-[tool.mypy-infer]
-disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
 # Single source of pytest config (TZ-14 п.2.3): per-package pytest.ini
 # files are removed. Runs identically from the root and from a package:
 #   uv run pytest                          # whole monorepo
-#   uv run --package dte-dsl pytest dsl/tests
 pythonpath = ["."]
-testpaths = [
-    "dsl/tests",
-    "ta/tests",
-    "ai/tests",
-    "infer/tests",
-    "rag/tests",
-    "risk/tests",
-    "strategies/tests",
-    "backtest/tests",
-    "contracts/tests",
-    "main/tests",
-    "okx/tests",
-    "tinvest/tests",
-]
+testpaths = ["tests", "dsl/tests"]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-v --tb=short --strict-markers -m \"not deprecated\""
@@ -189,17 +156,9 @@ markers = [
     # --- service markers (per-service separation, TZ-14 п.2.3) ---
     # Applied automatically by the root conftest.py path hook; do not
     # mark tests manually.
+    "ta: belongs to the vendored dte-ta package",
+    "engine: belongs to the dte-engine package",
     "dsl: belongs to the dte-dsl package",
-    "ta: belongs to the dte-ta package",
-    "ai: belongs to the dte-ai package",
-    "infer: belongs to the dte-infer package",
-    "rag: belongs to the dte-rag package",
-    "risk: belongs to the dte-risk package",
-    "backtest: belongs to the dte-backtest package",
-    "main: belongs to the dte-main package",
-    "strategies: belongs to the dte-strategies package",
-    "okx: belongs to the dte-okx package",
-    "tinvest: belongs to the dte-tinvest package",
     # --- domain markers (inherited from the former per-package inis) ---
     "candle: [ta] candle-pattern indicators",
     "custom: [ta] custom indicators",
