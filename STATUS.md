@@ -3,6 +3,23 @@
 Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done · ⬜ not started ·
 ⬜=spec only. Full per-task detail: `legacy/dev_docs/tz/TZ-00-roadmap.md` (archived).
 
+## 2026-09-20 — tests co-located in engine/, CI subordinated to the layout
+
+- `tests/` -> `engine/tests/`: the unit suite lives inside the package
+  it tests (git mv, history preserved).  Depth-dependent paths updated
+  (config yaml lookup, ob-pipeline sys.path bootstrap).  dsl/tests
+  stays in its own package by design.
+- CI now follows the layout exactly: `ruff check engine dsl` (tests are
+  inside engine/), `mypy engine` covers the whole package including
+  tests, `pytest` runs on `testpaths` from pyproject (engine/tests +
+  dsl/tests).  The dead `[tool.mypy-engine]` section (never read by
+  mypy) is gone; the strict flags now actually apply via `[tool.mypy]`
+  with `ignore_errors` overrides for engine.experiments/.datasets/
+  .tests (unannotated by design).
+- Root `conftest.py` marker map updated (`-m engine` works on the new
+  path); pytest `testpaths` and ruff test ignores generalized to
+  `**/tests/**`.
+
 ## 2026-09-20 — engine restructure: subpackages, no scripts/, no ID naming
 
 - `scripts/` removed entirely; every experiment driver is now a library

@@ -84,6 +84,6 @@ def pess(row: dict[str, Any]) -> float:
         d += GAP * row["atr_i"] / risk
     elif row["exit_reason"] == "time":
         d += (X_MULT - 1) * GEN_SLIP * abs(row["exit_price"]) / risk
-    return float(row["r_net"]) - d
+    return float(row["r_net"]) - float(d)
 
 

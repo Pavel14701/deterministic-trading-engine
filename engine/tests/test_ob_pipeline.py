@@ -118,7 +118,7 @@ def test_split_chronological_no_overlap_and_context():
 
     from pathlib import Path
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
     from engine.datasets.okx import split_chronological
 
     n = 4000
@@ -189,7 +189,7 @@ def test_htf_ob_mapping_is_causal_and_drops_future_blocks():
 
     from pathlib import Path
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
     from engine.datasets.okx import map_htf_ob_indices
 
     base_ms, htf_ms = 60_000, 300_000
@@ -218,7 +218,7 @@ def test_htf_ob_mapping_never_precedes_htf_close():
 
     from pathlib import Path
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
     from engine.datasets.okx import map_htf_ob_indices
 
     base_ms, htf_ms = 60_000, 900_000  # 1m base, 15m HTF

@@ -20,7 +20,7 @@ rank-based admission. Full evidence trail: **STATUS.md**.
 ## Repository layout
 
 ```
-engine/      research library, subpackaged by function:
+engine/      research library, subpackaged by function, tests co-located:
                infra/       config, datatypes, parquet I/O, marketdata (OKX)
                features/    indicators, MTF resampling, panels, DSL
                             feed/spec/provider, MFE/MAE event collector
@@ -32,7 +32,8 @@ engine/      research library, subpackaged by function:
                metrics/     per-trade R performance metrics
                datasets/    dataset assembly pipelines (OKX -> panels)
                experiments/ reproducible experiment drivers
-tests/       unit tests (simulator, maker entry, zones, library)
+               tests/       the unit suite (simulator, maker entry, zones,
+                            library) — one package, one home
 ta/          vendored indicator library (upstream; excluded from default run)
 dsl/         dte-dsl package: declarative trading-conditions DSL
              (tokenizer -> parser -> AST -> interpreter, manifest providers);
@@ -48,8 +49,8 @@ data/ runs/  parquet data and experiment artifacts (d-prefixed filenames are
 
 ```bash
 uv sync --all-packages
-uv run pytest                 # unit suite (tests/ + dsl/tests)
-uv run ruff check engine tests dsl
+uv run pytest                 # unit suite (engine/tests + dsl/tests)
+uv run ruff check engine dsl
 uv run mypy engine
 
 # experiments (each writes JSON/parquet artifacts into runs/):

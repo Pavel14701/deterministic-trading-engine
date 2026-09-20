@@ -73,7 +73,8 @@ def _get(
             payload = resp.json()
             if payload.get("code") != "0":
                 raise RuntimeError(f"OKX {path} error: {payload.get('msg')}")
-            return payload.get("data", [])
+            data: list[list[str]] = payload.get("data", [])
+            return data
         except (niquests.RequestException, RuntimeError) as exc:
             last_exc = exc
             time.sleep(2.0 * (attempt + 1))

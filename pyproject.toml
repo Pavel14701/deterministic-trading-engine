@@ -9,7 +9,7 @@ requires-python = ">=3.12"
 
 # Корневой проект — workspace-обвязка: инструменты разработки и общий тестовый
 # стек. Рантайм-зависимости распределены по членам workspace (uv workspaces).
-# См. dev_docs/tz/TZ-00-roadmap.md п. «Монорепозиторий».
+# См. legacy/dev_docs/tz/TZ-00-roadmap.md п. «Монорепозиторий».
 dependencies = [
     "lightgbm",
     "pandas>=2.2,<3",  # validated on 2.3.3; pandas 3 str-dtype breaks feature encode
@@ -86,9 +86,8 @@ preview = true
 # (EN-only discipline covers tests too, TZ-14 item 2.1).
 # RUF069 is relaxed here: exact-literal float checks (== 0.0, == 1.0) in
 # tests are intentional for IEEE-semantics assertions; new tests should
-# prefer pytest.approx (see dev_docs/testing_convention.md section 4).
-"tests/**" = ["D", "RUF069", "E501"]
-"**/tests/**" = ["D", "RUF069"]
+# prefer pytest.approx (see legacy/dev_docs/testing_convention.md s.4).
+"**/tests/**" = ["D", "RUF069", "E501"]
 "test_*.py" = ["D", "RUF069"]
 "conftest.py" = ["D", "RUF069"]
 # Research-grade zones (former scripts/, pre-dating the library
@@ -120,16 +119,14 @@ lines-between-types = 1
 combine-as-imports = true
 
 [tool.mypy]
-# Staged strictness (TZ-14 п.2.2): global baseline is lenient; modules are
-# promoted to strict per wave. `disallow_untyped_defs` for a module means
-# every public function must be annotated - regressions block.
+# Single strict profile for the engine library: every public function
+# annotated, no implicit Any returns.  Research-grade zones and tests are
+# exempt below (unannotated by design; ruff F/E9 still guards them).
 python_version = "3.12"
 ignore_missing_imports = true
 explicit_package_bases = true
 namespace_packages = true
 exclude = ["legacy", ".venv", "ta/tests", "data", "runs"]
-
-[tool.mypy-engine]
 disallow_untyped_defs = true
 warn_return_any = true
 check_untyped_defs = true
@@ -137,16 +134,25 @@ check_untyped_defs = true
 # Research-grade zones (former scripts/): unannotated by design, style is
 # not library-grade (see ruff per-file-ignores).  Typed checking adds noise
 # only - suppressed entirely; ruff still catches real bugs there (F, E9).
+# Tests: fixtures/tests stay untyped on purpose.
+# Vendored ta/ and the dsl/ workspace package: checked by their own
+# suites and standards; they are only pulled in here via imports.
 [[tool.mypy.overrides]]
-module = ["engine.experiments.*", "engine.datasets.*"]
+module = [
+    "engine.experiments.*",
+    "engine.datasets.*",
+    "engine.tests.*",
+    "ta.*",
+    "dsl.*",
+]
 ignore_errors = true
 
 [tool.pytest.ini_options]
-# Single source of pytest config (TZ-14 п.2.3): per-package pytest.ini
-# files are removed. Runs identically from the root and from a package:
+# Single source of pytest config: per-package pytest.ini files are removed.
+# Runs identically from the root and from a package:
 #   uv run pytest                          # whole monorepo
 pythonpath = ["."]
-testpaths = ["tests", "dsl/tests"]
+testpaths = ["engine/tests", "dsl/tests"]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-v --tb=short --strict-markers -m \"not deprecated\""
