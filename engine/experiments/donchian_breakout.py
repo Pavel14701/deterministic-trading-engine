@@ -99,7 +99,14 @@ def _agg(trades):
 def run() -> None:
     import sys
 
-    tfs = sys.argv[1:] or ["4H"]
+    args = sys.argv[1:]
+    all34 = "all34" in args
+    tfs = [a for a in args if a != "all34"] or ["4H"]
+    universe = ASSETS
+    if all34:
+        from engine.experiments.load_okx import ALL
+
+        universe = tuple(ALL)
     print(
         "DONCHIAN(20)+EMA200+2xATR stop+Donchian(10) exit, 6 majors; "
         "walk-forward train 224d / test 224d; both sides primary "
@@ -112,10 +119,15 @@ def run() -> None:
     for tf in tfs:
         print(f"=== TF {tf} ===", flush=True)
         pos_counts = {"TRAIN": 0, "TEST": 0}
-        for sym in ASSETS:
+        dd_test = []
+        recov_ok = 0
+        tot_ok = 0
+        n_seen = 0
+        for sym in universe:
             if not (REPO / f"data/okx21/raw_{sym}-USDT_{tf}.parquet").exists():
                 print(f"{sym:>10} SKIP: no {tf} data", flush=True)
                 continue
+            n_seen += 1
             ts, op, lp, hp, cp, _vol = _read_okx(f"{sym}-USDT", tf)
             ema = ema_ind(cp, 200, use_talib=False, nan_policy="ffill")
             atr = atr_ind(hp, lp, cp, 14, use_talib=False)
@@ -153,11 +165,41 @@ def run() -> None:
                 )
                 if tot_full is not None and tot_full > 0:
                     pos_counts[name] += 1
+            # pre-registered risk gate stats from the TEST segment
+            tr = _simulate(cp, op, hh20, ll20, hh10, ll10, ema, atrok, atr,
+                           segs[1][1], segs[1][2], False, ts)
+            if tr:
+                pnl = np.array([p for p, _f, _h in tr])
+                fee = np.array([f for _p, f, _h in tr])
+                net = pnl - fee
+                eq = np.cumsum(net)
+                dd = float(np.max(np.maximum.accumulate(eq) - eq))
+                tot = float(net.sum())
+                dd_test.append(dd)
+                if tot > 0:
+                    tot_ok += 1
+                    if dd > 0 and tot / dd >= 1.0:
+                        recov_ok += 1
+        med_dd = float(np.median(dd_test)) if dd_test else float("nan")
         print(
-            f"TF {tf}: POSITIVE net-R TRAIN {pos_counts['TRAIN']}/6, "
-            f"TEST {pos_counts['TEST']}/6 (kill <= 2/6 on test)",
+            f"TF {tf}: POSITIVE net-R TRAIN {pos_counts['TRAIN']}/{n_seen}, "
+            f"TEST {pos_counts['TEST']}/{n_seen} (kill <= 2/6 on test)",
             flush=True,
         )
+        if all34:
+            g1 = pos_counts["TEST"] >= 0.5 * n_seen
+            g2 = med_dd <= 20.0
+            g3 = recov_ok >= 0.5 * n_seen
+            print(
+                f"PREREG GATES (34): positive {tot_ok}/{n_seen} "
+                f"(need >=17): {'PASS' if g1 else 'FAIL'}; "
+                f"med test DD {med_dd:.1f}R (need <=20): "
+                f"{'PASS' if g2 else 'FAIL'}; "
+                f"recov>=1 {recov_ok}/{n_seen} (need >=17): "
+                f"{'PASS' if g3 else 'FAIL'}; "
+                f"OVERALL: {'PASS' if (g1 and g2 and g3) else 'FAIL'}",
+                flush=True,
+            )
 
 
 if __name__ == "__main__":
