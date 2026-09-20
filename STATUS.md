@@ -2057,4 +2057,23 @@ Fixed-code rerun (stand_div=2.0, runs/avsl_baseline_fixed.log):
   the VPCc-shift error was small (VPCc moves slowly).  Verdict
   unchanged: gross ~ 0 -> filters or close.
 
+Long/short split + beta check + Path A (runs/avsl_baseline_fixed.log,
+runs/avsl_align.log; stand_div=2.0, config 70/345):
+1. Long/short EV tracks SEGMENT BTC DIRECTION, not signal quality:
+   train (BTC -0.5% flat): short positive (+0.13/+0.10/+0.10),
+   long negative (-0.09/-0.19/-0.02); test (BTC +8.4%): long
+   positive (+0.14/+0.31/+0.08), short negative (-0.22/-0.26/-0.08).
+   The "flip" between segments is beta BTC, confirmed by segment
+   moves printed per segment.  Not a signal edge.
+2. Path A slow-alignment arm (long: slow 1h-slope > 0 AND close >
+   slow; short mirrored; pre-registered criterion +0.05R on train,
+   all TPs): n 990 -> 648 train / 260 -> 175 test.  Train gross
+   +0.039/+0.046/+0.135; test -0.071/-0.044/-0.066.  FAILS: two of
+   three TPs below +0.05R on train, and the 8R TP that "passes" is
+   negative on test.  Improvement does not transfer - consistent
+   with the beta reading: the filter shaves trades but the residual
+   EV is still segment drift.
+Path A verdict: DEAD per pre-registration.  Path B (stop-flip exit
+rule, separate experiment) or close the track.
+
 

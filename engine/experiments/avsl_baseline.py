@@ -84,6 +84,7 @@ def _fast_line(lp, cp, vol, stand_div: float = 2.0):
 
 def run() -> None:
     stand_div = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
+    align = len(sys.argv) > 2 and sys.argv[2] == "align"
     df = pl.read_parquet(REPO / FILE).rename({"ts": "date"})
     ts = df["date"].to_numpy().astype(np.int64)
     lp = df["low"].to_numpy().astype(np.float64)
@@ -92,7 +93,9 @@ def run() -> None:
     vol = df["volume"].to_numpy().astype(np.float64)
     fast = _fast_line(lp, cp, vol, stand_div)
     slow = sma_ind(cp, SLOW, use_talib=False, nan_policy="ffill")
-    print(f"stand_div={stand_div}", flush=True)
+    slope = np.zeros_like(slow)
+    slope[4:] = slow[4:] - slow[:-4]  # 1h slow-line slope
+    print(f"stand_div={stand_div} align={align}", flush=True)
     up = (cp[1:] > fast[1:]) & (cp[:-1] < fast[:-1])
     dn = (cp[1:] < fast[1:]) & (cp[:-1] > fast[:-1])
     cross_idx = np.nonzero(up | dn)[0] + 1
@@ -102,11 +105,15 @@ def run() -> None:
         ("TEST", folds[4][0], folds[-1][1]),
     )
     print(
-        f"AVSL cross baseline: fast=avsl(70,345), slow=sma(345), "
+        f"AVSL cross {'alignment' if align else 'baseline'}: "
+        f"fast=avsl(70,345), slow=sma(345), "
         f"TP {TPS}, horizon {HORIZON}, taker 5bp x2",
         flush=True,
     )
     for name, lo, hi in segs:
+        m = (ts >= lo) & (ts < hi)
+        btc_ret = (cp[m][-1] / cp[m][0] - 1) * 100
+        print(f"   BTC segment move: {btc_ret:+.1f}%", flush=True)
         stats = {tp: {"long": [], "short": []} for tp in TPS}
         n_tot = n_skipped = 0
         for t in cross_idx:
@@ -118,6 +125,8 @@ def run() -> None:
             risk = cp[t] - stop if is_long else stop - cp[t]
             if risk <= 0:
                 n_skipped += 1
+                continue
+            if align and ((is_long and slope[t] <= 0) or (not is_long and slope[t] >= 0)):
                 continue
             side = "long" if is_long else "short"
             fee_r = 2 * TAKER_FEE * cp[t] / abs(risk)
