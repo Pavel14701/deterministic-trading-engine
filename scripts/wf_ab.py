@@ -29,6 +29,7 @@ from engine.mtf_model import (  # noqa: E402
     trade_curve_stats,
 )
 from engine.protocol import (  # noqa: E402
+    ENCODING_D8B,
     assemble_ranker_data,
     fold_masks,
     train_ranker,
@@ -57,8 +58,7 @@ for t, d in DATA.items():
           "range:", d["panel"]["ts"].min(), "->", d["panel"]["ts"].max())
 
 # multi-asset frame
-rd = assemble_ranker_data(DATA, TAGS, fill_nonfinite=False,
-                           x_dtype=np.float64)
+rd = assemble_ranker_data(DATA, TAGS, ENCODING_D8B)
 TAB_ALL, Y_ALL, TS_ALL = rd.x, rd.y, rd.ts
 ASSET_ROW, ROW_ALL = rd.asset_row, rd.row
 FEATS_ALL = TAB_ALL

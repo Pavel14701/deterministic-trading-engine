@@ -9,6 +9,8 @@ import pytest
 
 from engine.protocol import (
     DAY_MS,
+    ENCODING_D8B,
+    ENCODING_D13,
     assemble_ranker_data,
     fold_masks,
     load_panel,
@@ -110,7 +112,7 @@ def test_assemble_ranker_data_offsets_and_codes() -> None:
         return {"panel": panel, "feats": feats}
 
     data = {"AAA": one("AAA", 4), "BBB": one("BBB", 2)}
-    rd = assemble_ranker_data(data, ["AAA", "BBB"])
+    rd = assemble_ranker_data(data, ["AAA", "BBB"], ENCODING_D13)
     assert rd.x.shape == (6, 3)  # f, side codes, asset codes
     assert rd.asset_row.tolist() == [0] * 4 + [1] * 2
     assert rd.row.tolist() == [0, 1, 2, 3, 4, 5]  # offset across assets
@@ -222,11 +224,10 @@ def test_assemble_ranker_data_encoding_variants() -> None:
         return {"panel": panel, "feats": feats}
 
     data = {"AAA": one()}
-    d13 = assemble_ranker_data(data, ["AAA"])
+    d13 = assemble_ranker_data(data, ["AAA"], ENCODING_D13)
     assert d13.x.dtype == np.float32
     assert d13.x[0, 0] == 0.0  # NaN zero-filled
 
-    d8b = assemble_ranker_data(data, ["AAA"],
-                               fill_nonfinite=False, x_dtype=np.float64)
+    d8b = assemble_ranker_data(data, ["AAA"], ENCODING_D8B)
     assert d8b.x.dtype == np.float64
     assert np.isnan(d8b.x[0, 0])  # NaN kept natively

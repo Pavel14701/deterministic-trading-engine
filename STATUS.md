@@ -1517,3 +1517,26 @@ build=None differ, evaluation identical).  13 tests in
 tests/test_protocol.py (folds, embargo boundaries, ranker
 determinism + row-permutation invariance, replay gate/state
 machine, loader filter/cost/pess, encoding variants).
+
+## Encoding pinned; rel/seed diagnostics
+
+Encoding presets ENCODING_D13 / ENCODING_D8B are now module
+constants in protocol.py (single source of truth; wf_ab passes
+ENCODING_D8B by reference, D.13 scripts take the default).  Never
+inline fill_nonfinite/x_dtype literals.
+
+Diagnostics on real panels (runs/probe_rel_seeds.log):
+
+  - rel = clip(round((r_pess+2)*2), 0, 12): 73.7% of 282k rows in
+    [2,6] (|y| <= 1R); ZERO rows at rel >= 10 - the cap never
+    binds, no LambdaRank tail instability.  Formula kept as-is.
+  - random_state is INERT here: seeds 1/2/3/42 vs 7 give
+    max|d score| = 0.0 exactly (feature_fraction=bagging=1.0 -> no
+    sampled randomness).  Therefore every run-to-run flip can only
+    come from the feed encoding - confirmed again (D13 vs D8B:
+    max|d| = 2.075 same fold, same seed).
+  - Known limitation, deliberately kept: D.13 encoding maps
+    warm-up/MTF NaN features to 0.0 ("missing" == "zero"), which is
+    semantically lossy but is the encoding every D.13 verdict was
+    produced with - changing it would invalidate all comparisons.
+    NaN-native is available via ENCODING_D8B for future families.

@@ -56,6 +56,16 @@ SIM_HOLD = 48
 #: round-trip cost in price fraction -> cost_R = rate * fill / risk_unit
 COST_R_RATE = 0.0025
 
+#: LightGBM feed encodings.  Binning is encoding-sensitive (dtype and
+#: NaN handling change the trees - two of 24 wf_ab rankers flipped
+#: when retrained on the other family's encoding), so each experiment
+#: family pins ONE encoding by reference, never inline literals.
+#: D.13 family (current default): float32, NaN/inf zeroed.
+ENCODING_D13: dict[str, Any] = {"fill_nonfinite": True, "x_dtype": np.float32}
+#: D.8b wf_ab: float64, NaN kept natively (what a pandas DataFrame
+#: feed produced historically).
+ENCODING_D8B: dict[str, Any] = {"fill_nonfinite": False, "x_dtype": np.float64}
+
 
 def load_asset_bars(tag: str, repo: Path = REPO) -> dict[str, Any]:
     """1h OHLCV arrays for one asset (resampled from 1m raw)."""
@@ -201,17 +211,16 @@ class RankerData:
 def assemble_ranker_data(
     data: dict[str, dict[str, Any]],
     tags: list[str],
-    fill_nonfinite: bool = True,
-    x_dtype: Any = np.float32,
+    encoding: dict[str, Any] = ENCODING_D13,
 ) -> RankerData:
     """Concatenate per-asset feats/labels into the flat ranker matrix.
 
     ``data`` maps tag -> the dict from :func:`load_asset`.  Category
     columns become ordinal codes.  Encodings differ per experiment
-    family and change LightGBM's binning, so they are fixed per call:
-    D.13 family = ``fill_nonfinite=True, x_dtype=float32`` (zeroed);
-    D.8b wf_ab = ``fill_nonfinite=False, x_dtype=float64`` (NaN kept,
-    the float64 a pandas DataFrame feed produced).
+    family and change LightGBM's binning, so pass one of the module
+    presets: ``ENCODING_D13`` (default; float32, NaN/inf zeroed) or
+    ``ENCODING_D8B`` (float64, NaN kept natively - the pandas
+    DataFrame feed wf_ab was fitted with).  Never inline literals.
     """
     feats_all, asset_row_all, ys_all, ts_all = [], [], [], []
     for ai, t in enumerate(tags):
@@ -227,8 +236,8 @@ def assemble_ranker_data(
             x[col] = x[col].cat.codes.astype(np.float32)
         elif x[col].dtype == object:
             x[col] = pd.Categorical(x[col]).codes.astype(np.float32)
-    x = x.to_numpy().astype(x_dtype)
-    if fill_nonfinite:
+    x = x.to_numpy().astype(encoding["x_dtype"])
+    if encoding["fill_nonfinite"]:
         x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
     row_parts, off = [], 0
     for t in tags:
