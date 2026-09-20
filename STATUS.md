@@ -2295,4 +2295,18 @@ negative on every asset (test evN -0.04..-0.35R).  Even at maker
 0.02%/side the drag (~0.14R) still exceeds the +0.05R gross edge.
 5m closed at taker AND maker costs; no further 5m work planned.
 
+5M x5 CONFIG (runs/avsl_okx_5m_x5.log; cfg=350/1725 added to
+avsl_trailing via _fast_line_fs, regression-checked bit-identical to
+baseline 70/345; warm-up scales with slow).  Two variants, 10 assets:
+LONG-ONLY: pass 0/10, trail>bench 6/10 (med diff +0.056R) but both
+sides net-negative (trail med evN -0.24R, bench -0.17R); NORMAL
+(two-sided): pass 0/10, trail>bench 3/10, med diff -0.060R.
+Diagnosis: x5 halved trade count (n_test 6801 -> 3118) and doubled
+hold (30 -> 57 bars) but gross edge per trade did NOT rise
+(+0.051 -> +0.043R) because the R unit stayed 2xATR14 -- the edge is
+scale-invariant ~+0.02..0.05R/trade while the 0.3R taker cost is
+fixed per trade.  Slow-line configs cannot escape the 5m fee wall;
+only the risk-unit (wider SL / bigger ATR mult) or maker fills could,
+and both were already ruled out.  5m family closed for good.
+
 

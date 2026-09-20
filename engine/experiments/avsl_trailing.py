@@ -29,9 +29,29 @@ import polars as pl
 REPO = Path(__file__).resolve().parent.parent.parent
 
 from engine.backtest.protocol import FOLD_DAYS, N_FOLDS, wf_folds
-from engine.experiments.avsl_baseline import DAY, WARMUP, _fast_line
+from engine.experiments.avsl_baseline import DAY, WARMUP
 from engine.experiments.load_yf import TICKERS
+from ta.src.custom.avs_base import (
+    _avs_base,
+    _compute_len_v,
+    _compute_vpcc,
+    _price_v_rolling,
+)
+from ta.src.overlap.sma import sma_ind
 from ta.src.volatility.atr import atr_ind
+
+
+def _fast_line_fs(lp, cp, vol, fast: int, slow: int, sd: float = 2.0):
+    """NaN-safe AVSL(fast, slow) -- generalization of baseline's 70/345."""
+    vpc, vpr, _vm, vpci, dev = _avs_base(cp, vol, fast, slow, sd, False)
+    len_v = _compute_len_v(vpc, vpci)
+    vpcc = _compute_vpcc(vpc)
+    price_v = _price_v_rolling(lp, vpr, len_v, vpcc)
+    adjusted = lp - price_v + dev
+    return np.asarray(
+        sma_ind(adjusted, slow, use_talib=False, nan_policy="ffill"),
+        dtype=np.float64,
+    )
 
 
 def _read_okx(sym: str, tf: str = "15m"):
@@ -106,14 +126,14 @@ def _active(variant, t, t0, cp, entry, line, sign, risk):
 
 def _run_arm(
     cp, lp, hp, ts, atr, line, up, dn, lo, hi, variant, rev=False,
-    long_only=False,
+    long_only=False, warm=WARMUP,
 ):
     n = len(cp)
     crosses = np.nonzero(up | dn)[0] + 1
     trades = []  # (pnl_gross_r, fee_r, hold_bars)
     i = 0
     while i < len(crosses) and (
-        crosses[i] < WARMUP or ts[crosses[i]] < lo
+        crosses[i] < warm or ts[crosses[i]] < lo
     ):
         i += 1
     seg_end = int(np.searchsorted(ts, hi, side="left")) - 1
@@ -218,6 +238,7 @@ def run() -> None:
     rev = False
     long_only = False
     tf = "15m"
+    fast, slow = 70, 345
     for a in sys.argv[1:]:
         if a == "rev":
             rev = True
@@ -225,9 +246,12 @@ def run() -> None:
             long_only = True
         elif a in ("5m", "15m", "1H", "4H", "1D"):
             tf = a
+        elif a.startswith("cfg="):
+            fast, slow = (int(x) for x in a[4:].split("/"))
     tag = "REVERSED" if rev else "NORMAL"
     if long_only:
         tag += " LONG-ONLY"
+    warm = max(WARMUP, slow + 100)  # entry-skip horizon scales with line
     src = "yf" if "yf" in sys.argv[1:] else "okx21"
     read = _read_yf if src == "yf" else _read_okx
     if src == "yf":
@@ -244,7 +268,7 @@ def run() -> None:
         if (REPO / f"data/{src}/raw_{a}_{tf}.parquet").exists()
     ]
     print(
-        f"AVSL cross-entry + immediate AVSL trailing (config 70/345, "
+        f"AVSL cross-entry + immediate AVSL trailing (config {fast}/{slow}, "
         f"{tag}, tf={tf}, assets={len(syms)}): entry=cross, "
         "initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal from bar 1; "
         "bench=always-in same orientation; exit=SL|reverse-cross; R=2xATR"
@@ -253,10 +277,10 @@ def run() -> None:
     )
     for sym in syms:
         ts, lp, hp, cp, vol = read(sym, tf)
-        if len(cp) < WARMUP + 110:  # AVSL(345) needs history; skip shorts
+        if len(cp) < warm + 110:  # AVSL(slow) needs history; skip shorts
             print(f"{sym:>10} SKIP: {len(cp)} bars < warm-up", flush=True)
             continue
-        line = _fast_line(lp, cp, vol, 2.0)
+        line = _fast_line_fs(lp, cp, vol, fast, slow, 2.0)
         atr = atr_ind(hp, lp, cp, 14, use_talib=False)
         up = (cp[1:] > line[1:]) & (cp[:-1] < line[:-1])
         dn = (cp[1:] < line[1:]) & (cp[:-1] > line[:-1])
@@ -269,7 +293,7 @@ def run() -> None:
             for variant, label in ((4, "trail"), (0, "bench")):
                 s = _run_arm(
                     cp, lp, hp, ts, atr, line, up, dn, lo, hi, variant, rev,
-                    long_only=long_only,
+                    long_only=long_only, warm=warm,
                 )
                 print(f"{sym:>10} {name} {label:>8}: {_fmt(s)}", flush=True)
 
