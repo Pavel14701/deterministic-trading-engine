@@ -271,7 +271,7 @@ def replay(cell, score_by_tag):
             if i0 >= d["n"]:
                 continue
             ro, rp, jx = sim(d["o"], d["h"], d["l"], d["c"], i0, r["side"],
-                             r["sl_price"], r["tp_price"], 48, r["atr_i"])
+                             r["sl_price"], r["tp_price"], 48, r["atr_i"], r["risk_unit"])
             if not np.isfinite(ro):
                 continue
             sig.append({"cand": r["_cand"], "decision_idx": int(r["entry_idx"]),

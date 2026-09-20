@@ -1320,15 +1320,57 @@ Diagnosis (`scripts/_diag_perm_trace.py`, since removed, numbers below):
    outcome vs panel `r_pess` differ by only +0.01R - the replay is not
    measuring a friendlier outcome than the panel.
 
-Side finding (worth D.13g): the INFORMED table is WORSE than a noise
- table - honest +0.118R vs table-permuted +0.242R.  The train-fitted
- table almost always picks zone rules (best train EV) while the ranker's
- strong picks are st/atr-flavored; the `rule == table-rule` filter
- throws away the ranker's best candidates.  The rule table appears to
- add zero value on top of the ranker.
+Side finding RETRACTED in D.13g (see below) - it was based on the
+phantom +0.118R number.
 
-Bottom line: honest baseline stands at **C|cap=0.15 = +0.118R**
-(per-trade Sharpe ~1.08, weak folds do not separate).  The edge lives
-entirely in the ranker's walk-forward feature skill and is mediocre.
-NEXT: (a) D.13g ranker-only ablation - drop the table filter, measure;
-(b) decide continue/retire for stage-D on that number.
+Bottom line SUPERSEDED by D.13g: the "+0.118R" honest number could not
+be reproduced by any artifact (no commit, no json) and was WRONG; see
+D.13g.
+
+
+### Stage D.13g - gap-through-stop sim bug: the stage-D edge was 100% artifact :warning: RETIRE
+
+**Correction to D.13f first.**  Two claims in the D.13f write-up were
+wrong and are retracted:
+1. "Honest grid collapses to A|None +0.096 / C|cap=0.15 +0.118" - no
+   artifact backs this.  The saved d13c json (past-only mask) gives
+   +0.437/+0.524, identical to the pre-fix run reproduced by d13g: the
+   table leak was IMMATERIAL because the fitted table is fold-stable.
+   There never was a "collapse".
+2. "The informed table is worse than a noise table" - false; measured
+   properly (D.13g, pre-sim-fix) the table gate +0.524 beats free
+   +0.260.
+
+**The real bug (found via the D.13e composition check).**  `sim()`
+fills entries at `open[i+1]` and recomputes risk from that fill.  When
+the entry bar OPENS beyond the stop (gap through stop), the trade was
+booked as ~+1R (exit at `sl_price` on the far side of the gapped
+fill) - but live the stop order fires immediately at market: a SCRATCH
+(~0 net of costs).  Prevalence: 8-12% of ALL panel rows, ~+1R phantom
+each.
+
+Evidence (runs/d13g2.log, pre-fix): even in C|cap=0.15, hold<=1 trades
+were 42% of trades, mean +0.72R, EV share ~1.1 - i.e. essentially ALL
+of the cell's EV.  Win 82% with 69% "sl" exits, median hold 0 bars.
+This also explains why the full-pipeline permutation only fell to
++0.07 instead of the +0.01 base rate: the artifact is STRUCTURAL, not
+informational, so label permutation cannot remove it.
+
+**Fix.**  `sim()` now detects the gap-through-stop entry and books an
+immediate market scratch in units of `risk_ref` (intended
+`risk_unit`; new optional parameter, all protocol callers updated).
+Pinned by 3 new tests in tests/test_sim_engine.py (275 pass).
+
+**Corrected grid (runs/d13g_ranker_only.json, fixed sim): EVERY cell
+is negative.**  table/free: A|None -0.161/-0.135, A|0.15 -0.086/-0.095,
+C|None -0.172/-0.134, C|0.15 -0.105/-0.066, C|0.1 -0.063/-0.064,
+C|0.075 -0.048/-0.054.  Table-vs-free differences are now noise-level.
+
+**VERDICT: stage-D approach is RETIRED.**  There is no edge - the
+strategy loses ~0.05..0.17R per trade after honest costs in every
+configuration.  The whole D-stage chain (+0.35..+0.52R, Sharpe ~12)
+was the gap artifact; the ranker's genuine within-candidate rule skill
+was real but ranked entries whose honest net EV is negative.  No
+tuning, live testing, or downstream work on the stage-D gate as-is;
+any restart needs a new entry hypothesis with positive net-of-cost
+panel EV as a precondition.

@@ -1,20 +1,19 @@
-"""D.13c: cost-aware cap and AVSL-off, measured on the WF-B protocol.
+"""D.13g: ranker-only ablation - drop the rule-table filter.
 
-D.13b showed the toxic tail (cost_R > 0.15) is pure round-trip cost
-drag (ev -0.14R) and AVSL is robustly harmful.  This script measures
-both fixes on the real panel (A) and the AVSL-off panel (C), no
-rebuild needed:
+D.13f showed the informed table is WORSE than a noise table
+(honest +0.118R vs table-permuted +0.242R): the train-fitted table
+picks zone rules while the ranker's strong picks are st/atr-flavored,
+so ``rule == table-rule`` throws away the ranker's best candidates.
 
-  grid: variant {A, C} x cost_R cap {none, 0.15, 0.10, 0.075}
+This script measures both gates on the same walk-forward ranker per
+fold (same WF-B protocol as d13c, past-only train mask):
 
-The cap filters (candidate, rule) rows whose implied risk_unit is too
-small to survive round-trip costs - a live-deployable rule: at signal
-time risk_unit is known, so "skip if cost_R > cap" is implementable.
+  gate=table : d13c behavior (top-s row kept iff rule == table rule)
+  gate=free  : top-s row per candidate, no table filter
 
-Also reports the D.13 regime-fold breakdown (per-asset means per fold)
-and saves runs/d13c_cost_cap.json.
+Grid: variant {A, C} x cost_R cap {None, 0.15, 0.10, 0.075}.
+Saves runs/d13g_ranker_only.json.
 """
-
 from __future__ import annotations
 
 import json
@@ -48,15 +47,10 @@ TAGS = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
 VARIANT_DIRS = {"A": "A", "C": "C"}
 CAPS = (None, 0.15, 0.10, 0.075)
 N_FOLDS, FOLD_DAYS, EMBARGO_DAYS = 8, 56, 7
-# label-permutation control (D.13e): PERMUTE=0 -> normal run;
-# PERMUTE=<seed> -> shuffle r_net before the table fit; test EV must
-# collapse to ~0.  Usage: python scripts/d13c_cost_cap.py [PERMUTE]
-PERMUTE = int(sys.argv[1]) if len(sys.argv) > 1 else 0
 DAY_MS = 86_400_000
 
 
 def load_asset(d: str, tag: str, cap: float | None):
-    """wf_ab-style loader with an extra cost_R <= cap row filter."""
     raw = resample_ohlcv(
         pl.read_parquet(REPO / f"data/okx/raw_{tag}_1m.parquet"), "1h"
     )
@@ -75,7 +69,6 @@ def load_asset(d: str, tag: str, cap: float | None):
     ).with_columns(
         (0.0025 * pl.col("fill_price") / pl.col("risk_unit")).alias("cost_R")
     )
-    n0 = panel.height
     if cap is not None:
         panel = panel.filter(pl.col("cost_R") <= cap)
     panel = panel.sort("_cand").with_columns(
@@ -87,34 +80,26 @@ def load_asset(d: str, tag: str, cap: float | None):
     feats["risk_pct"] = (panel["risk_unit"] / panel["fill_price"]).to_numpy()
     feats["cost_R"] = panel["cost_R"].to_numpy()
     return {"panel": panel, "feats": feats, "n": n, "o": o, "h": h,
-            "l": l, "c": c, "rows_raw": n0}
+            "l": l, "c": c}
 
 
-def replay(panel, d, train_mask, permute: int = 0):
-    """Rule-table gate + unified sim + state machine (wf_ab port).
+def replay(panel, d, table, use_table: bool):
+    """Gate + unified sim + state machine for one asset-fold.
 
-    ``train_mask`` MUST be strictly past-only (ts < fold start -
-    embargo): fitting the table on ``~is_test`` leaks future folds
-    into the gate (D.13e audit finding).
-
-    ``permute`` > 0: seed for permuting ``r_net`` across rows - the
-    label-permutation control.  The table then picks rules blind, and
-    any residual test EV is structural, not information.
+    ``use_table=True``: d13c gate - the candidate's top-``s`` row is
+    kept iff its rule equals the table rule for its (regime_dir, side).
+    ``use_table=False``: ranker-only - the top-``s`` row of every
+    candidate is traded (no table filter).
     """
-    work = panel
-    if permute:
-        rng = np.random.default_rng(permute)
-        work = work.with_columns(
-            pl.Series("r_net", rng.permutation(work["r_net"].to_numpy())))
-    table = fit_rule_table(work.filter(train_mask))
     fmt = pl.format("{}|{}", pl.col("regime_dir"), pl.col("side"))
-    picks = (panel.sort(["_cand", "s"]).group_by("_cand").last()
-             .with_columns(fmt.replace_strict(
-                 [f"{r}|{s}" for (r, s) in table],
-                 list(table.values()), default="x").alias("tr"))
-             .filter(pl.col("rule") == pl.col("tr"))
-             .sort("entry_idx").filter(pl.col("is_test")))
-    sig = []
+    top = panel.sort(["_cand", "s"]).group_by("_cand").last()
+    if use_table:
+        top = top.with_columns(fmt.replace_strict(
+            [f"{r}|{s}" for (r, s) in table],
+            list(table.values()), default="x").alias("tr")
+        ).filter(pl.col("rule") == pl.col("tr"))
+    picks = top.sort("entry_idx").filter(pl.col("is_test"))
+    sig, meta = [], []
     for r in picks.iter_rows(named=True):
         i0 = int(r["entry_idx"]) + 1
         if i0 >= d["n"]:
@@ -126,13 +111,16 @@ def replay(panel, d, train_mask, permute: int = 0):
         sig.append({"cand": r["_cand"], "decision_idx": int(r["entry_idx"]),
                     "side": r["side"], "priority": 0.0, "ts": float(r["ts"]),
                     "r_net": float(rp), "r_opt": float(ro), "exit_idx": jx})
+        meta.append({"reason": r["exit_reason"], "hold": jx - i0,
+                     "r": float(rp), "rule": r["rule"]})
     taken, _ = run_state_machine(sig)
+    keep = {x["cand"] for x in taken}
+    meta = [m for m, s_ in zip(meta, sig) if s_["cand"] in keep]
     return (np.array([x["r_net"] for x in taken]),
-            np.array([x["ts"] for x in taken]))
+            np.array([x["ts"] for x in taken]), meta)
 
 
 def evaluate(d: str, cap: float | None) -> dict:
-    """WF-B evaluation of one (variant, cap) cell with fold details."""
     label = f"{d}/cap={cap}"
     print(f"=== evaluating {label} ===", flush=True)
     data = {t: load_asset(d, t, cap) for t in TAGS}
@@ -165,6 +153,7 @@ def evaluate(d: str, cap: float | None) -> dict:
         off += len(cands)
     ROW = np.concatenate(row_parts)
 
+
     def ranker(tr_ix):
         rel = np.clip(np.round((Y + 2) * 2), 0, 12).astype(int)
         order = np.lexsort((np.arange(len(Y)), ROW))
@@ -196,51 +185,65 @@ def evaluate(d: str, cap: float | None) -> dict:
              range(max(0, (t1 - t0) // fl - N_FOLDS + 1),
                    (t1 - t0) // fl + 1)][-N_FOLDS:]
 
-    fold_means, all_r, all_ts, detail = [], [], [], {}
+    acc = {"table": {"r": [], "ts": []}, "free": {"r": [], "ts": []}}
     for fi, (fs_, fe) in enumerate(folds):
         tr = TS < fs_ - EMBARGO_DAYS * DAY_MS
         te = (TS >= fs_) & (TS < fe)
         sc = ranker(np.where(tr)[0])
-        per_r, per_ts = {}, {}
+        per = {"table": {}, "free": {}}
+        meta_all = {"table": [], "free": []}
         for ai, t in enumerate(TAGS):
             pm = data[t]["panel"].with_columns(
                 pl.Series("s", sc[ASSET_ROW == ai]),
                 pl.Series("is_test", te[ASSET_ROW == ai]))
-            per_r[t], per_ts[t] = replay(pm, data[t],
-                                         tr[ASSET_ROW == ai], PERMUTE)
-        parts = [x for x in per_r.values() if x.size]
-        eb = np.concatenate(parts) if parts else np.array([])
-        fold_means.append(float(eb.mean()) if eb.size else float("nan"))
-        all_r.append(eb)
-        all_ts.append(np.concatenate([per_ts[t] for t in TAGS
-                                      if per_r[t].size]))
-        detail[fi] = {
-            "start": datetime.fromtimestamp(
-                fs_ / 1000, tz=timezone.utc).strftime("%Y-%m-%d"),
-            "mean": float(eb.mean()) if eb.size else float("nan"),
-            "n": int(eb.size),
-            **{t: float(per_r[t].mean())
-               if per_r[t].size else float("nan") for t in TAGS}}
-        print(f"  f{fi} {detail[fi]['start']}: pess={eb.mean():+.3f} "
-              f"(n={eb.size})", flush=True)
+            table = fit_rule_table(pm.filter(tr[ASSET_ROW == ai]))
+            for gate, ut in (("table", True), ("free", False)):
+                r, ts_, meta = replay(pm, data[t], table, ut)
+                per[gate][t] = r
+                acc[gate]["r"].append(r)
+                acc[gate]["ts"].append(ts_)
+                meta_all[gate].extend(meta)
+        line = f"  f{fi}: "
+        for gate in ("table", "free"):
+            eb = np.concatenate([x for x in per[gate].values() if x.size])
+            line += (f"{gate}={eb.mean():+.3f}(n={eb.size}) " if eb.size
+                     else f"{gate}=n/a ")
+        print(line, flush=True)
 
-    pooled = np.concatenate([x for x in all_r if x.size])
-    pooled_ts = np.concatenate([x for x in all_ts if x.size])
-    order = np.argsort(pooled_ts, kind="stable")
-    pooled_chrono = pooled[order]
-    stats = trade_curve_stats(pooled_chrono)
-    res = {"mean": float(pooled.mean()), "n": int(pooled.size),
-           "dd": stats["max_dd_r"],
-           "t_stat_naive": stats["t_stat"],
-           "sharpe_per_trade": per_trade_sharpe(pooled_chrono),
-           "sharpe_ann_bucketed": bucketed_sharpe(pooled_chrono, pooled_ts),
-           "folds": fold_means, "fold_detail": detail,
-           "rows_raw": sum(data[t]["rows_raw"] for t in TAGS),
-           "rows_kept": sum(data[t]["panel"].height for t in TAGS)}
-    print(f"  => {label}: pess={res['mean']:+.3f} (n={res['n']}, "
-          f"dd={res['dd']:.1f}R, sharpe={res['sharpe_ann_bucketed']:.2f} "
-          f"[per-trade {res['sharpe_per_trade']:.2f}], "
-          f"rows {res['rows_raw']}->{res['rows_kept']})", flush=True)
+    for gate in ("table", "free"):
+        m = pl.DataFrame(meta_all[gate])
+        if not m.height:
+            continue
+        win = m.filter(pl.col("r") > 0).height
+        mix = (m.group_by("reason").agg(pl.len().alias("n"))
+               .sort("n", descending=True))
+        mixs = ", ".join(f"{x['reason']}={x['n'] / m.height:.2f}"
+                         for x in mix.iter_rows(named=True))
+        h01 = m.filter(pl.col("hold") <= 1)
+        r01 = h01["r"].sum() / m["r"].sum() if m["r"].sum() else 0.0
+        print(f"  [{gate}] trades n={m.height} win={win / m.height:.2f} "
+              f"hold med={m['hold'].median():.0f}  mix: {mixs}")
+        print(f"        hold<=1: n={h01.height} ({h01.height / m.height:.2f})"
+              f"  mean r={h01['r'].mean():+.3f}"
+              f"  EV share={r01:+.2f}", flush=True)
+
+    res = {}
+    for gate in ("table", "free"):
+        pooled = np.concatenate([x for x in acc[gate]["r"] if x.size])
+        pooled_ts = np.concatenate([x for x in acc[gate]["ts"] if x.size])
+        order = np.argsort(pooled_ts, kind="stable")
+        chrono = pooled[order]
+        stats = trade_curve_stats(chrono)
+        res[gate] = {"mean": float(pooled.mean()), "n": int(pooled.size),
+                     "dd": stats["max_dd_r"],
+                     "t_stat_naive": stats["t_stat"],
+                     "sharpe_per_trade": per_trade_sharpe(chrono),
+                     "sharpe_ann_bucketed": bucketed_sharpe(chrono, pooled_ts)}
+        g = res[gate]
+        print(f"  => {label} [{gate:5s}]: pess={g['mean']:+.3f} "
+              f"(n={g['n']}, dd={g['dd']:.1f}R, "
+              f"sharpe={g['sharpe_ann_bucketed']:.2f})", flush=True)
+    res["rows_kept"] = sum(data[t]["panel"].height for t in TAGS)
     return res
 
 
@@ -250,24 +253,18 @@ def main() -> None:
         for cap in CAPS:
             results[f"{v}|cap={cap}"] = evaluate(d, cap)
 
-    print("\n=== D.13c grid: test pess R (n, dd, panel rows kept) ===",
-          flush=True)
+    print("\n=== D.13g ranker-only ablation: test pess R ===", flush=True)
+    print(f"  {'cell':16s} {'table':>8s} {'free':>8s}  n_free", flush=True)
     for k, r in results.items():
-        print(f"  {k:16s} {r['mean']:+.3f}  (n={r['n']:4d}, "
-              f"dd={r['dd']:.1f}R, rows {r['rows_raw']}->{r['rows_kept']})",
-              flush=True)
-    print("\nfold 2 (regime fold) detail, A|cap=None vs C|cap=0.15:",
-          flush=True)
-    for k in ("A|cap=None", "C|cap=0.15"):
-        d2 = results[k]["fold_detail"][2]
-        print(f"  {k}: {d2}", flush=True)
+        print(f"  {k:16s} {r['table']['mean']:+8.3f} "
+              f"{r['free']['mean']:+8.3f}  {r['free']['n']}", flush=True)
 
     (REPO / "runs").mkdir(exist_ok=True)
-    suffix = f"_perm{PERMUTE}" if PERMUTE else ""
-    (REPO / "runs" / f"d13c_cost_cap{suffix}.json").write_text(
+    (REPO / "runs" / "d13g_ranker_only.json").write_text(
         json.dumps(results, indent=1))
-    print(f"saved runs/d13c_cost_cap{suffix}.json", flush=True)
+    print("saved runs/d13g_ranker_only.json", flush=True)
 
 
 if __name__ == "__main__":
     main()
+

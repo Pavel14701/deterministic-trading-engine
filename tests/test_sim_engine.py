@@ -97,3 +97,36 @@ class TestSimShort:
         r_opt, _r, j = sim(o, h, lo, c, 8, "long", 99.0, 101.0, 48, 1.0)
         assert j == 10
         assert r_opt == pytest.approx(1.0 - COST)
+
+
+class TestGapThroughStop:
+    """D.13g: entry opening beyond the stop is a live SCRATCH (~0),
+    never a ~+1R win measured in gap-distance units."""
+
+    def test_long_gap_below_stop_is_scratch(self) -> None:
+        o, h, lo, c = _flat_path()
+        o[0] = 90.0  # long entry opens far below sl=99 -> stopped at once
+        r_opt, r_pess, j = sim(o, h, lo, c, 0, "long", 99.0, 101.0, 48,
+                               1.0, risk_ref=1.0)
+        assert j == 0
+        # scratch = round-trip costs only, in INTENDED risk units
+        assert r_opt == pytest.approx(-(2 * 0.001 + 0.0005) * 90.0)
+        assert r_pess <= r_opt
+        # the old bug booked this as ~+1R
+        assert r_opt < 0
+
+    def test_short_gap_above_stop_is_scratch(self) -> None:
+        o, h, lo, c = _flat_path()
+        o[0] = 110.0  # short entry opens far above sl=101
+        r_opt, r_pess, j = sim(o, h, lo, c, 0, "short", 101.0, 99.0, 48,
+                               1.0, risk_ref=1.0)
+        assert j == 0
+        assert r_opt == pytest.approx(-(2 * 0.001 + 0.0005) * 110.0)
+        assert r_pess <= r_opt
+
+    def test_no_risk_ref_uses_gap_distance(self) -> None:
+        o, h, lo, c = _flat_path()
+        o[0] = 90.0  # |fill - sl| = 9 = the R unit
+        r_opt, _r, j = sim(o, h, lo, c, 0, "long", 99.0, 101.0, 48, 1.0)
+        assert j == 0
+        assert r_opt == pytest.approx(-(2 * 0.001 + 0.0005) * 90.0 / 9.0)
