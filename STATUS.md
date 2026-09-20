@@ -2255,5 +2255,14 @@ depth caps raised to 15m 100k bars (~2.9y), 1H 40k (~4.6y), 4H 20k
 okx_fetch page-cache: re-runs walk backwards from the oldest cached
 bar, so depth grows run over run; interrupted runs lose <= 5000 bars.
 First proof: BTC 1D 916d -> 8.94y (3265 bars) on the first invocation.
+BUG FIXED en route (engine/infra/marketdata/okx_fetch.py): a cache
+resume used to start at /market/candles, whose ~1440-bar recent window
+cannot serve an old cursor -> both endpoints empty -> "no candles"
+crash once a file reached listing depth (hit on ADA-USDT 1D, cache
+since 2018).  Resume now starts at /market/history-candles, and an
+empty fetch with a non-empty cache returns the cache as complete.
+Also: run the whole expansion as ONE python process (bash "; " chains
+survive python kills and respawn the next phase -> concurrent writers
+on the same parquets).
 
 
