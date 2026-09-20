@@ -1976,4 +1976,48 @@ engine/experiments/ob_ldgrid.py) - all four confirm closure:
 OB-retest 15m: CLOSED, now with a defensible basis (grid incoherent,
 bootstrap null-consistent).  Funding carry next.
 
+## AVSL cross (new signal track) - PRE-REGISTERED before the run
+
+Mapping (user-confirmed): fast line = avsl_ind(low, close, volume,
+fast=70, slow=345) - the full AVSL indicator; slow line =
+sma_ind(close, 345).  Data: BTC-USDT 15m okx21 (916d), warm-up 400
+bars skipped.
+
+Baseline arm (no filters): long when close crosses above fast
+(close[t-1] < fast[t-1] and close[t] > fast[t]); short mirrored.
+Signals with slow on the wrong side (risk = |close - slow| <= 0 or
+stop beyond entry) are skipped - the stop is undefined there.
+Stop = slow line at entry (structural); TP {3R, 5R, 8R}; horizon
+192 bars (2d) with mark-to-market exit; conservative within-bar
+ambiguity (stop wins).  Fees reported separately (gross / net with
+taker 5bp x 2).  No cooldown, no alignment/ADX/volume filters -
+those are step-3 arms, each pre-registered with criterion +0.05R
+over baseline on train.
+
+Segments: protocol folds 8x56d; train = folds 0-3, test = folds 4-7
+(4 test folds; 916d history supports 16 windows).  Criterion on
+train: EV > +0.05R signal, > +0.10R strong, <= 0 filters needed /
+dead.  Readout: n, EV per TP, win rate, long vs short split.
+
+BASELINE RESULT (runs/avsl_baseline.log): EV <= 0 gross, as the
+pre-registered expectation for an unfiltered arm; filters are the
+next step.  BTC 15m, 916d:
+
+  TRAIN (folds 0-3): 1924 raw crosses (~2.1/day - the AVSL(70,345)
+  line hugs price far closer than a swing MA; NOT 1-3/week), 757
+  skipped (slow on wrong side - stop undefined).
+    TP=3R n=1167 gross -0.003 (long -0.16/23%, short +0.08/31%)
+    TP=5R n=1167 gross -0.007
+    TP=8R n=1167 gross +0.098 (long -0.02/15%, short +0.16/22%)
+  TEST (folds 4-7): 469 crosses, 181 skipped; gross +0.00/+0.06/+0.02.
+
+Two structural findings:
+1. Taker round trip in R = 2*fee*price/risk.  With no alignment
+   filter the structural stop (slow SMA345) sits arbitrarily close
+   to price on many crosses -> mean cost ~1.0R, net ~-1.0R.  The
+   structural stop is economically undefined until slow-side
+   alignment and a minimum-risk distance are enforced.
+2. Long/short asymmetry flips between train and test (train short
+   +, long -; test reversed) - no stable side edge at baseline.
+
 
