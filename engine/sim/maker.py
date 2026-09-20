@@ -44,13 +44,22 @@ def maker_sim(
     atr: float,
     maker_frac: float,
 ) -> float:
-    """sim() with a known limit fill price at bar i0 (position open at i0)."""
+    """sim() with a known limit fill price at bar i0 (position open at i0).
+
+    Gap-through-stop guard (mirrors sim()): if the limit filled beyond
+    the stop, the stop order fires immediately at market - a scratch
+    net of costs - never a ~+1R win measured in gap-distance units.
+    """
     sign = 1.0 if side == "long" else -1.0
     risk = abs(fill - sl)
     if risk <= 0:
         return np.nan
     cost_r = ((COMM * (1 + maker_frac) + GEN_SLIP) * fill) / risk
     pe = E_MULT * GEN_SLIP * fill / risk
+    if (sign > 0 and fill < sl) or (sign < 0 and fill > sl):
+        # filled beyond the stop -> immediate market scratch
+        xtr = (X_MULT - 1) * GEN_SLIP * abs(fill) / risk
+        return float(-cost_r - pe - xtr)
     last = min(len(c) - 1, i0 + HOLD - 1)
     for held, j in enumerate(range(i0, last + 1)):
         hs = lo[j] <= sl if sign > 0 else h[j] >= sl
@@ -83,7 +92,11 @@ def market_sim(
     tp: float,
     atr: float,
 ) -> float:
-    """Baseline always-market entry: fill at the open of bar ``i0``."""
+    """Baseline always-market entry: fill at the open of bar ``i0``.
+
+    Gap-through-stop guard identical to sim.sim(): a next-bar open
+    beyond the stop is an immediate market scratch, never a win.
+    """
     sign = 1.0 if side == "long" else -1.0
     fill = o[i0]
     risk = abs(fill - sl)
@@ -91,6 +104,10 @@ def market_sim(
         return np.nan
     cost_r = (2 * COMM * fill + GEN_SLIP * fill) / risk
     pe = E_MULT * GEN_SLIP * fill / risk
+    if (sign > 0 and fill < sl) or (sign < 0 and fill > sl):
+        # gap through the stop at entry -> immediate market scratch
+        xtr = (X_MULT - 1) * GEN_SLIP * abs(fill) / risk
+        return float(-cost_r - pe - xtr)
     last = min(len(c) - 1, i0 + HOLD - 1)
     for held, j in enumerate(range(i0, last + 1)):
         hs = lo[j] <= sl if sign > 0 else h[j] >= sl

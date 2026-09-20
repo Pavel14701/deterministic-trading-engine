@@ -38,6 +38,19 @@ def test_allow_reverse_opens_opposite_side():
         allow_reverse=True,
     )
     assert [t["side"] for t in taken] == ["long", "short"]
+    # the old long is force-closed at the reverse decision bar 12; its
+    # isolated r_net (exit at 15) is stale and MUST be recomputed
+    assert taken[0]["force_exit_idx"] == 12
+    assert taken[0]["exit_idx"] == 15  # stale isolated value kept as-is
+
+
+def test_no_reverse_flags_without_allow_reverse():
+    taken, skipped = run_state_machine(
+        [sig(10, "long", exit_offset=5), sig(12, "short", exit_offset=4)]
+    )
+    assert [t["side"] for t in taken] == ["long"]
+    assert skipped[0]["reason"] == "in_position"
+    assert "force_exit_idx" not in taken[0]
 
 
 def test_same_bar_sl_plus_reverse_not_reentered():

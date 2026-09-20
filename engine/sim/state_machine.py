@@ -9,8 +9,12 @@ Transition specification (documented decisions, see STATUS.md):
 - a signal decided at bar ``d`` fills at ``d + 1`` (generator rule);
 - while a position is open (until its ``exit_idx``), ALL new signals
   are skipped (``in_position``); opposite-side signals too, unless
-  ``allow_reverse`` is set (then the signal at bar >= exit bar closes
-  the old position and opens the new one at its own fill bar);
+  ``allow_reverse`` is set: an opposite signal at bar ``d < exit_idx``
+  force-closes the open trade at bar ``d`` (flagged
+  ``force_exit_idx``; its isolated ``r_net``/``exit_idx`` are STALE -
+  the caller MUST recompute its P&L up to ``d`` before use) and opens
+  the new side at ``d + 1``.  Without recomputation the stats would
+  double-count overlapping exposure, so the flag is the contract;
 - same-bar exit + signal (decision bar == exit bar) is skipped unless
   ``same_bar_reentry`` - the SL-first pessimism rule means the
   position is still "held" during that bar;
@@ -39,7 +43,7 @@ def run_state_machine(
     )
     taken: list[dict] = []
     skipped: list[dict] = []
-    busy_until = -1  # exit bar of the open position (-1 = none)
+    busy_until = -2  # exit bar of the open position (-2 = none; never a bar)
     busy_side: str | None = None
     open_ended = False
 
@@ -57,15 +61,16 @@ def run_state_machine(
                 and sig["side"] != busy_side
             )
             if reverse:
-                taken.append(sig)  # reverse closes the old, opens new
+                # true reverse: force-close the open trade at bar d; its
+                # isolated r_net/exit_idx are stale (see module docstring)
+                if taken:
+                    taken[-1]["force_exit_idx"] = d
+                taken.append(sig)
                 busy_until = int(sig.get("exit_idx", -1))
                 busy_side = sig["side"]
                 open_ended = busy_until < 0
             else:
                 skipped.append(sig | {"reason": "in_position"})
-            continue
-        if not same_bar_reentry and d == busy_until:
-            skipped.append(sig | {"reason": "same_bar_after_exit"})
             continue
         if d < busy_until + cooldown:
             skipped.append(sig | {"reason": "cooldown"})

@@ -2447,4 +2447,44 @@ DD <= 20R AND recovery >= 1.0 on >= 17/34 assets, alongside the
 >= 17/34 positive-net-R criterion.  Loader 1H phase still running
 (no PHASES_DONE); test fires when data lands.
 
+### Sim-audit: gap-through-stop / allow_reverse / GEN_SLIP layers (2026-09-20)
+
+External review flagged 4 issues in engine/sim; all verified, 2 fixed.
+
+1. gap-check missing in maker_sim AND market_sim (sim() had it).
+   FIXED as defense-in-depth: both now scratch (negative, net of
+   costs) when the fill is beyond the stop, mirroring sim().
+   IMPACT ON PAST RUNS: ZERO.  Audit on the 751 WF-B signals with 1m
+   data currently on disk (BTC/ETH/SOL/DOGE subset, scripts/
+   audit_sim_gaps.py): 0/751 gap-through-stop at market entry;
+   market_sim == sim() pess exactly on the baseline (-0.0543 R);
+   maker_entry's 0.05*ATR limit-vs-stop guard blocked every possible
+   beyond-stop fill (0 violations).  D.12 verdict (maker REJECTED,
+   adverse selection) stands unchanged.  No re-runs needed.
+2. allow_reverse fired at d < busy_until (position still open) and
+   kept the old trade's ISOLATED r_net/exit_idx -> overlapping
+   exposure double-counted.  IMPACT ON PAST RUNS: ZERO - no
+   experiment ever set allow_reverse=True (unit test only).  FIXED
+   semantics: reverse now force-closes the open trade at bar d
+   (flagged force_exit_idx; isolated r_net is stale, caller must
+   recompute) before opening the new side; docstring was wrong too
+   ("bar >= exit bar"), rewritten.  Pinned by tests.
+3. GEN_SLIP appears 4x on an SL exit (entry slip in cost_r, exit slip
+   in price, pe=2x, xtr=1x -> 25 bps worst-case price slip; hand
+   check on a 1%-stop trade: r_opt -1.2995R, r_pess -1.449R +gap).
+   VERDICT: intentional layered pessimism, NOT a composition bug
+   (r_opt already carries entry+exit slip honestly; pe/xtr are
+   pess-only add-ons).  Left as-is: changing constants would
+   invalidate all logged results; effect sizes here are +-0.4R vs
+   ~0.15R of pessimism layers - conservative direction anyway.
+4. Dead code in state_machine (second same-bar check, unreachable)
+   removed; busy_until init -1 -> -2 (never collides with a bar).
+
+Also verified: risk_ref normalization scales costs exactly inversely
+(pess ratio 0.5000 for risk_ref 1.0 -> 2.0).  Full engine test suite:
+231 passed / 2 skipped.  Cosmetic note: sim()'s `hold` parameter is
+ignored (hardcoded i0+47 == HOLD-1 in maker); semantics identical,
+no change made.
+
+
 

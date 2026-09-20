@@ -74,3 +74,38 @@ class TestMakerSim:
     def test_invalid_risk_returns_nan(self) -> None:
         o, h, lo, c = _zone_path()
         assert np.isnan(maker_sim(o, h, lo, c, 0, "long", 99.5, 102.0, 99.5, 1.0, 0.3))
+
+    def test_gap_through_stop_is_a_scratch_not_a_win(self) -> None:
+        # limit filled BELOW the stop (long): stop fires immediately at
+        # market -> scratch net of costs, never a +R win in gap units
+        o, h, lo, c = _zone_path()
+        o[:] = 98.0  # fill 98 < sl 99
+        r = maker_sim(o, h, lo, c, 0, "long", 99.0, 102.0, 98.0, 1.0, 0.3)
+        cost = (0.0013 + 0.0005) * 98.0
+        pe = 2 * 0.0005 * 98.0
+        xtr = 0.0005 * 98.0
+        assert r == pytest.approx(-cost - pe - xtr)
+        assert r < 0
+
+
+class TestMarketSimGap:
+    def test_gap_through_stop_is_a_scratch_not_a_win(self) -> None:
+        # next-bar open beyond the stop -> immediate market scratch
+        o, h, lo, c = _zone_path()
+        o[0] = 98.0  # market fill 98 < sl 99
+        r = market_sim(o, h, lo, c, 0, "long", 99.0, 102.0, 1.0)
+        cost = (0.002 + 0.0005) * 98.0
+        pe = 2 * 0.0005 * 98.0
+        xtr = 0.0005 * 98.0
+        assert r == pytest.approx(-cost - pe - xtr)
+        assert r < 0
+
+    def test_gap_matches_sim_semantics(self) -> None:
+        from engine.sim.engine import sim
+
+        o, h, lo, c = _zone_path()
+        o[:] = 98.0
+        _ro, rp, jx = sim(o, h, lo, c, 0, "long", 99.0, 102.0, 48, 1.0)
+        rm = market_sim(o, h, lo, c, 0, "long", 99.0, 102.0, 1.0)
+        assert rm == pytest.approx(rp)
+        assert jx == 0
