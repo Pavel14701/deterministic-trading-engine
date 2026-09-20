@@ -3,6 +3,40 @@
 Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done · ⬜ not started ·
 ⬜=spec only. Full per-task detail: `legacy/dev_docs/tz/TZ-00-roadmap.md` (archived).
 
+## 2026-09-20 — ranker ensemble package (`engine/ensemble/`)
+
+- `engine/ensemble/`: `base` (RankerComponent interface, ComponentConfig,
+  rank_normalize), `lgbm` / `catboost` / `logreg` components, `combine`
+  (EnsembleRanker: mean / weighted / rank_mean / stacking), `meta`
+  (stacking meta-learner trained on past-only OOF component scores —
+  no in-sample meta weights).  Determinism kit per component:
+  LGBM deterministic+force_row_wise+1 thread; CatBoost thread_count=1;
+  catboost is an OPTIONAL dependency (lazy import, CATBOOST_AVAILABLE).
+- `protocol.train_ensemble_ranker`: ensemble twin of `train_ranker`
+  (same contract — past-only train_ix, scores for all rows in input
+  order), so replay/experiments switch heads by config alone.
+- `experiments/ensemble_ab.py`: pre-registered grid of 6 configs
+  (lgbm_only / catboost_only / logreg_only / lgbm+catboost /
+  all_three / stacking) through one WF protocol + replay; metrics:
+  pooled R / dd / sharpe, decile spread, top-decile EV, flips@1e-6,
+  peak gate EV; `--quick` smoke mode.  Acceptance: ensemble beats the
+  best single component, dd not worse — else keep LightGBM-only.
+- Tests: `engine/tests/test_ensemble_*.py` (45 tests: determinism
+  byte-for-byte, dtype discipline, scaler convergence, enable/disable
+  vs weight=0, stacking past-only OOF, mini-WF regression, protocol
+  integration) + `ens_synth.py` synthetic panel helper.  catboost
+  tests skip cleanly when the lib is absent.
+- catboost added to root dependencies (installed 1.2.10 locally).
+- Fixed a latent restructure bug: `protocol.REPO` pointed at
+  `engine/` instead of the repo root (data paths were computed from
+  the pre-move location) — experiments had not been re-run since the
+  move, first caught by the ensemble_ab smoke run.
+- Quick smoke (last 3 folds, catboost 60 iters): lgbm_only leads
+  (pess −0.020, spread +0.169); no blend beats it yet.  Full 8-fold
+  grid (catboost 300 iters) is running; verdict lands in
+  `runs/ensemble_ab.json` (TZ acceptance: ensemble must beat the best
+  single component, else keep LightGBM-only).
+
 ## 2026-09-20 — tests co-located in engine/, CI subordinated to the layout
 
 - `tests/` -> `engine/tests/`: the unit suite lives inside the package

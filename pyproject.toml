@@ -12,6 +12,7 @@ requires-python = ">=3.12"
 # См. legacy/dev_docs/tz/TZ-00-roadmap.md п. «Монорепозиторий».
 dependencies = [
     "lightgbm",
+    "catboost",  # ensemble member: YetiRank (ordered boosting)
     "pandas>=2.2,<3",  # validated on 2.3.3; pandas 3 str-dtype breaks feature encode
     "scikit-learn>=1.8.0",
     "xgboost",

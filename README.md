@@ -83,6 +83,7 @@ pinned to its data variant / encoding / metrics, writing artifacts into
 | `joint_rank` | joint ranking over (stop rule × TP target) pairs |
 | `admission_policies` | FCFS vs REPLACE slot policies |
 | `maker_entry` | maker-or-skip vs always-market execution |
+| `ensemble_ab` | ranker ensemble (LGBM + CatBoost + logreg) vs single heads |
 
 ## Validation protocol (why the numbers are defensible)
 
