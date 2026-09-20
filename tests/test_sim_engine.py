@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from engine.sim import sim
+from engine.sim.engine import sim
 
 
 FLAT = 100.0
@@ -100,7 +100,7 @@ class TestSimShort:
 
 
 class TestGapThroughStop:
-    """D.13g: entry opening beyond the stop is a live SCRATCH (~0),
+    """Entry opening beyond the stop is a live SCRATCH (~0),
     never a ~+1R win measured in gap-distance units."""
 
     def test_long_gap_below_stop_is_scratch(self) -> None:

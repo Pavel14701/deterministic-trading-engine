@@ -91,7 +91,12 @@ preview = true
 "**/tests/**" = ["D", "RUF069"]
 "test_*.py" = ["D", "RUF069"]
 "conftest.py" = ["D", "RUF069"]
-"**/__init__.py" = ["RUF067"]
+# Research-grade zones (former scripts/, pre-dating the library
+# standards): readability fixes welcome, but docstrings, line length
+# and style pedantry are not enforced there.  The library core
+# (infra/features/structure/sim/backtest/model/metrics) is fully clean.
+"engine/experiments/**" = ["E501", "D", "B905", "RUF069", "B007", "N", "E402", "E741", "E702"]
+"engine/datasets/**" = ["E501", "B905", "RUF069", "B007"]
 
 [tool.ruff.format]
 indent-style = "space"

@@ -1,4 +1,4 @@
-"""Tests for the FeatureProvider (engine.feature_provider)."""
+"""Tests for the FeatureProvider (engine.features.provider)."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ import polars as pl
 import pytest
 
 from dsl.exceptions import DSLError
-from engine.feature_provider import ColumnProvider, HybridContextFactory
-from engine.feature_spec import FeatureDef, FeatureSpec, collect_features
-from engine.mfe_mae import MfeMaeSpec, collect_mfe_mae
+from engine.features.events import MfeMaeSpec, collect_mfe_mae
+from engine.features.provider import ColumnProvider, HybridContextFactory
+from engine.features.spec import FeatureDef, FeatureSpec, collect_features
 
 
 STEP = 3_600_000

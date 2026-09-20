@@ -1,6 +1,6 @@
 """Unit tests for the maker-entry simulator (scripts/maker_entry.py).
 
-Pins the two effects the D.12 study measured: fee saving on the entry
+Pins the two effects the maker-entry study measured: fee saving on the entry
 side and (for a limit inside the zone) a wider stop distance.
 """
 
@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from engine.maker import maker_sim, market_sim
+from engine.sim.maker import maker_sim, market_sim
 
 
 def _flat_path(n: int = 60, price: float = 100.0):

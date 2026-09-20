@@ -1,4 +1,4 @@
-"""Tests for engine.protocol (WF-B protocol library)."""
+"""Tests for engine.backtest.protocol (WF-B protocol library)."""
 
 from __future__ import annotations
 
@@ -7,19 +7,18 @@ import pandas as pd
 import polars as pl
 import pytest
 
-from engine.protocol import (
-    DAY_MS,
-    ENCODING_D8B,
-    ENCODING_D13,
+from engine.backtest.protocol import (
+    ENCODING_NATIVE,
+    ENCODING_ZEROED,
     assemble_ranker_data,
     fold_masks,
     load_panel,
-    pooled_stats,
     replay,
     train_ranker,
     wf_folds,
 )
-from engine.sim import pess
+from engine.metrics.trade import DAY_MS, pooled_stats
+from engine.sim.engine import pess
 
 
 # ------------------------------------------------------- fold calendar
@@ -112,7 +111,7 @@ def test_assemble_ranker_data_offsets_and_codes() -> None:
         return {"panel": panel, "feats": feats}
 
     data = {"AAA": one("AAA", 4), "BBB": one("BBB", 2)}
-    rd = assemble_ranker_data(data, ["AAA", "BBB"], ENCODING_D13)
+    rd = assemble_ranker_data(data, ["AAA", "BBB"], ENCODING_ZEROED)
     assert rd.x.shape == (6, 3)  # f, side codes, asset codes
     assert rd.asset_row.tolist() == [0] * 4 + [1] * 2
     assert rd.row.tolist() == [0, 1, 2, 3, 4, 5]  # offset across assets
@@ -213,7 +212,7 @@ def test_pooled_stats_chronology_restored() -> None:
 
 
 def test_assemble_ranker_data_encoding_variants() -> None:
-    """D.13 (float32 zero-filled) vs D.8b (float64 NaN-native) encodings."""
+    """Zeroed (float32 NaN->0) vs native (float64 NaN-kept) encodings."""
     def one() -> dict:
         panel = pl.DataFrame({
             "r_pess": [0.0, 0.0],
@@ -224,10 +223,10 @@ def test_assemble_ranker_data_encoding_variants() -> None:
         return {"panel": panel, "feats": feats}
 
     data = {"AAA": one()}
-    d13 = assemble_ranker_data(data, ["AAA"], ENCODING_D13)
-    assert d13.x.dtype == np.float32
-    assert d13.x[0, 0] == 0.0  # NaN zero-filled
+    zeroed = assemble_ranker_data(data, ["AAA"], ENCODING_ZEROED)
+    assert zeroed.x.dtype == np.float32
+    assert zeroed.x[0, 0] == 0.0  # NaN zero-filled
 
-    d8b = assemble_ranker_data(data, ["AAA"], ENCODING_D8B)
+    d8b = assemble_ranker_data(data, ["AAA"], ENCODING_NATIVE)
     assert d8b.x.dtype == np.float64
     assert np.isnan(d8b.x[0, 0])  # NaN kept natively

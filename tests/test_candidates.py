@@ -12,7 +12,8 @@ import numpy.typing as npt
 import polars as pl
 import pytest
 
-from engine.candidates import (
+from engine.infra.datatypes import OrderBlock
+from engine.structure.candidates import (
     Candidate,
     collect_candidates,
     dedupe_candidates,
@@ -23,7 +24,6 @@ from engine.candidates import (
     detect_ob_touches,
     detect_sweeps,
 )
-from engine.datatypes import OrderBlock
 
 
 T0 = datetime(2024, 1, 1, tzinfo=UTC)

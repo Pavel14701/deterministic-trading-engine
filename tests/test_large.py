@@ -10,7 +10,7 @@ import numpy.typing as npt
 import polars as pl
 import pytest
 
-from engine.features import (
+from engine.features.indicators import (
     compute_atr,
     compute_ob_distances,
     generate_labels_from_strategy,

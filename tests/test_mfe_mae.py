@@ -1,4 +1,4 @@
-"""Tests for the DSL-configured MFE/MAE collector (engine.mfe_mae)."""
+"""Tests for the DSL-configured MFE/MAE collector (engine.features.events)."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ import pytest
 
 from dsl import Context, InProcessProvider
 from dsl.exceptions import DSLError
-from engine.features import compute_atr
-from engine.mfe_mae import MfeMaeSpec, collect_mfe_mae
+from engine.features.events import MfeMaeSpec, collect_mfe_mae
+from engine.features.indicators import compute_atr
 
 
 STEP = 3_600_000

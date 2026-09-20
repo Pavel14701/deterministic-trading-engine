@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 import numpy as np
 import polars as pl
 
-from engine.datatypes import OrderBlock
-from engine.features import compute_atr, compute_ob_features
+from engine.features.indicators import compute_atr, compute_ob_features
+from engine.infra.datatypes import OrderBlock
 
 
 def _mk_df(n: int = 64) -> pl.DataFrame:
@@ -119,7 +119,7 @@ def test_split_chronological_no_overlap_and_context():
     from pathlib import Path
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-    from engine.okx_dataset import split_chronological
+    from engine.datasets.okx import split_chronological
 
     n = 4000
     feat = _mk_df(n)
@@ -148,7 +148,7 @@ def test_split_chronological_no_overlap_and_context():
 def test_split_short_history_raises_clear_error():
     import pytest
 
-    from engine.okx_dataset import split_chronological
+    from engine.datasets.okx import split_chronological
 
     # 600 bars used to overflow the frame (IndexError) because the gap was
     # added on top of the fractions; it must now fail with a clear
@@ -163,7 +163,7 @@ def test_split_short_history_raises_clear_error():
 
 
 def test_split_segments_fit_frame_and_reserve_gaps():
-    from engine.okx_dataset import split_chronological
+    from engine.datasets.okx import split_chronological
 
     n, seq_len = 1200, 128
     feat = _mk_df(n)
@@ -190,7 +190,7 @@ def test_htf_ob_mapping_is_causal_and_drops_future_blocks():
     from pathlib import Path
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-    from engine.okx_dataset import map_htf_ob_indices
+    from engine.datasets.okx import map_htf_ob_indices
 
     base_ms, htf_ms = 60_000, 300_000
     base_ts = np.arange(60, dtype=np.int64) * base_ms  # 1m grid
@@ -219,7 +219,7 @@ def test_htf_ob_mapping_never_precedes_htf_close():
     from pathlib import Path
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-    from engine.okx_dataset import map_htf_ob_indices
+    from engine.datasets.okx import map_htf_ob_indices
 
     base_ms, htf_ms = 60_000, 900_000  # 1m base, 15m HTF
     base_ts = np.arange(200, dtype=np.int64) * base_ms
@@ -246,7 +246,7 @@ def test_ob_lookup_matches_linear_scan():
     high or low" rule and the structure/trend filters.
 
     """
-    from engine.features import _find_entry_ob, _OBLookup
+    from engine.features.indicators import _find_entry_ob, _OBLookup
 
     rng = np.random.default_rng(11)
     n_bars = 60
@@ -284,7 +284,7 @@ def test_ob_lookup_matches_linear_scan():
 
 def test_ob_lookup_is_exact_at_zone_boundaries():
     """Point queries stay exact strictly inside / outside a zone."""
-    from engine.features import _OBLookup
+    from engine.features.indicators import _OBLookup
 
     ob = _mk_ob(
         id=0, zone_low=100.0, zone_high=105.0, end_idx=0, confirm_idx=0

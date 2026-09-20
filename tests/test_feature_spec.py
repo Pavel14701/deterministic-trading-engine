@@ -1,5 +1,5 @@
-"""Tests for the per-event feature matrix (engine.feature_spec) and
-the HTF as-of feature adapter (engine.mtf.asof_join_features)."""
+"""Tests for the per-event feature matrix (engine.features.spec) and
+the HTF as-of feature adapter (engine.features.mtf.asof_join_features)."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ import polars as pl
 import pytest
 
 from dsl.exceptions import DSLError, ParseError
-from engine.feature_spec import FeatureDef, FeatureSpec, collect_features
-from engine.mtf import asof_join_features, resample_ohlcv
+from engine.features.mtf import asof_join_features, resample_ohlcv
+from engine.features.spec import FeatureDef, FeatureSpec, collect_features
 
 
 STEP = 3_600_000

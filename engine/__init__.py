@@ -1,24 +1,26 @@
 """dte-engine: research library of the trading pipeline.
 
-Live modules (everything else lives in ``legacy/``):
-- ``config``     - YAML config, seeds, risk kwargs;
-- ``datatypes``  - OrderBlock dataclass;
-- ``features``   - ATR, order-block features, strategy label simulator;
-- ``io``         - parquet I/O for features / labels / order blocks;
-- ``candidates`` - stop/TP candidate grid;
-- ``mtf``        - OHLCV resampling (1m -> higher timeframes);
-- ``mtf_dataset``- multi-timeframe panel builder;
-- ``mtf_model``  - LGBM ranker, feature builders, rule tables;
-- ``state_machine``- portfolio slot state machine (FCFS / REPLACE);
-- ``marketdata`` - OKX candle sources;
-- ``okx_dataset``- OKX raw dataset builder (detect OBs, features, labels);
-- ``zones``      - zone geometry: overlays, TP/SL grid per stop rule;
-- ``sim``        - unified event simulator (+ D.6 experiment entry);
-- ``maker``      - maker/market entry sims (+ D.12 experiment entry);
-- ``admission``  - portfolio admission policies (+ D.11 entry).
+Layout (subpackages by function):
+- ``infra``      - YAML config, core datatypes, parquet I/O, OKX sources;
+- ``features``   - indicators, MTF resampling, panel builders, DSL
+                   feed/spec/provider, MFE/MAE event collector;
+- ``structure``  - zone geometry and entry-candidate detectors;
+- ``sim``        - unified event sim, maker entries, state machine,
+                   admission policies;
+- ``backtest``   - walk-forward protocol (folds, ranker, replay);
+- ``model``      - LGBM ranker head, feature builders, rule tables;
+- ``metrics``    - per-trade R performance metrics;
+- ``datasets``   - dataset assembly pipelines from raw OKX caches;
+- ``experiments``- reproducible experiment drivers (runnable modules).
 """
 
-from .config import (
+from engine.features.indicators import (
+    compute_atr,
+    compute_ob_distances,
+    compute_tp_sl,
+    generate_labels_from_strategy,
+)
+from engine.infra.config import (
     AIConfig,
     ComputeConfig,
     ModelConfig,
@@ -28,14 +30,8 @@ from .config import (
     risk_kwargs,
     set_seed,
 )
-from .datatypes import OrderBlock
-from .features import (
-    compute_atr,
-    compute_ob_distances,
-    compute_tp_sl,
-    generate_labels_from_strategy,
-)
-from .io import (
+from engine.infra.datatypes import OrderBlock
+from engine.infra.io import (
     load_features_parquet,
     load_labels_parquet,
     load_order_blocks_parquet,

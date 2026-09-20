@@ -1,9 +1,9 @@
-"""Stage D.1 transition tests: pure state machine, documented rules."""
+"""Transition tests: pure state machine, documented rules."""
 
 import numpy as np
 import pytest
 
-from engine.state_machine import run_state_machine
+from engine.sim.state_machine import run_state_machine
 
 
 def sig(idx, side, r=1.0, exit_offset=5, prio=0.0):

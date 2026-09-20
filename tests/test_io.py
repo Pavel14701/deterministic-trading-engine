@@ -12,8 +12,8 @@ import numpy as np
 import polars as pl
 import pytest
 
-from engine.datatypes import OrderBlock
-from engine.io import (
+from engine.infra.datatypes import OrderBlock
+from engine.infra.io import (
     load_features_parquet,
     load_labels_parquet,
     load_order_blocks_parquet,

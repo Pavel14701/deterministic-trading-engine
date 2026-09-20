@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from engine.config import (
+from engine.infra.config import (
     AIConfig,
     RiskConfig,
     load_config,

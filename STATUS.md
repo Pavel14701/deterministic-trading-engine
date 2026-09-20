@@ -3,6 +3,37 @@
 Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done · ⬜ not started ·
 ⬜=spec only. Full per-task detail: `dev_docs/tz/TZ-00-roadmap.md`.
 
+## 2026-09-20 — engine restructure: subpackages, no scripts/, no ID naming
+
+- `scripts/` removed entirely; every experiment driver is now a library
+  module under `engine/experiments/` without ID prefixes (wf_ab ->
+  walk_forward_ab, d13c_cost_cap -> cost_cap, d13g_ranker_only ->
+  ranker_only, d14_feature_family -> feature_family, d14_funding_carry
+  -> funding_carry, d13d_regime_diag -> regime_diag).  Experiment
+  entry points that lived inside library modules (D.6 joint rank in
+  sim, D.11 admission compare, D.12 maker grid) were extracted into
+  `engine/experiments/{joint_rank,admission_policies,maker_entry}.py`.
+  Artifact filenames in `runs/` for NEW runs lose the d-prefix too
+  (old artifacts keep historical names, referenced below).
+- `engine/` decomposed into functional subpackages:
+  `infra/` (config, datatypes, io, marketdata), `features/`
+  (indicators, mtf, panel, dsl_feed, spec, provider, events),
+  `structure/` (zones, candidates), `sim/` (engine, maker,
+  state_machine, admission), `backtest/` (protocol), `model/`
+  (ranker), `metrics/` (trade: trade_curve_stats / per_trade_sharpe /
+  bucketed_sharpe / pooled_stats - extracted from the ranker head and
+  protocol), `datasets/` (okx, mtf, stops - the former dataset-build
+  scripts).
+- d-naming scrubbed from code: `ENCODING_D13` -> `ENCODING_ZEROED`,
+  `ENCODING_D8B` -> `ENCODING_NATIVE`, docstrings/comments rewritten
+  without D.NN experiment IDs (history stays here and in dev_docs).
+- Encodings renamed to names again: ENCODING_ZEROED (float32,
+  NaN/inf->0) and ENCODING_NATIVE (float64, NaN kept).
+- Gates: pytest 327 passed; ruff clean on engine+tests+dsl (research-
+  grade zones `engine/experiments/**` and `engine/datasets/**` carry
+  explicit per-file-ignores in pyproject); mypy clean on the library
+  core (25 files).
+
 ## 2026-09-19 — package rename ai -> engine, scripts cleanup
 
 - `ai/` -> `engine/` (the package is the whole research engine, not just

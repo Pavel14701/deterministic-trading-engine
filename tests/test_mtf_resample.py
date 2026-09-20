@@ -8,7 +8,7 @@ import numpy as np
 import polars as pl
 import pytest
 
-from engine.mtf import (
+from engine.features.mtf import (
     BAR_MS,
     asof_rows,
     bar_duration_ms,

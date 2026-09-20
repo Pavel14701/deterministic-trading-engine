@@ -20,14 +20,18 @@ rank-based admission. Full evidence trail: **STATUS.md**.
 ## Repository layout
 
 ```
-engine/      research library: config, features, candidates, mtf resampling,
-             mtf panel/model (LGBM), state machine, marketdata (OKX candle
-             sources), zones, event sims (sim/maker), okx dataset builder
-scripts/     experiment drivers & stage pipeline (research-grade style):
-               data:    build_mtf_dataset.py build_stop_dataset.py
-               stages:  execution_costs.py ranking_baselines.py
-                        adaptive_tp.py matrix_2x2.py wf_ab.py
-                        portfolio.py robustness.py nested_cv.py
+engine/      research library, subpackaged by function:
+               infra/       config, datatypes, parquet I/O, marketdata (OKX)
+               features/    indicators, MTF resampling, panels, DSL
+                            feed/spec/provider, MFE/MAE event collector
+               structure/   zones, entry-candidate detectors
+               sim/         event sim, maker entries, state machine,
+                            admission policies
+               backtest/    walk-forward protocol (folds, ranker, replay)
+               model/       LGBM ranker head, feature builders, rule tables
+               metrics/     per-trade R performance metrics
+               datasets/    dataset assembly pipelines (OKX -> panels)
+               experiments/ reproducible experiment drivers
 tests/       unit tests (simulator, maker entry, zones, library)
 ta/          vendored indicator library (upstream; excluded from default run)
 dsl/         dte-dsl package: declarative trading-conditions DSL
@@ -36,7 +40,7 @@ dsl/         dte-dsl package: declarative trading-conditions DSL
              dsl/tests, part of the default run and CI
 legacy/      archived dead code of the former monorepo — see
              legacy/MANIFEST.md before touching anything in there
-data/ runs/  parquet data and stage artifacts (d-prefixed filenames are
+data/ runs/  parquet data and experiment artifacts (d-prefixed filenames are
              historical and referenced from STATUS.md)
 ```
 
@@ -45,13 +49,13 @@ data/ runs/  parquet data and stage artifacts (d-prefixed filenames are
 ```bash
 uv sync --all-packages
 uv run pytest                 # unit suite (tests/ + dsl/tests)
-uv run ruff check ai tests dsl # lint (scripts: F-class only)
-uv run mypy ai                 # strict on the library
+uv run ruff check engine tests dsl
+uv run mypy engine
 
-# stage chain (each writes JSON/parquet artifacts into runs/):
-uv run python scripts/wf_ab.py        # walk-forward A/B (~30 s)
-uv run python scripts/admission.py    # REPLACE-low vs FCFS portfolio
-uv run python scripts/maker_entry.py  # maker-entry study (rejected)
+# experiments (each writes JSON/parquet artifacts into runs/):
+uv run python -m engine.experiments.walk_forward_ab     # walk-forward A/B
+uv run python -m engine.experiments.admission_policies  # REPLACE-low vs FCFS
+uv run python -m engine.experiments.maker_entry         # maker-entry study
 ```
 
 ## Validation protocol (why the numbers are defensible)

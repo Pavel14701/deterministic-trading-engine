@@ -8,12 +8,12 @@ import pytest
 
 from numpy.testing import assert_allclose
 
-from engine.datatypes import OrderBlock
-from engine.features import (
+from engine.features.indicators import (
     PositionState,
     generate_labels_from_strategy,
     no_position,
 )
+from engine.infra.datatypes import OrderBlock
 
 
 @pytest.mark.unit
