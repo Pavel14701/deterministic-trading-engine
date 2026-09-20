@@ -65,12 +65,13 @@ def _sim(hp, lp, cp, t, is_long, stop, tp_r):
     return sign * (cp[min(t + HORIZON, n - 1)] - entry) / risk
 
 
-def _fast_line(lp, cp, vol):
+def _fast_line(lp, cp, vol, stand_div: float = 2.0):
     """NaN-safe AVSL(70, 345), mirroring mtf._anchors_nan_safe.
 
     The talib SMA path poisons the whole series with warm-up NaNs.
+    stand_div=2.0 matches the Pine donor default (mult).
     """
-    vpc, vpr, _vm, vpci, dev = _avs_base(cp, vol, FAST, SLOW, 1.0, False)
+    vpc, vpr, _vm, vpci, dev = _avs_base(cp, vol, FAST, SLOW, stand_div, False)
     len_v = _compute_len_v(vpc, vpci)
     vpcc = _compute_vpcc(vpc)
     price_v = _price_v_rolling(lp, vpr, len_v, vpcc)
@@ -82,14 +83,16 @@ def _fast_line(lp, cp, vol):
 
 
 def run() -> None:
+    stand_div = float(sys.argv[1]) if len(sys.argv) > 1 else 2.0
     df = pl.read_parquet(REPO / FILE).rename({"ts": "date"})
     ts = df["date"].to_numpy().astype(np.int64)
     lp = df["low"].to_numpy().astype(np.float64)
     hp = df["high"].to_numpy().astype(np.float64)
     cp = df["close"].to_numpy().astype(np.float64)
     vol = df["volume"].to_numpy().astype(np.float64)
-    fast = _fast_line(lp, cp, vol)
+    fast = _fast_line(lp, cp, vol, stand_div)
     slow = sma_ind(cp, SLOW, use_talib=False, nan_policy="ffill")
+    print(f"stand_div={stand_div}", flush=True)
     up = (cp[1:] > fast[1:]) & (cp[:-1] < fast[:-1])
     dn = (cp[1:] < fast[1:]) & (cp[:-1] > fast[:-1])
     cross_idx = np.nonzero(up | dn)[0] + 1

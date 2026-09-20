@@ -2020,4 +2020,22 @@ Two structural findings:
 2. Long/short asymmetry flips between train and test (train short
    +, long -; test reversed) - no stable side edge at baseline.
 
+Donor audit (user provided Pine source): the repo port is faithful
+- lenV, VPCc clamp, PriceV/100, and the AVSL formula all match.
+Two deltas: (a) Pine divides by PER-BAR VPCc[i] in the window loop,
+the repo by the CURRENT bar's vpc_c (minor - VPCc moves slowly);
+(b) donor default mult=2.0 vs stand_div=1.0 used in the first run.
+
+Donor-calibration arm, stand_div=2.0 (runs/avsl_baseline_sd2.log):
+  TRAIN n=1001 gross +0.03/-0.02/+0.05 (3/5/8R)
+  TEST  n= 256 gross -0.03/-0.00/-0.07
+Same conclusion: gross ~ 0, net ~ -0.85R (cost/risk collapse on
+unfiltered crosses), long/short flip persists.  Cross frequency
+~2/day is intrinsic to the indicator: AVSL is by construction a
+trailing-stop line that lives near price (DeV offset), not a swing
+level - the "swing cross" framing has no support in the formula.
+Verdict unchanged: EV <= 0 -> filter step next, slow-alignment
+first.  Honest alternative: treat AVSL crosses as what they are
+(stop-flip events) or drop the track.
+
 
