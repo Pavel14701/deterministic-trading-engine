@@ -2309,4 +2309,36 @@ fixed per trade.  Slow-line configs cannot escape the 5m fee wall;
 only the risk-unit (wider SL / bigger ATR mult) or maker fills could,
 and both were already ruled out.  5m family closed for good.
 
+ENTRY FILTERS ON 1H LONG-ONLY (runs/avsl_okx_1h_filters.log;
+avsl_trailing grew filter tokens adx/ob/stoch/rsi = per-bar LONG
+gate applied to BOTH arms; gated bench = always-in while gate on.
+NOTE: gate is defined long-only; also _read_* now return open.
+BUG FOUND: rsi_clouds_ind returns all-NaN macd/sig/hist -- rsi_ind
+leaves 13 leading NaNs and the non-talib ema path poisons the whole
+MACD with them.  Worked around in _gate_long (manual clouds: seed
+warm-up NaNs with first valid RSI, causal).  Gate True fractions:
+rsi 50%, stoch 50%, adx 24%, ob 2.5% of bars.)
+Test-window results (10 base assets, same data+windows, unfiltered
+rerun included):
+  none          pass 2/10, tr>bn 6/10, n=610, med test diff +0.051,
+                bench (always-in long) itself +0.285R/trade = beta.
+  adx(>25,+DI)  3/10, 5/10, n=130, test diff -0.073; gate CUT bench
+                to +0.116 (loses bull drift) -> not helpful.
+  rsi-clouds    2/10, 7/10, n=352, test diff +0.388; trail own test
+                EV med ~+0.37R (7/10 assets positive) vs unfiltered
+                trail med ~+0.17R -- filter roughly doubles per-trade
+                edge while cutting trades 42%.  CAVEATS: XRP +2.3R
+                outlier, best-of-7 selection (nominal p(>=7/10)=0.17
+                uncorrected), single bull window, correlated assets.
+  stoch         1/10, 6/10, n=439, test diff +0.186 -- weak.
+  adx+rsi+stoch 2/10, 4/10, n=69, test diff -0.338 -- stacking kills.
+  ob (demand-zone veto) DEAD: 1 test trade.  Structural mismatch:
+  AVSL cross bars almost never coincide with price-inside-zone bars
+  (ob+stoch same).  OB gates entry-TIMING systems, not cross-veto.
+Read: RSI-clouds entry gate is the first filter that improved the
+trail (vs gated bench AND vs unfiltered trail) -- candidate worth a
+block-bootstrap/holdout on the full 34-asset universe, NOT yet a
+verdict.  ADX gate and OB veto rejected; ADX also worsens plain
+always-in.  OB stays a standalone entry system, not a filter.
+
 

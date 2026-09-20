@@ -1,0 +1,369 @@
+AVSL cross-entry + immediate AVSL trailing (config 70/345, NORMAL LONG-ONLY FILTER[adx], tf=1H, assets=10): entry=cross, initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal from bar 1; bench=always-in same orientation; exit=SL|reverse-cross; R=2xATR; LONG-ONLY: short entries skipped, long exits at SL|cross
+  BTC-USDT TRAIN    trail: n= 142 evG=+0.751 evN=+0.678 win=12% hold=  44 maxDD=16.5R
+  BTC-USDT TRAIN    bench: n= 944 evG=+0.183 evN=+0.110 win=34% hold=  14 maxDD=34.2R
+  BTC-USDT TEST    trail: n=  16 evG=+2.109 evN=+2.027 win=12% hold=  56 maxDD=4.5R
+  BTC-USDT TEST    bench: n=  99 evG=+0.201 evN=+0.100 win=33% hold=  13 maxDD=19.5R
+  ETH-USDT TRAIN    trail: n=  42 evG=+0.340 evN=+0.285 win=10% hold=  30 maxDD=9.9R
+  ETH-USDT TRAIN    bench: n= 268 evG=+0.058 evN=+0.004 win=35% hold=  13 maxDD=27.6R
+  ETH-USDT TEST    trail: n=  16 evG=-0.168 evN=-0.243 win=12% hold=  32 maxDD=6.6R
+  ETH-USDT TEST    bench: n=  72 evG=+0.388 evN=+0.305 win=32% hold=  16 maxDD=12.0R
+  SOL-USDT TRAIN    trail: n=  50 evG=+0.209 evN=+0.169 win=10% hold=  34 maxDD=10.4R
+  SOL-USDT TRAIN    bench: n= 265 evG=+0.037 evN=-0.007 win=32% hold=  14 maxDD=21.0R
+  SOL-USDT TEST    trail: n=   8 evG=-0.269 evN=-0.323 win=12% hold=  12 maxDD=2.1R
+  SOL-USDT TEST    bench: n=  76 evG=+0.200 evN=+0.141 win=39% hold=  14 maxDD=11.9R
+  XRP-USDT TRAIN    trail: n=  11 evG=-0.449 evN=-0.493 win=0% hold=  18 maxDD=4.8R
+  XRP-USDT TRAIN    bench: n=  71 evG=+0.335 evN=+0.283 win=34% hold=  13 maxDD=5.8R
+  XRP-USDT TEST    trail: n=   8 evG=+4.554 evN=+4.467 win=25% hold=  58 maxDD=1.8R
+  XRP-USDT TEST    bench: n=  53 evG=+0.857 evN=+0.777 win=42% hold=  13 maxDD=10.3R
+ DOGE-USDT TRAIN    trail: n=  48 evG=-0.383 evN=-0.420 win=6% hold=  23 maxDD=19.7R
+ DOGE-USDT TRAIN    bench: n= 264 evG=+0.268 evN=+0.229 win=34% hold=  13 maxDD=8.8R
+ DOGE-USDT TEST    trail: n=  13 evG=-0.436 evN=-0.499 win=0% hold=  11 maxDD=6.2R
+ DOGE-USDT TEST    bench: n=  64 evG=-0.009 evN=-0.066 win=36% hold=  12 maxDD=19.1R
+ AVAX-USDT TRAIN    trail: n=  41 evG=-0.004 evN=-0.042 win=15% hold=  25 maxDD=7.6R
+ AVAX-USDT TRAIN    bench: n= 283 evG=+0.090 evN=+0.048 win=33% hold=  13 maxDD=15.5R
+ AVAX-USDT TEST    trail: n=  26 evG=-0.471 evN=-0.528 win=0% hold=  10 maxDD=13.1R
+ AVAX-USDT TEST    bench: n=  74 evG=+0.011 evN=-0.046 win=31% hold=  14 maxDD=21.0R
+ LINK-USDT TRAIN    trail: n=  10 evG=-0.326 evN=-0.368 win=10% hold=  30 maxDD=2.9R
+ LINK-USDT TRAIN    bench: n=  76 evG=-0.077 evN=-0.123 win=38% hold=  11 maxDD=9.3R
+ LINK-USDT TEST    trail: n=   6 evG=+0.490 evN=+0.419 win=17% hold=  96 maxDD=2.9R
+ LINK-USDT TEST    bench: n=  54 evG=+0.199 evN=+0.132 win=35% hold=  15 maxDD=12.7R
+  LTC-USDT TRAIN    trail: n=  41 evG=+0.220 evN=+0.171 win=12% hold=  23 maxDD=7.8R
+  LTC-USDT TRAIN    bench: n= 266 evG=-0.014 evN=-0.065 win=34% hold=  12 maxDD=19.8R
+  LTC-USDT TEST    trail: n=   8 evG=+1.874 evN=+1.799 win=25% hold=  32 maxDD=1.9R
+  LTC-USDT TEST    bench: n=  62 evG=+0.127 evN=+0.047 win=32% hold=  14 maxDD=21.7R
+ NEAR-USDT TRAIN    trail: n=  45 evG=+0.354 evN=+0.320 win=16% hold=  29 maxDD=5.4R
+ NEAR-USDT TRAIN    bench: n= 278 evG=-0.001 evN=-0.036 win=31% hold=  13 maxDD=18.7R
+ NEAR-USDT TEST    trail: n=  18 evG=+0.836 evN=+0.796 win=17% hold=  37 maxDD=2.9R
+ NEAR-USDT TEST    bench: n=  83 evG=+0.217 evN=+0.176 win=28% hold=  14 maxDD=7.7R
+  BNB-USDT TRAIN    trail: n=   7 evG=+0.404 evN=+0.336 win=43% hold=  90 maxDD=0.9R
+  BNB-USDT TRAIN    bench: n=  70 evG=+0.099 evN=+0.027 win=37% hold=  13 maxDD=11.9R
+  BNB-USDT TEST    trail: n=  11 evG=-0.433 evN=-0.525 win=0% hold=  14 maxDD=5.3R
+  BNB-USDT TEST    bench: n=  61 evG=+0.183 evN=+0.081 win=43% hold=  13 maxDD=9.3R
+AVSL cross-entry + immediate AVSL trailing (config 70/345, NORMAL LONG-ONLY FILTER[ob], tf=1H, assets=10): entry=cross, initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal from bar 1; bench=always-in same orientation; exit=SL|reverse-cross; R=2xATR; LONG-ONLY: short entries skipped, long exits at SL|cross
+  BTC-USDT TRAIN    trail: n=   6 evG=-0.651 evN=-0.743 win=0% hold=  10 maxDD=3.4R
+  BTC-USDT TRAIN    bench: n= 191 evG=-0.089 evN=-0.161 win=63% hold=   6 maxDD=37.5R
+  BTC-USDT TEST    trail: n=0
+  BTC-USDT TEST    bench: n=  14 evG=+0.287 evN=+0.164 win=64% hold=   5 maxDD=2.6R
+  ETH-USDT TRAIN    trail: n=   2 evG=+13.663 evN=+13.604 win=50% hold= 262 maxDD=0.0R
+  ETH-USDT TRAIN    bench: n=  69 evG=-0.010 evN=-0.067 win=67% hold=   6 maxDD=10.0R
+  ETH-USDT TEST    trail: n=   1 evG=-0.101 evN=-0.179 win=0% hold=   1 maxDD=0.0R
+  ETH-USDT TEST    bench: n=  40 evG=+0.238 evN=+0.137 win=80% hold=   6 maxDD=3.1R
+  SOL-USDT TRAIN    trail: n=   3 evG=-0.125 evN=-0.157 win=33% hold=  23 maxDD=0.8R
+  SOL-USDT TRAIN    bench: n=  91 evG=-0.172 evN=-0.211 win=54% hold=   6 maxDD=19.6R
+  SOL-USDT TEST    trail: n=0
+  SOL-USDT TEST    bench: n=0
+  XRP-USDT TRAIN    trail: n=   1 evG=+0.885 evN=+0.852 win=100% hold=  68 maxDD=0.0R
+  XRP-USDT TRAIN    bench: n=  42 evG=-0.168 evN=-0.228 win=67% hold=   6 maxDD=8.7R
+  XRP-USDT TEST    trail: n=0
+  XRP-USDT TEST    bench: n=   5 evG=-0.660 evN=-0.691 win=20% hold=   7 maxDD=2.5R
+ DOGE-USDT TRAIN    trail: n=   5 evG=-0.290 evN=-0.317 win=0% hold=   2 maxDD=1.2R
+ DOGE-USDT TRAIN    bench: n=  91 evG=-0.186 evN=-0.223 win=51% hold=   6 maxDD=22.4R
+ DOGE-USDT TEST    trail: n=0
+ DOGE-USDT TEST    bench: n=0
+ AVAX-USDT TRAIN    trail: n=  10 evG=-0.257 evN=-0.295 win=10% hold=   4 maxDD=3.0R
+ AVAX-USDT TRAIN    bench: n= 116 evG=-0.196 evN=-0.234 win=57% hold=   6 maxDD=28.6R
+ AVAX-USDT TEST    trail: n=0
+ AVAX-USDT TEST    bench: n=0
+ LINK-USDT TRAIN    trail: n=   1 evG=-0.096 evN=-0.159 win=0% hold=   1 maxDD=0.0R
+ LINK-USDT TRAIN    bench: n=  24 evG=-0.243 evN=-0.285 win=38% hold=   6 maxDD=6.0R
+ LINK-USDT TEST    trail: n=0
+ LINK-USDT TEST    bench: n=   3 evG=-0.904 evN=-0.947 win=0% hold=   5 maxDD=1.6R
+  LTC-USDT TRAIN    trail: n=   4 evG=-0.015 evN=-0.060 win=25% hold=   8 maxDD=0.6R
+  LTC-USDT TRAIN    bench: n= 145 evG=+0.041 evN=-0.002 win=64% hold=   5 maxDD=10.5R
+  LTC-USDT TEST    trail: n=0
+  LTC-USDT TEST    bench: n=0
+ NEAR-USDT TRAIN    trail: n=   2 evG=-0.558 evN=-0.591 win=0% hold=   4 maxDD=0.4R
+ NEAR-USDT TRAIN    bench: n= 118 evG=-0.048 evN=-0.079 win=59% hold=   5 maxDD=11.8R
+ NEAR-USDT TEST    trail: n=0
+ NEAR-USDT TEST    bench: n=  10 evG=-0.004 evN=-0.023 win=30% hold=   3 maxDD=1.7R
+  BNB-USDT TRAIN    trail: n=   2 evG=-0.510 evN=-0.568 win=0% hold=   2 maxDD=0.1R
+  BNB-USDT TRAIN    bench: n=  33 evG=-0.189 evN=-0.266 win=52% hold=   5 maxDD=8.9R
+  BNB-USDT TEST    trail: n=0
+  BNB-USDT TEST    bench: n=   9 evG=-0.368 evN=-0.438 win=56% hold=   9 maxDD=4.2R
+AVSL cross-entry + immediate AVSL trailing (config 70/345, NORMAL LONG-ONLY FILTER[stoch], tf=1H, assets=10): entry=cross, initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal from bar 1; bench=always-in same orientation; exit=SL|reverse-cross; R=2xATR; LONG-ONLY: short entries skipped, long exits at SL|cross
+  BTC-USDT TRAIN    trail: n= 475 evG=+0.495 evN=+0.421 win=15% hold=  38 maxDD=37.9R
+  BTC-USDT TRAIN    bench: n=7028 evG=+0.004 evN=-0.073 win=38% hold=   4 maxDD=521.1R
+  BTC-USDT TEST    trail: n=  42 evG=+0.786 evN=+0.696 win=12% hold=  45 maxDD=7.2R
+  BTC-USDT TEST    bench: n= 648 evG=+0.041 evN=-0.056 win=38% hold=   4 maxDD=47.2R
+  ETH-USDT TRAIN    trail: n= 132 evG=+0.276 evN=+0.219 win=9% hold=  29 maxDD=19.1R
+  ETH-USDT TRAIN    bench: n=2034 evG=-0.012 evN=-0.068 win=40% hold=   4 maxDD=147.9R
+  ETH-USDT TEST    trail: n=  43 evG=-0.083 evN=-0.154 win=14% hold=  34 maxDD=10.9R
+  ETH-USDT TEST    bench: n= 572 evG=+0.082 evN=+0.006 win=40% hold=   4 maxDD=26.5R
+  SOL-USDT TRAIN    trail: n= 131 evG=+0.242 evN=+0.199 win=13% hold=  36 maxDD=10.2R
+  SOL-USDT TRAIN    bench: n=2085 evG=-0.021 evN=-0.065 win=37% hold=   4 maxDD=139.2R
+  SOL-USDT TEST    trail: n=  31 evG=-0.144 evN=-0.207 win=16% hold=  36 maxDD=6.8R
+  SOL-USDT TEST    bench: n= 596 evG=+0.018 evN=-0.047 win=36% hold=   4 maxDD=37.0R
+  XRP-USDT TRAIN    trail: n=  27 evG=-0.368 evN=-0.418 win=4% hold=  16 maxDD=10.9R
+  XRP-USDT TRAIN    bench: n= 598 evG=-0.025 evN=-0.082 win=33% hold=   4 maxDD=51.4R
+  XRP-USDT TEST    trail: n=  19 evG=+1.738 evN=+1.660 win=16% hold=  30 maxDD=4.5R
+  XRP-USDT TEST    bench: n= 458 evG=+0.004 evN=-0.072 win=33% hold=   4 maxDD=40.9R
+ DOGE-USDT TRAIN    trail: n= 120 evG=-0.141 evN=-0.181 win=8% hold=  21 maxDD=27.8R
+ DOGE-USDT TRAIN    bench: n=2097 evG=-0.034 evN=-0.075 win=35% hold=   4 maxDD=164.0R
+ DOGE-USDT TEST    trail: n=  62 evG=+0.325 evN=+0.247 win=6% hold=  14 maxDD=23.4R
+ DOGE-USDT TEST    bench: n= 581 evG=+0.019 evN=-0.045 win=38% hold=   4 maxDD=37.2R
+ AVAX-USDT TRAIN    trail: n= 161 evG=+0.075 evN=+0.035 win=15% hold=  28 maxDD=18.1R
+ AVAX-USDT TRAIN    bench: n=2093 evG=-0.024 evN=-0.065 win=36% hold=   4 maxDD=139.1R
+ AVAX-USDT TEST    trail: n=  71 evG=-0.242 evN=-0.300 win=7% hold=  22 maxDD=23.2R
+ AVAX-USDT TEST    bench: n= 573 evG=+0.010 evN=-0.048 win=38% hold=   4 maxDD=35.6R
+ LINK-USDT TRAIN    trail: n=  65 evG=-0.174 evN=-0.225 win=9% hold=  23 maxDD=14.2R
+ LINK-USDT TRAIN    bench: n= 574 evG=+0.011 evN=-0.038 win=40% hold=   4 maxDD=37.8R
+ LINK-USDT TEST    trail: n=  24 evG=-0.213 evN=-0.284 win=4% hold=  17 maxDD=11.8R
+ LINK-USDT TEST    bench: n= 445 evG=+0.034 evN=-0.029 win=39% hold=   4 maxDD=27.2R
+  LTC-USDT TRAIN    trail: n= 144 evG=-0.129 evN=-0.184 win=6% hold=  23 maxDD=26.2R
+  LTC-USDT TRAIN    bench: n=2114 evG=-0.039 evN=-0.091 win=37% hold=   4 maxDD=200.1R
+  LTC-USDT TEST    trail: n=  50 evG=+0.131 evN=+0.055 win=14% hold=  24 maxDD=12.9R
+  LTC-USDT TEST    bench: n= 557 evG=+0.020 evN=-0.059 win=40% hold=   4 maxDD=37.9R
+ NEAR-USDT TRAIN    trail: n= 135 evG=+0.068 evN=+0.032 win=11% hold=  26 maxDD=15.4R
+ NEAR-USDT TRAIN    bench: n=2101 evG=-0.024 evN=-0.060 win=35% hold=   4 maxDD=130.9R
+ NEAR-USDT TEST    trail: n=  58 evG=+0.303 evN=+0.259 win=10% hold=  19 maxDD=11.2R
+ NEAR-USDT TEST    bench: n= 574 evG=+0.043 evN=+0.001 win=34% hold=   4 maxDD=21.3R
+  BNB-USDT TRAIN    trail: n=  25 evG=-0.188 evN=-0.256 win=12% hold=  31 maxDD=6.6R
+  BNB-USDT TRAIN    bench: n= 567 evG=-0.000 evN=-0.072 win=39% hold=   4 maxDD=48.1R
+  BNB-USDT TEST    trail: n=  39 evG=+0.542 evN=+0.426 win=15% hold=  28 maxDD=8.6R
+  BNB-USDT TEST    bench: n= 450 evG=+0.068 evN=-0.032 win=40% hold=   4 maxDD=30.8R
+AVSL cross-entry + immediate AVSL trailing (config 70/345, NORMAL LONG-ONLY FILTER[rsi], tf=1H, assets=10): entry=cross, initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal from bar 1; bench=always-in same orientation; exit=SL|reverse-cross; R=2xATR; LONG-ONLY: short entries skipped, long exits at SL|cross
+  BTC-USDT TRAIN    trail: n=0
+  BTC-USDT TRAIN    bench: n=0
+  BTC-USDT TEST    trail: n=0
+  BTC-USDT TEST    bench: n=0
+  ETH-USDT TRAIN    trail: n=0
+  ETH-USDT TRAIN    bench: n=0
+  ETH-USDT TEST    trail: n=0
+  ETH-USDT TEST    bench: n=0
+  SOL-USDT TRAIN    trail: n=0
+  SOL-USDT TRAIN    bench: n=0
+  SOL-USDT TEST    trail: n=0
+  SOL-USDT TEST    bench: n=0
+  XRP-USDT TRAIN    trail: n=0
+  XRP-USDT TRAIN    bench: n=0
+  XRP-USDT TEST    trail: n=0
+  XRP-USDT TEST    bench: n=0
+ DOGE-USDT TRAIN    trail: n=0
+ DOGE-USDT TRAIN    bench: n=0
+ DOGE-USDT TEST    trail: n=0
+ DOGE-USDT TEST    bench: n=0
+ AVAX-USDT TRAIN    trail: n=0
+ AVAX-USDT TRAIN    bench: n=0
+ AVAX-USDT TEST    trail: n=0
+ AVAX-USDT TEST    bench: n=0
+ LINK-USDT TRAIN    trail: n=0
+ LINK-USDT TRAIN    bench: n=0
+ LINK-USDT TEST    trail: n=0
+ LINK-USDT TEST    bench: n=0
+  LTC-USDT TRAIN    trail: n=0
+  LTC-USDT TRAIN    bench: n=0
+  LTC-USDT TEST    trail: n=0
+  LTC-USDT TEST    bench: n=0
+ NEAR-USDT TRAIN    trail: n=0
+ NEAR-USDT TRAIN    bench: n=0
+ NEAR-USDT TEST    trail: n=0
+ NEAR-USDT TEST    bench: n=0
+  BNB-USDT TRAIN    trail: n=0
+  BNB-USDT TRAIN    bench: n=0
+  BNB-USDT TEST    trail: n=0
+  BNB-USDT TEST    bench: n=0
+AVSL cross-entry + immediate AVSL trailing (config 70/345, NORMAL LONG-ONLY FILTER[adx+rsi+stoch], tf=1H, assets=10): entry=cross, initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal from bar 1; bench=always-in same orientation; exit=SL|reverse-cross; R=2xATR; LONG-ONLY: short entries skipped, long exits at SL|cross
+  BTC-USDT TRAIN    trail: n=0
+  BTC-USDT TRAIN    bench: n=0
+  BTC-USDT TEST    trail: n=0
+  BTC-USDT TEST    bench: n=0
+  ETH-USDT TRAIN    trail: n=0
+  ETH-USDT TRAIN    bench: n=0
+  ETH-USDT TEST    trail: n=0
+  ETH-USDT TEST    bench: n=0
+  SOL-USDT TRAIN    trail: n=0
+  SOL-USDT TRAIN    bench: n=0
+  SOL-USDT TEST    trail: n=0
+  SOL-USDT TEST    bench: n=0
+  XRP-USDT TRAIN    trail: n=0
+  XRP-USDT TRAIN    bench: n=0
+  XRP-USDT TEST    trail: n=0
+  XRP-USDT TEST    bench: n=0
+ DOGE-USDT TRAIN    trail: n=0
+ DOGE-USDT TRAIN    bench: n=0
+ DOGE-USDT TEST    trail: n=0
+ DOGE-USDT TEST    bench: n=0
+ AVAX-USDT TRAIN    trail: n=0
+ AVAX-USDT TRAIN    bench: n=0
+ AVAX-USDT TEST    trail: n=0
+ AVAX-USDT TEST    bench: n=0
+ LINK-USDT TRAIN    trail: n=0
+ LINK-USDT TRAIN    bench: n=0
+ LINK-USDT TEST    trail: n=0
+ LINK-USDT TEST    bench: n=0
+  LTC-USDT TRAIN    trail: n=0
+  LTC-USDT TRAIN    bench: n=0
+  LTC-USDT TEST    trail: n=0
+  LTC-USDT TEST    bench: n=0
+ NEAR-USDT TRAIN    trail: n=0
+ NEAR-USDT TRAIN    bench: n=0
+ NEAR-USDT TEST    trail: n=0
+ NEAR-USDT TEST    bench: n=0
+  BNB-USDT TRAIN    trail: n=0
+  BNB-USDT TRAIN    bench: n=0
+  BNB-USDT TEST    trail: n=0
+  BNB-USDT TEST    bench: n=0
+AVSL cross-entry + immediate AVSL trailing (config 70/345, NORMAL LONG-ONLY FILTER[ob+stoch], tf=1H, assets=10): entry=cross, initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal from bar 1; bench=always-in same orientation; exit=SL|reverse-cross; R=2xATR; LONG-ONLY: short entries skipped, long exits at SL|cross
+  BTC-USDT TRAIN    trail: n=   6 evG=-0.651 evN=-0.743 win=0% hold=  10 maxDD=3.4R
+  BTC-USDT TRAIN    bench: n= 203 evG=-0.041 evN=-0.116 win=44% hold=   3 maxDD=25.6R
+  BTC-USDT TEST    trail: n=0
+  BTC-USDT TEST    bench: n=  15 evG=+0.168 evN=+0.051 win=67% hold=   2 maxDD=2.3R
+  ETH-USDT TRAIN    trail: n=   1 evG=+27.509 evN=+27.449 win=100% hold= 523 maxDD=0.0R
+  ETH-USDT TRAIN    bench: n=  64 evG=-0.009 evN=-0.065 win=52% hold=   3 maxDD=5.3R
+  ETH-USDT TEST    trail: n=   1 evG=-0.101 evN=-0.179 win=0% hold=   1 maxDD=0.0R
+  ETH-USDT TEST    bench: n=  45 evG=+0.088 evN=+0.001 win=56% hold=   3 maxDD=3.0R
+  SOL-USDT TRAIN    trail: n=   1 evG=+0.592 evN=+0.574 win=100% hold=  63 maxDD=0.0R
+  SOL-USDT TRAIN    bench: n=  86 evG=-0.091 evN=-0.136 win=43% hold=   3 maxDD=12.4R
+  SOL-USDT TEST    trail: n=0
+  SOL-USDT TEST    bench: n=0
+  XRP-USDT TRAIN    trail: n=   1 evG=+0.885 evN=+0.852 win=100% hold=  68 maxDD=0.0R
+  XRP-USDT TRAIN    bench: n=  44 evG=+0.006 evN=-0.060 win=45% hold=   3 maxDD=3.5R
+  XRP-USDT TEST    trail: n=0
+  XRP-USDT TEST    bench: n=   6 evG=-0.552 evN=-0.582 win=33% hold=   2 maxDD=2.6R
+ DOGE-USDT TRAIN    trail: n=   3 evG=-0.288 evN=-0.315 win=0% hold=   1 maxDD=0.6R
+ DOGE-USDT TRAIN    bench: n=  86 evG=-0.202 evN=-0.242 win=31% hold=   2 maxDD=22.3R
+ DOGE-USDT TEST    trail: n=0
+ DOGE-USDT TEST    bench: n=0
+ AVAX-USDT TRAIN    trail: n=   7 evG=-0.255 evN=-0.297 win=14% hold=   4 maxDD=2.2R
+ AVAX-USDT TRAIN    bench: n= 120 evG=-0.082 evN=-0.123 win=38% hold=   3 maxDD=15.4R
+ AVAX-USDT TEST    trail: n=0
+ AVAX-USDT TEST    bench: n=0
+ LINK-USDT TRAIN    trail: n=0
+ LINK-USDT TRAIN    bench: n=  21 evG=-0.073 evN=-0.128 win=38% hold=   3 maxDD=4.2R
+ LINK-USDT TEST    trail: n=0
+ LINK-USDT TEST    bench: n=   1 evG=-1.070 evN=-1.112 win=0% hold=   1 maxDD=0.0R
+  LTC-USDT TRAIN    trail: n=   2 evG=-0.255 evN=-0.310 win=0% hold=   2 maxDD=0.4R
+  LTC-USDT TRAIN    bench: n= 110 evG=-0.017 evN=-0.065 win=51% hold=   2 maxDD=9.8R
+  LTC-USDT TEST    trail: n=0
+  LTC-USDT TEST    bench: n=0
+ NEAR-USDT TRAIN    trail: n=   2 evG=-0.558 evN=-0.591 win=0% hold=   4 maxDD=0.4R
+ NEAR-USDT TRAIN    bench: n=  99 evG=-0.054 evN=-0.087 win=46% hold=   2 maxDD=11.8R
+ NEAR-USDT TEST    trail: n=0
+ NEAR-USDT TEST    bench: n=   3 evG=-0.007 evN=-0.026 win=33% hold=   2 maxDD=0.6R
+  BNB-USDT TRAIN    trail: n=   2 evG=-0.510 evN=-0.568 win=0% hold=   2 maxDD=0.1R
+  BNB-USDT TRAIN    bench: n=  26 evG=+0.033 evN=-0.040 win=46% hold=   3 maxDD=1.6R
+  BNB-USDT TEST    trail: n=0
+  BNB-USDT TEST    bench: n=  13 evG=-0.192 evN=-0.271 win=38% hold=   3 maxDD=4.1R
+AVSL cross-entry + immediate AVSL trailing (config 70/345, NORMAL LONG-ONLY FILTER[rsi], tf=1H, assets=10): entry=cross, initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal from bar 1; bench=always-in same orientation; exit=SL|reverse-cross; R=2xATR; LONG-ONLY: short entries skipped, long exits at SL|cross
+  BTC-USDT TRAIN    trail: n= 210 evG=+0.070 evN=-0.012 win=13% hold=  33 maxDD=19.7R
+  BTC-USDT TRAIN    bench: n=1420 evG=+0.062 evN=-0.030 win=39% hold=  12 maxDD=66.6R
+  BTC-USDT TEST    trail: n=  37 evG=+0.757 evN=+0.662 win=8% hold=  23 maxDD=9.7R
+  BTC-USDT TEST    bench: n= 213 evG=-0.004 evN=-0.108 win=38% hold=  12 maxDD=41.2R
+  ETH-USDT TRAIN    trail: n= 226 evG=+0.426 evN=+0.362 win=13% hold=  37 maxDD=14.2R
+  ETH-USDT TRAIN    bench: n=1373 evG=+0.073 evN=+0.006 win=41% hold=  12 maxDD=46.7R
+  ETH-USDT TEST    trail: n=  39 evG=-0.284 evN=-0.356 win=13% hold=  28 maxDD=14.0R
+  ETH-USDT TEST    bench: n= 224 evG=+0.085 evN=+0.011 win=38% hold=  12 maxDD=32.2R
+  SOL-USDT TRAIN    trail: n= 190 evG=+0.166 evN=+0.123 win=12% hold=  25 maxDD=16.8R
+  SOL-USDT TRAIN    bench: n=1129 evG=+0.036 evN=-0.007 win=40% hold=  12 maxDD=59.8R
+  SOL-USDT TEST    trail: n=  18 evG=-0.158 evN=-0.228 win=17% hold=  40 maxDD=3.7R
+  SOL-USDT TEST    bench: n= 176 evG=+0.045 evN=-0.023 win=39% hold=  12 maxDD=28.4R
+  XRP-USDT TRAIN    trail: n=  31 evG=+0.097 evN=+0.044 win=6% hold=  17 maxDD=6.4R
+  XRP-USDT TRAIN    bench: n= 191 evG=-0.002 evN=-0.058 win=40% hold=  12 maxDD=23.8R
+  XRP-USDT TEST    trail: n=  15 evG=+2.380 evN=+2.304 win=20% hold=  38 maxDD=2.6R
+  XRP-USDT TEST    bench: n= 160 evG=+0.010 evN=-0.065 win=32% hold=  12 maxDD=29.9R
+ DOGE-USDT TRAIN    trail: n= 103 evG=+0.106 evN=+0.066 win=11% hold=  26 maxDD=22.4R
+ DOGE-USDT TRAIN    bench: n= 686 evG=-0.035 evN=-0.076 win=38% hold=  12 maxDD=56.8R
+ DOGE-USDT TEST    trail: n=  44 evG=+0.630 evN=+0.552 win=11% hold=  18 maxDD=15.2R
+ DOGE-USDT TEST    bench: n= 191 evG=+0.066 evN=+0.002 win=40% hold=  13 maxDD=29.4R
+ AVAX-USDT TRAIN    trail: n= 119 evG=-0.037 evN=-0.077 win=14% hold=  25 maxDD=28.2R
+ AVAX-USDT TRAIN    bench: n= 689 evG=-0.044 evN=-0.086 win=36% hold=  12 maxDD=63.2R
+ AVAX-USDT TEST    trail: n=  68 evG=-0.205 evN=-0.265 win=7% hold=  22 maxDD=19.9R
+ AVAX-USDT TEST    bench: n= 195 evG=+0.019 evN=-0.039 win=38% hold=  12 maxDD=22.0R
+ LINK-USDT TRAIN    trail: n=  48 evG=-0.114 evN=-0.163 win=10% hold=  28 maxDD=8.1R
+ LINK-USDT TRAIN    bench: n= 194 evG=-0.033 evN=-0.081 win=35% hold=  12 maxDD=41.0R
+ LINK-USDT TEST    trail: n=  25 evG=+0.563 evN=+0.496 win=8% hold=  20 maxDD=9.1R
+ LINK-USDT TEST    bench: n= 165 evG=+0.011 evN=-0.051 win=38% hold=  11 maxDD=23.4R
+  LTC-USDT TRAIN    trail: n= 111 evG=+0.112 evN=+0.058 win=8% hold=  24 maxDD=16.3R
+  LTC-USDT TRAIN    bench: n= 704 evG=-0.023 evN=-0.075 win=38% hold=  12 maxDD=68.2R
+  LTC-USDT TEST    trail: n=  38 evG=+0.120 evN=+0.044 win=11% hold=  22 maxDD=10.7R
+  LTC-USDT TEST    bench: n= 205 evG=-0.020 evN=-0.099 win=34% hold=  12 maxDD=37.8R
+ NEAR-USDT TRAIN    trail: n= 111 evG=+0.132 evN=+0.097 win=12% hold=  26 maxDD=12.3R
+ NEAR-USDT TRAIN    bench: n= 728 evG=-0.038 evN=-0.074 win=38% hold=  12 maxDD=63.7R
+ NEAR-USDT TEST    trail: n=  44 evG=+0.336 evN=+0.290 win=7% hold=  16 maxDD=9.6R
+ NEAR-USDT TEST    bench: n= 197 evG=+0.105 evN=+0.061 win=35% hold=  12 maxDD=18.6R
+  BNB-USDT TRAIN    trail: n=  22 evG=-0.197 evN=-0.264 win=14% hold=  36 maxDD=5.9R
+  BNB-USDT TRAIN    bench: n= 198 evG=-0.085 evN=-0.155 win=39% hold=  12 maxDD=46.9R
+  BNB-USDT TEST    trail: n=  24 evG=+0.912 evN=+0.794 win=17% hold=  37 maxDD=5.9R
+  BNB-USDT TEST    bench: n= 150 evG=+0.108 evN=+0.008 win=39% hold=  13 maxDD=20.0R
+AVSL cross-entry + immediate AVSL trailing (config 70/345, NORMAL LONG-ONLY FILTER[adx+rsi+stoch], tf=1H, assets=10): entry=cross, initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal from bar 1; bench=always-in same orientation; exit=SL|reverse-cross; R=2xATR; LONG-ONLY: short entries skipped, long exits at SL|cross
+  BTC-USDT TRAIN    trail: n=  38 evG=-0.029 evN=-0.105 win=5% hold=  26 maxDD=13.1R
+  BTC-USDT TRAIN    bench: n= 801 evG=-0.007 evN=-0.087 win=37% hold=   2 maxDD=72.1R
+  BTC-USDT TEST    trail: n=   9 evG=+3.662 evN=+3.575 win=11% hold=  38 maxDD=3.4R
+  BTC-USDT TEST    bench: n= 130 evG=+0.107 evN=+0.011 win=36% hold=   2 maxDD=12.5R
+  ETH-USDT TRAIN    trail: n=  44 evG=+0.586 evN=+0.522 win=16% hold=  45 maxDD=11.8R
+  ETH-USDT TRAIN    bench: n= 781 evG=+0.033 evN=-0.026 win=41% hold=   3 maxDD=27.0R
+  ETH-USDT TEST    trail: n=  11 evG=-0.024 evN=-0.092 win=18% hold=  47 maxDD=3.2R
+  ETH-USDT TEST    bench: n= 108 evG=+0.325 evN=+0.249 win=41% hold=   3 maxDD=5.5R
+  SOL-USDT TRAIN    trail: n=  30 evG=+0.561 evN=+0.521 win=23% hold=  49 maxDD=4.9R
+  SOL-USDT TRAIN    bench: n= 652 evG=+0.007 evN=-0.035 win=39% hold=   2 maxDD=38.9R
+  SOL-USDT TEST    trail: n=   4 evG=-0.193 evN=-0.233 win=25% hold=  10 maxDD=0.7R
+  SOL-USDT TEST    bench: n=  82 evG=+0.178 evN=+0.115 win=39% hold=   3 maxDD=4.7R
+  XRP-USDT TRAIN    trail: n=   9 evG=-0.512 evN=-0.555 win=0% hold=  21 maxDD=4.4R
+  XRP-USDT TRAIN    bench: n= 103 evG=+0.053 evN=+0.000 win=41% hold=   2 maxDD=6.5R
+  XRP-USDT TEST    trail: n=   5 evG=+7.487 evN=+7.390 win=40% hold=  63 maxDD=1.1R
+  XRP-USDT TEST    bench: n=  76 evG=+0.251 evN=+0.181 win=46% hold=   2 maxDD=4.9R
+ DOGE-USDT TRAIN    trail: n=  25 evG=-0.419 evN=-0.454 win=8% hold=  23 maxDD=10.8R
+ DOGE-USDT TRAIN    bench: n= 364 evG=-0.009 evN=-0.046 win=36% hold=   2 maxDD=23.8R
+ DOGE-USDT TEST    trail: n=   8 evG=-0.472 evN=-0.547 win=0% hold=  17 maxDD=3.7R
+ DOGE-USDT TEST    bench: n=  82 evG=+0.082 evN=+0.026 win=45% hold=   2 maxDD=3.1R
+ AVAX-USDT TRAIN    trail: n=  19 evG=+0.283 evN=+0.246 win=21% hold=  27 maxDD=5.1R
+ AVAX-USDT TRAIN    bench: n= 383 evG=+0.018 evN=-0.023 win=39% hold=   2 maxDD=12.3R
+ AVAX-USDT TEST    trail: n=  14 evG=-0.531 evN=-0.583 win=0% hold=  15 maxDD=7.5R
+ AVAX-USDT TEST    bench: n=  96 evG=+0.015 evN=-0.041 win=41% hold=   2 maxDD=9.2R
+ LINK-USDT TRAIN    trail: n=   8 evG=-0.380 evN=-0.421 win=12% hold=  35 maxDD=2.6R
+ LINK-USDT TRAIN    bench: n=  90 evG=+0.042 evN=-0.005 win=41% hold=   2 maxDD=6.5R
+ LINK-USDT TEST    trail: n=   2 evG=-0.663 evN=-0.720 win=0% hold=   3 maxDD=1.0R
+ LINK-USDT TEST    bench: n=  70 evG=+0.200 evN=+0.138 win=46% hold=   3 maxDD=3.8R
+  LTC-USDT TRAIN    trail: n=  15 evG=+0.179 evN=+0.122 win=13% hold=  35 maxDD=2.9R
+  LTC-USDT TRAIN    bench: n= 343 evG=+0.019 evN=-0.030 win=38% hold=   2 maxDD=15.5R
+  LTC-USDT TEST    trail: n=   3 evG=+4.308 evN=+4.218 win=33% hold=  30 maxDD=0.4R
+  LTC-USDT TEST    bench: n=  90 evG=+0.018 evN=-0.059 win=39% hold=   2 maxDD=8.3R
+ NEAR-USDT TRAIN    trail: n=  19 evG=+0.415 evN=+0.383 win=26% hold=  39 maxDD=2.8R
+ NEAR-USDT TRAIN    bench: n= 361 evG=+0.004 evN=-0.032 win=42% hold=   3 maxDD=20.1R
+ NEAR-USDT TEST    trail: n=   9 evG=+0.252 evN=+0.213 win=11% hold=  33 maxDD=2.1R
+ NEAR-USDT TEST    bench: n= 111 evG=+0.144 evN=+0.104 win=42% hold=   3 maxDD=4.7R
+  BNB-USDT TRAIN    trail: n=   5 evG=+0.685 evN=+0.611 win=60% hold= 125 maxDD=0.9R
+  BNB-USDT TRAIN    bench: n=  97 evG=-0.048 evN=-0.120 win=40% hold=   2 maxDD=15.1R
+  BNB-USDT TEST    trail: n=   4 evG=-0.237 evN=-0.327 win=0% hold=   4 maxDD=0.7R
+  BNB-USDT TEST    bench: n=  79 evG=+0.108 evN=+0.007 win=43% hold=   3 maxDD=8.2R
+AVSL cross-entry + immediate AVSL trailing (config 70/345, NORMAL LONG-ONLY, tf=1H, assets=10): entry=cross, initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal from bar 1; bench=always-in same orientation; exit=SL|reverse-cross; R=2xATR; LONG-ONLY: short entries skipped, long exits at SL|cross
+  BTC-USDT TRAIN    trail: n= 381 evG=+0.093 evN=+0.009 win=14% hold=  32 maxDD=25.5R
+  BTC-USDT TRAIN    bench: n= 381 evG=+0.354 evN=+0.269 win=18% hold=  50 maxDD=24.9R
+  BTC-USDT TEST    trail: n=  59 evG=+0.637 evN=+0.548 win=10% hold=  41 maxDD=7.5R
+  BTC-USDT TEST    bench: n=  59 evG=+0.538 evN=+0.449 win=8% hold=  47 maxDD=11.8R
+  ETH-USDT TRAIN    trail: n= 404 evG=+0.324 evN=+0.259 win=11% hold=  31 maxDD=23.1R
+  ETH-USDT TRAIN    bench: n= 404 evG=+0.235 evN=+0.170 win=11% hold=  46 maxDD=31.6R
+  ETH-USDT TEST    trail: n=  63 evG=-0.154 evN=-0.227 win=11% hold=  27 maxDD=15.9R
+  ETH-USDT TEST    bench: n=  63 evG=+0.273 evN=+0.200 win=14% hold=  38 maxDD=16.2R
+  SOL-USDT TRAIN    trail: n= 433 evG=+0.100 evN=+0.060 win=12% hold=  28 maxDD=37.0R
+  SOL-USDT TRAIN    bench: n= 433 evG=+0.225 evN=+0.184 win=15% hold=  45 maxDD=27.6R
+  SOL-USDT TEST    trail: n=  48 evG=-0.128 evN=-0.193 win=15% hold=  31 maxDD=9.1R
+  SOL-USDT TEST    bench: n=  48 evG=+0.593 evN=+0.528 win=23% hold=  54 maxDD=6.7R
+  XRP-USDT TRAIN    trail: n=  41 evG=+0.027 evN=-0.030 win=7% hold=  17 maxDD=7.1R
+  XRP-USDT TRAIN    bench: n=  41 evG=-0.081 evN=-0.137 win=10% hold=  45 maxDD=10.8R
+  XRP-USDT TEST    trail: n=  25 evG=+1.259 evN=+1.183 win=12% hold=  29 maxDD=6.5R
+  XRP-USDT TEST    bench: n=  25 evG=+1.102 evN=+1.026 win=12% hold=  44 maxDD=7.5R
+ DOGE-USDT TRAIN    trail: n= 181 evG=+0.104 evN=+0.064 win=10% hold=  26 maxDD=17.6R
+ DOGE-USDT TRAIN    bench: n= 181 evG=+0.230 evN=+0.190 win=13% hold=  43 maxDD=21.8R
+ DOGE-USDT TEST    trail: n=  79 evG=+0.197 evN=+0.121 win=6% hold=  13 maxDD=29.2R
+ DOGE-USDT TEST    bench: n=  79 evG=+0.221 evN=+0.145 win=9% hold=  26 maxDD=27.8R
+ AVAX-USDT TRAIN    trail: n= 224 evG=-0.005 evN=-0.045 win=12% hold=  25 maxDD=28.5R
+ AVAX-USDT TRAIN    bench: n= 224 evG=+0.014 evN=-0.026 win=13% hold=  35 maxDD=36.1R
+ AVAX-USDT TEST    trail: n= 101 evG=-0.232 evN=-0.290 win=6% hold=  20 maxDD=29.8R
+ AVAX-USDT TEST    bench: n= 100 evG=-0.353 evN=-0.412 win=5% hold=  24 maxDD=41.2R
+ LINK-USDT TRAIN    trail: n=  80 evG=-0.165 evN=-0.217 win=10% hold=  22 maxDD=17.0R
+ LINK-USDT TRAIN    bench: n=  80 evG=-0.304 evN=-0.357 win=11% hold=  30 maxDD=27.7R
+ LINK-USDT TEST    trail: n=  36 evG=+0.645 evN=+0.577 win=14% hold=  40 maxDD=9.2R
+ LINK-USDT TEST    bench: n=  36 evG=+0.633 evN=+0.565 win=17% hold=  49 maxDD=9.9R
+  LTC-USDT TRAIN    trail: n= 207 evG=+0.002 evN=-0.053 win=8% hold=  22 maxDD=21.8R
+  LTC-USDT TRAIN    bench: n= 207 evG=-0.041 evN=-0.095 win=13% hold=  37 maxDD=31.0R
+  LTC-USDT TEST    trail: n=  69 evG=+0.043 evN=-0.032 win=13% hold=  26 maxDD=16.5R
+  LTC-USDT TEST    bench: n=  68 evG=-0.047 evN=-0.122 win=15% hold=  38 maxDD=17.0R
+ NEAR-USDT TRAIN    trail: n= 190 evG=+0.101 evN=+0.065 win=11% hold=  25 maxDD=17.0R
+ NEAR-USDT TRAIN    bench: n= 190 evG=+0.088 evN=+0.053 win=13% hold=  40 maxDD=17.2R
+ NEAR-USDT TEST    trail: n=  83 evG=+0.260 evN=+0.216 win=10% hold=  18 maxDD=18.6R
+ NEAR-USDT TEST    bench: n=  82 evG=+0.117 evN=+0.072 win=12% hold=  23 maxDD=23.2R
+  BNB-USDT TRAIN    trail: n=  31 evG=-0.210 evN=-0.277 win=10% hold=  28 maxDD=8.2R
+  BNB-USDT TRAIN    bench: n=  31 evG=-0.065 evN=-0.132 win=13% hold=  58 maxDD=9.3R
+  BNB-USDT TEST    trail: n=  47 evG=+0.390 evN=+0.274 win=13% hold=  26 maxDD=10.6R
+  BNB-USDT TEST    bench: n=  47 evG=+0.486 evN=+0.370 win=15% hold=  37 maxDD=11.7R
