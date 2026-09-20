@@ -1427,3 +1427,36 @@ VERDICT UNCHANGED but now airtight: stage-D EV = -0.03..-0.11R ~=
 -costs in every configuration; no edge; RETIRED.  TODO: full panel
 rebuild with the builder guard, then re-run D.8+ experiments before
 trusting any historical number.
+
+## D.14: funding carry feasibility check (post-D new hypothesis)
+
+Delta-neutral carry screen (`scripts/d14_funding_carry.py`,
+`runs/d14_funding_carry.json`): short perps with positive funding /
+long with negative (spot leg hedges price risk; PnL = collected
+funding).  29 OKX USDT perps, daily funding = sum of 3 settlements,
+signal = trailing 3-day mean, daily top-3/bottom-3 equal weight,
+0.3% round-trip cost per new position (perp taker 2x + spot leg).
+
+New infra: `fetch_funding_history()` in `engine/marketdata/okx_fetch.py`
+(OKX /public/funding-rate-history; NOTE: needs SWAP instIds, returns
+dict rows, and only serves ~3 months of history).
+
+Result (Jun 15 - Sep 15 2026, 96 days):
+
+    gross_daily_mean_bp        1.61   (+5.9%/yr)
+    gross_daily_sharpe         27.5   (hit rate 0.97 - carry persists)
+    avg_daily_cost_bp         10.48   (2.1 new positions/day x 0.3% / 6)
+    net_annualized            -0.324
+    net_daily_sharpe          -30.3
+
+Reading: the funding edge is real and highly persistent, but tiny
+(1.6 bp/day) while a daily-rebalanced top-3 book pays 10.5 bp/day in
+turnover costs.  Breakeven needs ~1 week average holding at taker
+costs (0.3% / 7d = 4.3 bp/day still > gross) - the steady-carry
+version does NOT pass the net-of-cost pre-condition on this window.
+
+Caveats: 96 days only (OKX history limit), a calm low-funding regime,
+29 assets, taker costs.  An event-driven variant (enter only on
+funding spikes > hurdle, hold until normalization) is untested and
+is a different strategy.  Steady funding carry: NO-GO for now.
+

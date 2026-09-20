@@ -19,6 +19,7 @@ import polars as pl
 BASE_URL = "https://www.okx.com/api/v5"
 _PAGE_SLEEP = 0.1  # OKX allows ~20 history-candles requests / 2 s
 _CHECKPOINT_BARS = 5_000  # flush the cache every N fetched bars
+_FUNDING_PAGE_SLEEP = 0.15  # /public/funding-rate-history rate limit
 
 
 def _rows_to_df(
@@ -164,6 +165,76 @@ def fetch_candles(
 
     df = _rows_to_df(rows, cached_df)
     df = df.tail(max_bars)
+    if cache is not None:
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        df.write_parquet(cache)
+    return df
+
+
+def fetch_funding_history(
+    inst_id: str,
+    max_records: int = 2_000,
+    cache_dir: str | Path | None = None,
+) -> pl.DataFrame:
+    """Fetch funding-rate settlement history for a OKX perp.
+
+    Endpoint: ``/public/funding-rate-history`` (public, no keys),
+    100 records per page, paginated backwards via the ``after``
+    cursor (``fundingTime`` of the oldest record so far).
+
+    Args:
+        inst_id: OKX instrument id, e.g. ``BTC-USDT`` (USDT perp).
+        max_records: Stop once this many records are collected.
+        cache_dir: Optional directory; cached as
+            ``funding_<inst_id>.parquet`` and reused on reruns.
+
+    Returns:
+        Polars DataFrame sorted by ``ts`` ascending with columns
+        ``ts, rate`` (``ts`` = settlement time ms int64, ``rate`` =
+        funding rate per settlement, float64; positive = longs pay
+        shorts).
+
+    """
+    cache: Path | None = (
+        Path(cache_dir) / f"funding_{inst_id}.parquet" if cache_dir else None
+    )
+    if cache is not None and cache.exists():
+        # OKX /public/funding-rate-history only serves the most recent
+        # ~3 months (~284 settlements), so a cache can never reach
+        # max_records; reuse it as-is instead of refetching.
+        return pl.read_parquet(cache)
+    rows: list[tuple[int, float]] = []
+    cursor: str | None = None
+    while len(rows) < max_records:
+        params: dict[str, str] = {"instId": inst_id, "limit": "100"}
+        if cursor is not None:
+            params["after"] = cursor
+        page = _get("/public/funding-rate-history", params)
+        if not page:
+            break
+        for row in page:
+            # dict form: {instId, fundingRate, realizedRate, fundingTime,
+            # method}; list form: [instId, fundingRate, realizedRate,
+            # fundingTime, method]
+            if isinstance(row, dict):
+                rows.append((int(row["fundingTime"]),
+                             float(row["fundingRate"])))
+            else:
+                rows.append((int(row[3]), float(row[1])))
+        oldest = (page[-1]["fundingTime"]
+                  if isinstance(page[-1], dict) else page[-1][3])
+        if oldest == cursor:
+            break
+        cursor = oldest
+        time.sleep(_FUNDING_PAGE_SLEEP)
+    if not rows:
+        raise RuntimeError(f"no funding history returned for {inst_id}")
+    df = (
+        pl.DataFrame(rows, schema={"ts": pl.Int64, "rate": pl.Float64},
+                     orient="row")
+        .unique(subset="ts", keep="first")
+        .sort("ts")
+    )
     if cache is not None:
         cache.parent.mkdir(parents=True, exist_ok=True)
         df.write_parquet(cache)
