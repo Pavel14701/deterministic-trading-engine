@@ -1792,4 +1792,26 @@ not testable as posed; the real knob is the confirmation depth
 Retest delay did not shift: break->retest med 5, p90 23 - cw=36 now
 covers p90 with margin (in-sample p90 was censored at the window).
 
+Train-fold diagnostics, step 1 - delay curve (runs/ob_delay_curve.log,
+engine/experiments/ob_delay_curve.py; pre-registered buckets, TPs
+{3,4}R; train = folds 0-3 + 7d embargo, test = folds 4-6 held out;
+gross R, taker NOT included):
+
+  delay      TRAIN n  EV3R/win      EV4R/win | TEST n  EV3R/win     EV4R/win
+  [0,5)          157  -0.012/31.8%  -0.016/29.9% |  93  -0.115/32.3%  -0.101/32.3%
+  [5,10)          60  +0.229/40.0%  +0.425/40.0% |  31  +0.242/35.5%  +0.198/32.3%
+  [10,20)         73  +0.028/38.4%  -0.066/35.6% |  31  +0.123/32.3%  +0.252/32.3%
+  [20,36)         64  -0.104/31.2%  -0.178/29.7% |  24  +0.211/50.0%  +0.058/50.0%
+  pooled         354  +0.020/34.5%  +0.019/32.8% | 179  +0.032/35.2%  +0.033/34.6%
+
+The [5,10) bucket passes the +0.03R criterion on BOTH TPs on train
+AND confirms on held-out test at both TPs (+0.24/+0.20).  Fast-retest
+zones (5-10 bars after break) carry the whole edge; immediate retests
+(<5, the same impulse returning) and stale ones (20+) are a drag.
+Caveats: test n=31 -> per-trade std gives SE ~0.27R (t ~ 1.5 pooled
+n=91); 8 cells were scanned on train - the [5,10)x4R +0.425 cell is
+inflated by selection, trust the cross-segment consistency instead.
+Gross target (+0.10R) reached by the cut alone: delay in [5,10) -
+proceed to lookback calibration and TP grid, then maker model.
+
 
