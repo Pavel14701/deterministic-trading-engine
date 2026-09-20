@@ -59,15 +59,15 @@ def maker_sim(
             r = sign * (sl * (1 - sign * GEN_SLIP) - fill) / risk - cost_r
             gap = GAP * atr / risk
             xtr = (X_MULT - 1) * GEN_SLIP * abs(sl) / risk
-            return r - pe - xtr - gap
+            return float(r - pe - xtr - gap)
         if ht:
             r = sign * (tp - fill) / risk - cost_r
-            return r - pe
+            return float(r - pe)
         if held == HOLD - 1:
             px = c[j] * (1 - sign * GEN_SLIP)
             r = sign * (px - fill) / risk - cost_r
             xtr = (X_MULT - 1) * GEN_SLIP * abs(px) / risk
-            return r - pe - xtr
+            return float(r - pe - xtr)
     return np.nan
 
 
@@ -99,14 +99,14 @@ def market_sim(
             r = sign * (sl * (1 - sign * GEN_SLIP) - fill) / risk - cost_r
             gap = GAP * atr / risk
             xtr = (X_MULT - 1) * GEN_SLIP * abs(sl) / risk
-            return r - pe - xtr - gap
+            return float(r - pe - xtr - gap)
         if ht:
             r = sign * (tp - fill) / risk - cost_r
-            return r - pe
+            return float(r - pe)
         if held == HOLD - 1:
             px = c[j] * (1 - sign * GEN_SLIP)
             r = sign * (px - fill) / risk - cost_r
             xtr = (X_MULT - 1) * GEN_SLIP * abs(px) / risk
-            return r - pe - xtr
+            return float(r - pe - xtr)
     return np.nan
 

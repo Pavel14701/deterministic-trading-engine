@@ -2,7 +2,7 @@
 
 Tags every collected test with the marker of its owning package so
 ``-m engine`` / ``-m ta`` work from the repo root.  The research suite
-lives in ``tests/`` (package ``engine``); ``ta/`` is vendored and
+lives in ``engine/tests/`` (package ``engine``); ``ta/`` is vendored and
 excluded from the default run (one known upstream failure, see
 legacy/MANIFEST.md).
 """
@@ -18,7 +18,6 @@ def pytest_collection_modifyitems(items) -> None:
     """Tag every test with the marker of its owning package."""
     root = pathlib.Path(__file__).resolve().parent
     services = {
-        "tests": "engine",
         "engine": "engine",
         "ta": "ta",
         "dsl": "dsl",

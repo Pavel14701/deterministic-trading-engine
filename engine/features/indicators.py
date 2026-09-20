@@ -168,7 +168,9 @@ def compute_ob_distances(
         ob for ob in order_blocks if ob.block_type.lower() == "demand"
     ]
 
-    def _update_distances(blocks, target_array):
+    def _update_distances(
+        blocks: list, target_array: np.ndarray
+    ) -> None:
         """Fill ``target_array`` with min distance to any block."""
         for ob in blocks:
             start = max(0, ob.start_idx)
@@ -181,7 +183,7 @@ def compute_ob_distances(
                 target_array[start:end], dist, out=target_array[start:end]
             )
 
-    def _update_zone_flags(blocks):
+    def _update_zone_flags(blocks: list) -> None:
         """Set ``is_in_zone`` where close is inside an active zone."""
         for ob in blocks:
             start = max(0, ob.start_idx)
@@ -195,7 +197,7 @@ def compute_ob_distances(
                 is_in_zone[start:end], inside.astype(np.float32)
             )
 
-    def _update_strongest(blocks):
+    def _update_strongest(blocks: list) -> None:
         """Track distance to the strongest block active at each bar."""
         for ob in blocks:
             start = max(0, ob.start_idx)

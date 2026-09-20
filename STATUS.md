@@ -1,7 +1,24 @@
 # STATUS — what is implemented vs what is needed
 
 Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done · ⬜ not started ·
-⬜=spec only. Full per-task detail: `dev_docs/tz/TZ-00-roadmap.md`.
+⬜=spec only. Full per-task detail: `legacy/dev_docs/tz/TZ-00-roadmap.md` (archived).
+
+## 2026-09-20 — tests co-located in engine/, CI subordinated to the layout
+
+- `tests/` -> `engine/tests/`: the unit suite lives inside the package
+  it tests (git mv, history preserved).  Depth-dependent paths updated
+  (config yaml lookup, ob-pipeline sys.path bootstrap).  dsl/tests
+  stays in its own package by design.
+- CI now follows the layout exactly: `ruff check engine dsl` (tests are
+  inside engine/), `mypy engine` covers the whole package including
+  tests, `pytest` runs on `testpaths` from pyproject (engine/tests +
+  dsl/tests).  The dead `[tool.mypy-engine]` section (never read by
+  mypy) is gone; the strict flags now actually apply via `[tool.mypy]`
+  with `ignore_errors` overrides for engine.experiments/.datasets/
+  .tests (unannotated by design).
+- Root `conftest.py` marker map updated (`-m engine` works on the new
+  path); pytest `testpaths` and ruff test ignores generalized to
+  `**/tests/**`.
 
 ## 2026-09-20 — engine restructure: subpackages, no scripts/, no ID naming
 
@@ -26,7 +43,8 @@ Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done ·
   scripts).
 - d-naming scrubbed from code: `ENCODING_D13` -> `ENCODING_ZEROED`,
   `ENCODING_D8B` -> `ENCODING_NATIVE`, docstrings/comments rewritten
-  without D.NN experiment IDs (history stays here and in dev_docs).
+  without D.NN experiment IDs (history stays here; archived specs moved
+  to `legacy/dev_docs/`).
 - Encodings renamed to names again: ENCODING_ZEROED (float32,
   NaN/inf->0) and ENCODING_NATIVE (float64, NaN kept).
 - Gates: pytest 327 passed; ruff clean on engine+tests+dsl (research-
@@ -81,7 +99,7 @@ Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done ·
    the transformer is the best *classifier* (acc 0.719 / F1 0.710) but all models lose
    with costs; **baseline gate not passed** (keeps the live contour closed, TZ-00 §5).
    Improvement criteria + next attempts (incl. DSL indicator-config search):
-   `dev_docs/ai_baseline_report.md`.
+   `legacy/dev_docs/ai_baseline_report.md`.
 4. **pass@1 ≥ 70%** (RAG criterion) — implemented, not measured on a live LLM.
 5. **OKX trading contour (TZ-15)** — public market data is live (REST + WS, verified
    against the real venue); private channels, order placement and algo SL/TP stay
@@ -166,7 +184,7 @@ uv run python scripts/backtest.py --data data/okx21 --model runs/okx21/best.pt \
 4. TZ-09 finish: live RabbitMQ, TLS/tokens, lag metrics
 5. TZ-04/TZ-06 on real data: SIV run, training, baseline gate; OB batching, <5 ms —
    **first training+backtest done, gate not passed**; iterate per
-   `dev_docs/ai_baseline_report.md` (thresholds, costs, horizon, DSL-config search)
+   `legacy/dev_docs/ai_baseline_report.md` (thresholds, costs, horizon, DSL-config search)
 6. TZ-12 final: ±10% reruns, TA-Lib CI job
 7. TZ-15 finish: private WS channels + order placement (after baseline gate), algo SL/TP, PG `InstrumentMap`
 

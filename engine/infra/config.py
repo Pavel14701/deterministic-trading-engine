@@ -116,7 +116,7 @@ class AIConfig:
     compute: ComputeConfig = field(default_factory=ComputeConfig)
 
 
-def _build(cls: type, data: dict[str, Any] | None):
+def _build(cls: type, data: dict[str, Any] | None) -> Any:
     """Create dataclass ``cls`` from dict, ignoring unknown keys."""
     if not data:
         return cls()

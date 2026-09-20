@@ -45,7 +45,7 @@ Usage::
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 
 import numpy as np
 import polars as pl
@@ -120,7 +120,7 @@ class ColumnProvider:
             return None
         return self._extra["ts"].to_numpy().astype(np.int64)
 
-    def resolver(self, bar_idx: int):
+    def resolver(self, bar_idx: int) -> Callable[..., float]:
         """Return a resolver closure bound to ``bar_idx``."""
 
         def resolve(

@@ -97,7 +97,7 @@ def test_shipped_yaml_equals_dataclass_defaults():
     the effective configuration, so every section must compare exactly.
 
     """
-    repo_yaml = Path(__file__).resolve().parents[3] / "configs" / "engine.yaml"
+    repo_yaml = Path(__file__).resolve().parents[4] / "configs" / "engine.yaml"
     if not repo_yaml.exists():
         pytest.skip("configs/engine.yaml not present")
     cfg = load_config(repo_yaml)

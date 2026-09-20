@@ -12,13 +12,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
       - run: uv sync --all-packages
-      - name: Lint (library, tests, dsl)
-        # scripts/ keeps its research-grade style; only F-class is enforced:
-        # real bugs (undefined names, syntax) block, style does not.
-        run: uv run ruff check engine tests dsl
-      - name: Lint (scripts, F-class only)
-        run: uv run ruff check scripts --select F,E9
+      - name: Lint (library incl. tests, dsl)
+        # Research-grade zones (engine/experiments, engine/datasets) carry
+        # explicit per-file-ignores in pyproject: real bugs block, style
+        # pedantry does not.
+        run: uv run ruff check engine dsl
       - name: Type check
         run: uv run mypy engine
       - name: Tests
-        run: uv run pytest tests dsl/tests
+        run: uv run pytest

@@ -10,6 +10,16 @@ STATUS.md). Live surface after cleanup: `ai/` (library), `scripts/`
 (research pipeline), `tests/`, vendored `ta/`, the minimal root `dsl/`
 subset (imported by `ta/src/provider.py`), `data/`, `runs/`.
 
+## dev_docs/ (archived 2026-09-20)
+
+The design docs of the former monorepo and the research stage: TZ-00
+(roadmap) through TZ-15 (OKX API events), the indicator baseline
+report (`ai_baseline_report.md` - still the canonical reference for
+indicator default params, cited from `ta/src/provider.py`), the quant
+checklist, statistics/strategy notes, testing conventions. Nothing in
+`engine/` or `dsl/` imports from here; `legacy/dev_docs/tz/` remains
+the spec-of-record for anything not yet re-derived in STATUS.md.
+
 ## packages/
 
 | package | was | why dead | revival path |
@@ -100,3 +110,11 @@ path (`testpaths = ["tests"]`).
   onnxruntime-directml) removed from `ai/pyproject.toml` (torch kept for
   matrix_2x2). `configs/ai.yaml` restored after being dropped in v1
   (live builders need `load_config(risk_profile=...)`).
+
+## Third pass (restructure v3, 2026-09-20)
+
+- `ai/` -> `engine/` decomposed into functional subpackages; research
+  `scripts/` dissolved into `engine/experiments/` (d-prefixes dropped);
+  dataset builders -> `engine/datasets/`. See STATUS.md 2026-09-20.
+- `dev_docs/` archived here (section above) - the repo root now carries
+  README.md + STATUS.md only.
