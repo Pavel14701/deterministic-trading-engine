@@ -2165,4 +2165,21 @@ the summary: the AVSL(70,345) line carries mild trend exposure
 (beta), no tradable alpha at 15m taker costs.  Pivot: funding
 carry recon.
 
+Combined arm (user-requested, runs/avsl_trail_norm.log /
+avsl_trail_rev.log): cross-entry + initSL=2xATR14 + IMMEDIATE
+AVSL trailing (no activation gate; buffer 0.3ATR, monotonic),
+normal AND reversed orientations, bench=always-in same orientation.
+NORMAL trail vs bench, train EV: better on 6/10 but only XRP
+clears +0.05R (+0.235 vs +0.183); NEAR +0.038; on test XRP
++0.183 vs +0.050 and NEAR +0.096 vs +0.005 do replicate, but 2/10
+marginal passes are null-consistent (cf. OB bootstrap: asset
+pattern coin flip at these sizes).  REVERSED trail: gross positive
+9/10 train (fade + tight trail, win 40-46%, hold ~20 bars) but
+below costs; net negative essentially everywhere, test 6/10.
+DD: trail < bench nearly everywhere by construction (tighter
+stops, smaller exposure), EV drops with it.
+VERDICT: unchanged - no orientation/exit combo produces EV > bench
++ 0.05R robustly across assets.  XRP/NEAR flagged only as the
+least-uninteresting cases; not actionable.  Track stays CLOSED.
+
 

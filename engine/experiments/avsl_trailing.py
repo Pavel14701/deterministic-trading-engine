@@ -18,6 +18,8 @@ Usage:  uv run python -m engine.experiments.avsl_trailing
 
 from __future__ import annotations
 
+import sys
+
 from pathlib import Path
 
 import numpy as np
@@ -44,10 +46,12 @@ def _active(variant, t, t0, cp, entry, line, sign, risk):
         return sign * (cp[t] - entry) >= risk
     if variant == 3:
         return sign * (line[t] - entry) > 0
+    if variant == 4:
+        return True  # immediate trailing, initial SL is ATR-based
     return False
 
 
-def _run_arm(cp, lp, hp, ts, atr, line, up, dn, lo, hi, variant):
+def _run_arm(cp, lp, hp, ts, atr, line, up, dn, lo, hi, variant, rev=False):
     n = len(cp)
     crosses = np.nonzero(up | dn)[0] + 1
     trades = []  # (pnl_gross_r, fee_r, hold_bars)
@@ -62,7 +66,7 @@ def _run_arm(cp, lp, hp, ts, atr, line, up, dn, lo, hi, variant):
         t0 = int(crosses[i])
         if ts[t0] >= hi or t0 >= n - 2:
             break
-        side = bool(up[t0 - 1])  # long if up-cross
+        side = bool(up[t0 - 1]) != rev  # rev flips entry orientation
         sign = 1.0 if side else -1.0
         entry = cp[t0]
         risk = K_ATR * atr[t0]
@@ -152,10 +156,12 @@ def _fmt(s: dict) -> str:
 
 
 def run() -> None:
+    rev = len(sys.argv) > 1 and sys.argv[1] == "rev"
+    tag = "REVERSED" if rev else "NORMAL"
     print(
-        "AVSL trailing (pre-reg): entry=cross, initSL=2xATR14, "
-        "trail=AVSL-0.3ATR monotonic causal; v1=time N=10, "
-        "v2=profit 1R, v3=AVSL>entry; bench=always-in; "
+        f"AVSL cross-entry + immediate AVSL trailing (config 70/345, "
+        f"{tag}): entry=cross, initSL=2xATR14, trail=AVSL-0.3ATR "
+        "monotonic causal from bar 1; bench=always-in same orientation; "
         "exit=SL|reverse-cross; R=2xATR",
         flush=True,
     )
@@ -171,13 +177,10 @@ def run() -> None:
             ("TEST", folds[4][0], folds[-1][1]),
         )
         for name, lo, hi in segs:
-            for variant, label in (
-                (1, "v1-time"),
-                (2, "v2-prof"),
-                (3, "v3-avsl"),
-                (0, "bench"),
-            ):
-                s = _run_arm(cp, lp, hp, ts, atr, line, up, dn, lo, hi, variant)
+            for variant, label in ((4, "trail"), (0, "bench")):
+                s = _run_arm(
+                    cp, lp, hp, ts, atr, line, up, dn, lo, hi, variant, rev
+                )
                 print(f"{sym:>10} {name} {label:>8}: {_fmt(s)}", flush=True)
 
 
