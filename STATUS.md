@@ -2366,4 +2366,45 @@ is the same trailing DD-trim/regime story as before; it inherits the
 old verdict (beta overlay) unless a bear-window holdout says
 otherwise.  Do not spend bootstrap hours on clouds.
 
+DONCHIAN BREAKOUT -- PRE-REGISTRATION (before any run; engine/
+experiments/donchian_breakout.py).  Hypothesis: Donchian(20) breakout
++ EMA(200) trend filter + 2xATR(14) stop + Donchian(10) exit gives
+positive net result on 4h crypto on >= 4/6 majors, train AND test.
+Entry long: close > max(high[t-20:t]) AND close > EMA(200) AND
+close > open AND ATR(14) percentile rank within last 500 bars > 0.3.
+Entry short: mirrored (close < min(low,20), close < EMA200, red bar).
+Exit: close < min(low[t-10:t]) OR close < entry - 2xATR(14)
+(long; mirrored for short).  SPEC DEVIATION, declared: the user's
+exit clause 3 ("close < max(exit_price, entry-2xATR)") is degenerate
+-- max of two entry-time constants never rises; the trailing intent
+is already Donchian(10).  Implemented as the two exits above, close-
+based (as written), no intrabar wick trigger.  Also pre-registered:
+no same-bar re-entry after an exit; each segment starts flat; risk
+unit R = 2xATR(14) at entry; costs = actual 2x taker 0.05%/side
+normalized by R (user's flat "0.16R" overstates 4h costs; at 4h
+2xATR ~ 3-4% of price -> ~0.03R).  Sizing is R-normalized, fixed
+fraction 1% is EV-invariant here.  Data: 4H, BTC/ETH/SOL/BNB/XRP/DOGE
+(916d each), warm-up 700 bars.  Split = standard walk-forward: train
+= folds 0-3 (224d), test = folds 4-7 (224d), segments start flat.
+Benchmark: buy-and-hold over the same segment, expressed in R.
+PRIMARY system = both sides (shorts mirrored, per spec); long-only
+reported as secondary.  KILL: <= 2/6 assets with positive total net R
+on test -> close the swing track, go look at funding carry.
+
+DONCHIAN RESULTS (runs/donchian_4h_prereg.log) -- **KILLED**.
+TRAIN: 6/6 positive net R (totR +12..+140, evN +0.13..+0.73/trade) --
+textbook overfit-free train boom.  TEST: 2/6 (SOL +9.0R, BNB +6.0R;
+BTC -6.3R, DOGE -7.3R, XRP -3.6R, ETH -1.9R) -> kill criterion hit
+(<=2/6).  Vs buy-and-hold on test (B&H +5.1R BTC, +5.8R ETH, +6.2R
+SOL, +6.6R BNB, -0.7R XRP, -2.1R DOGE): system loses to B&H on 4/6
+and trails on a 5th.  Long-only secondary: 3/6 positive -- also
+fails >=4/6.  Reads: (1) n_test is small (15-19 trades/asset), so
+the kill itself is low-powered -- the test window may simply lack
+clean ranges-to-trends; (2) the train/test flip with identical rules
+is exactly the regime-dependence the AVSL work kept showing: 4h
+breakout edge, where it exists, is a bull-trend beta, not portable
+alpha; (3) close-based Donchian exit gives back a lot in chop
+(BTC test: 47% win, negative EV).  Per pre-registration: swing/
+Donchian track closed.  Next on the board was funding carry.
+
 
