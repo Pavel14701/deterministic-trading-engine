@@ -65,6 +65,12 @@ def load_asset(d: str, tag: str, cap: float | None):
             & pl.col("r_net").is_not_nan()
             & (pl.col("exit_idx") >= 0)
             & pl.col("risk_unit").is_not_nan()
+            # D.13g interim: drop wrong-side stops (entry gapped through
+            # the stop level; poisoned +1R labels) until panel rebuild
+            & (
+                ((pl.col("side") == "long") & (pl.col("fill_price") > pl.col("sl_price")))
+                | ((pl.col("side") == "short") & (pl.col("fill_price") < pl.col("sl_price")))
+            )
         )
     ).with_columns(
         (0.0025 * pl.col("fill_price") / pl.col("risk_unit")).alias("cost_R")
@@ -220,11 +226,13 @@ def evaluate(d: str, cap: float | None) -> dict:
         mixs = ", ".join(f"{x['reason']}={x['n'] / m.height:.2f}"
                          for x in mix.iter_rows(named=True))
         h01 = m.filter(pl.col("hold") <= 1)
-        r01 = h01["r"].sum() / m["r"].sum() if m["r"].sum() else 0.0
+        tot = m["r"].sum()
+        r01 = (h01["r"].sum() / tot) if tot else 0.0
+        m01 = h01["r"].mean() if h01.height else float("nan")
         print(f"  [{gate}] trades n={m.height} win={win / m.height:.2f} "
               f"hold med={m['hold'].median():.0f}  mix: {mixs}")
         print(f"        hold<=1: n={h01.height} ({h01.height / m.height:.2f})"
-              f"  mean r={h01['r'].mean():+.3f}"
+              f"  mean r={m01:+.3f}"
               f"  EV share={r01:+.2f}", flush=True)
 
     res = {}

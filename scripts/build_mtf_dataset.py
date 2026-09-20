@@ -352,6 +352,18 @@ def _outcome_rows(
                     rows.append(base_row)
                     continue
                 risk_unit = abs(fill - sl_i)
+                if sign * (fill - sl_i) < 0:
+                    # D.13g: wrong-side stop - the entry (next open, with
+                    # slippage) is already BEYOND the stop level, so live
+                    # the stop fires immediately at market: a scratch,
+                    # never a ~+1R win (the old labeling treated the
+                    # stop level as a profit target).  The candidate's
+                    # premise is invalidated between decision and fill:
+                    # mark invalid instead.
+                    base_row["r_net"] = np.nan
+                    base_row["exit_idx"] = -1
+                    rows.append(base_row)
+                    continue
                 if risk_unit < min_risk_atr * atr[i]:
                     # stop sits (almost) at the fill price - e.g. a limit
                     # fill deep in the zone next to an anchor stop: the

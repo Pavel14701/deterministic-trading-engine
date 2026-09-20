@@ -1374,3 +1374,56 @@ was real but ranked entries whose honest net EV is negative.  No
 tuning, live testing, or downstream work on the stage-D gate as-is;
 any restart needs a new entry hypothesis with positive net-of-cost
 panel EV as a precondition.
+
+### D.13g addendum - wrong-side stops: the poison was ALSO in the panel labels
+
+The review pushed on the scratch booking; the data went deeper.
+Empirical checks on the C panel (BTC):
+- `fill_price = open(e+1)*(1+slip)` (confirmed; the earlier 0% match
+  was a too-tight rtol against the slippage factor).
+- **8.7% of rows have the stop on the WRONG side of the fill**
+  (long with sl ABOVE fill): zone:0.5 (614), zone:1.0 (585),
+  anchor:st:0.5 (325).  These are rows where the entry gapped through
+  the stop level before the fill.  The builder's `_simulate_outcome`
+  saw "stop level touched" and booked them as INSTANT WINS:
+  r_net mean +0.935, 100% exit_reason=sl.  The ranker then trained on
+  +0.94R labels and hunted these rows (42% of picks in some cells).
+- Execution semantics: entry and the instant stop fire at the SAME
+  gapped open, so the honest live outcome is a scratch (~-costs), not
+  a win - and also not a "-1.5R": there is no position held through
+  the gap, the fill and the stop execution coincide (the proposed
+  "gap 0.25 ATR => r=-1.25R" criterion assumes a pre-gap entry price
+  that market-at-next-open execution does not provide).
+
+Fixes:
+1. `sim()` gap-through-stop -> immediate scratch in `risk_ref` units
+   (previous commit).
+2. Both dataset builders (`build_mtf_dataset.py`,
+   `build_stop_dataset.py`) now mark wrong-side-stop rows invalid
+   (r_net=nan) - panel rebuild still TODO; interim load-time filter
+   added to d13g/d13c (identical effect for this bug: all other rows'
+   labels are computed with valid geometry).
+
+Final honest numbers, fixed sim + wrong-side filter
+(runs/d13g_ranker_only.json):
+
+    cell          table    free
+    A|cap=None   -0.028   -0.057
+    A|cap=0.15   -0.028   -0.049
+    A|cap=0.1    -0.108   -0.056
+    A|cap=0.075  -0.053   -0.074
+    C|cap=None   -0.062   -0.075
+    C|cap=0.15   -0.043   -0.039
+    C|cap=0.1    -0.084   -0.050
+    C|cap=0.075  -0.077   -0.032
+
+Permutation control on the fixed pipeline (d13c PERMUTE=42):
+A|None -0.032, C|None -0.041, C|0.15 -0.049 - now indistinguishable
+from the honest cells and from zero.  The control finally behaves:
+no structural artifact left.  Composition is sane (hold med 47,
+time-dominated, win 0.4-0.5).
+
+VERDICT UNCHANGED but now airtight: stage-D EV = -0.03..-0.11R ~=
+-costs in every configuration; no edge; RETIRED.  TODO: full panel
+rebuild with the builder guard, then re-run D.8+ experiments before
+trusting any historical number.

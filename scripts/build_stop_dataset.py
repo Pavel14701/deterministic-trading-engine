@@ -215,6 +215,14 @@ def _entry_rows(
             continue
         for target in TARGET_PANEL:
             risk_unit = abs(fill_price - sl_i)
+            if sign * (fill_price - sl_i) < 0:
+                # D.13g: wrong-side stop (entry gapped through the stop
+                # level) - live this is an immediate market scratch, not
+                # a ~+1R win; mark the row invalid instead.
+                rows.append(
+                    feat | {"rule": rule, "target": target, "r_net": np.nan, "exit_idx": -1}
+                )
+                continue
             tp_i = fill_price + sign * target * risk_unit
             r, exit_j, _reason, _exit_px = _simulate_outcome(
                 high,
