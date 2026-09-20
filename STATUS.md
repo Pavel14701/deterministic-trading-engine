@@ -2092,4 +2092,24 @@ is late (3.6d into the move), AVSL stop hugs price (tight risk)
 of AVSL/SMA cross-as-entry are dead; strengthens the B-or-C fork
 (stop-flip exit rule vs closing the track).
 
+Price-cross arm (no SMA; runs/avsl_price_cross.log): entry =
+close crossing avsl(70,345) itself, stop = line at entry, both
+orientations, 10 assets (BTC + 9 holdout), per-asset, train/test
+as protocol.  Result: STRUCTURALLY DEGENERATE, not a fair test.
+- Reverse arm: 0 trades on every asset/segment (100% skipped) BY
+  CONSTRUCTION - at a down-cross close is below the line, so a
+  reverse long has stop above entry: risk < 0 always.
+- Normal arm: at the cross the line IS the price, so risk ~ 0 ->
+  taker round trip = 2*fee*price/risk explodes (net -2.5R BNB-adj
+  to -70R BNB-test); economically undefined, same cost collapse as
+  the unfiltered baseline but worse.
+- Only non-trivial signal: 8R TP gross is positive on 7/10 assets
+  in BOTH train and test (e.g. AVAX +0.22/+0.03, LINK +0.23/+0.23,
+  NEAR +0.08/+0.23) while 3R/5R are ~0/negative - tiny-risk, wide-
+  target lottery asymmetry.  Untestable as taker: cost >> EV.
+Conclusion: any stop tied to the AVSL line AT the cross is
+economically void (risk -> 0).  Sane no-SMA designs are: (a) stop
+= line + min-risk distance filter (bps of price, pre-registered),
+or (b) Path B cross-to-cross flip, MTM, no fixed stop.
+
 
