@@ -1877,4 +1877,33 @@ funding carry.  Negative result is clean: pipeline semantics now
 causal, the fast-retest mechanism timing is real and replicates,
 the profitability does not.
 
+Reopened (scoped): "OB geometry is BTC-specific" hypothesis.
+Phase 0 structural diagnostics (runs/ob_struct_diag.log,
+engine/experiments/ob_struct_diagnostics.py), 10 assets x 15m:
+
+  asset  bars/ATR hl_ar1 hl_acf pv_lag p50/90 ret_p90 rng/ATR vol_ir gap  EV4R
+  BTC      2.51  0.479   1    2 / 9    27     0.87  13.2  ~0  +0.348
+  ETH      2.64  0.442   1    2 / 9    26     0.86  13.3  ~0  +0.178
+  SOL      2.50  0.402   1    2 / 8    24     0.89  10.2  ~0  -0.069
+  BNB      2.45  0.413   1    1 / 8    24     0.87  17.0  ~0  -0.177
+  AVAX     2.40  0.400   1    1 / 6    24     0.88  17.4  ~0  +0.024
+  DOGE     2.53  0.431   1    1 / 6    22     0.88  14.4  ~0  +0.270
+  XRP      2.54  0.414   1    1 / 7    23.4   0.88  11.4  ~0  +0.105
+  LINK     2.46  0.418   1    1 / 7    21     0.86  17.6  ~0  +0.044
+  LTC      2.43  0.405   1    1 / 6    23     0.88  21.4  ~0  -0.155
+  NEAR     2.32  0.375   1    1 / 6    22     0.89  12.1  ~0  -0.119
+
+Spearman vs EV4R/EV6R: half_life_ar1 +0.77/+0.71, bars_per_ATR
++0.72/+0.65, gap_freq -0.66/-0.54 (degenerate metric, all ~0);
+retest_p90, pivot_lag, volume_irreg, spread < 0.4.
+
+Phase-0 criterion met (corr > 0.7) -> Phase 1 allowed.  Caveats:
+metric spread is only 1.1-1.3x (not the hypothesised 2-3x); literal
+half_life_acf spec is degenerate (return ACF < 0.5 at lag 1 always);
+n=10 with noisy EV ranks.  Key structural fact: actual zigzag pivot
+confirmation lag is p50=1-2, p90=6-9 bars - lookback=30 is ~4x the
+real confirmation lag, so the Phase-1 formula (lookback = 1.5 x
+pivot_p90 ~ 9-14, cw = 2 x retest_p90 ~ 42-54) would produce a
+genuinely different configuration, not a cosmetic one.
+
 
