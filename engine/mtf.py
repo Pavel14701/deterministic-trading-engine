@@ -11,6 +11,7 @@ pure function of already-confirmed 1m bars.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import cast
 
 import polars as pl
@@ -133,3 +134,68 @@ def asof_rows(htf: pl.DataFrame, ts: int) -> pl.DataFrame:
 
     """
     return htf.filter(pl.col("known_ts") <= ts)
+
+
+def asof_join_features(
+    base: pl.DataFrame,
+    htf: pl.DataFrame,
+    cols: Sequence[str],
+    prefix: str = "htf_",
+    age_col: str | None = None,
+) -> pl.DataFrame:
+    """Attach HTF columns to a base frame as-of each base ``ts``.
+
+    A base row at ``ts`` sees only HTF bars with ``known_ts <= ts`` -
+    i.e. fully closed bars, the same causality rule as
+    :func:`asof_rows`.  Base rows before the first known HTF bar get
+    nulls; feature values never look into the future by construction.
+
+    Args:
+        base: Base-TF frame with an Int64 epoch-ms ``ts`` column.
+        htf: Frame produced by :func:`resample_ohlcv`.
+        cols: HTF column names to attach.
+        prefix: Name prefix for the attached columns.
+        age_col: Optional name for an Int64 column holding
+            ``ts - known_ts`` (how stale the attached HTF bar is; a
+            legitimate input - the staleness itself is known at
+            decision time).
+
+    Returns:
+        ``base`` sorted by ``ts`` with the attached columns.
+
+    Raises:
+        ValueError: on a missing ``ts``/``known_ts`` column, missing
+            HTF columns, empty/duplicate ``cols``, or name collisions
+            with existing base columns.
+
+    """
+    if "ts" not in base.columns:
+        raise ValueError("base missing required column: ts")
+    if not cols:
+        raise ValueError("cols must not be empty")
+    if len(set(cols)) != len(cols):
+        raise ValueError(f"duplicate cols: {sorted(cols)}")
+    missing = [c for c in cols if c not in htf.columns]
+    if missing:
+        raise ValueError(f"htf missing columns: {missing}")
+    if "known_ts" not in htf.columns:
+        raise ValueError("htf missing required column: known_ts")
+    added = [f"{prefix}{c}" for c in cols]
+    if age_col is not None:
+        added.append(age_col)
+    collide = [c for c in added if c in base.columns]
+    if collide:
+        raise ValueError(f"attached columns already in base: {collide}")
+
+    right = htf.select(
+        [pl.col("known_ts").alias("_known_ts")]
+        + [pl.col(c).alias(f"{prefix}{c}") for c in cols]
+    ).sort("_known_ts")
+    out = base.sort("ts").join_asof(
+        right, left_on="ts", right_on="_known_ts", strategy="backward"
+    )
+    if age_col is not None:
+        out = out.with_columns(
+            (pl.col("ts") - pl.col("_known_ts")).alias(age_col)
+        )
+    return out.drop("_known_ts")

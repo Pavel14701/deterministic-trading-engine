@@ -11,13 +11,13 @@ Config (``MfeMaeSpec``) is a plain serializable dataclass::
 
     spec = MfeMaeSpec(
         signal="let rng = high - low in rng > atr(period=14) "
-               "and close > sma(period=20)",
-        side="long",            # "long" | "short"
-        horizon=24,             # bars to walk forward after the fill
-        entry="next_open",      # "next_open" | "signal_close"
-        atr_period=14,          # normalization ATR (causal, signal bar)
-        sl_atr_mult=1.0,        # R unit = sl_atr_mult * ATR(signal bar)
-        incomplete="partial",   # "partial" | "drop" near series end
+        "and close > sma(period=20)",
+        side="long",  # "long" | "short"
+        horizon=24,  # bars to walk forward after the fill
+        entry="next_open",  # "next_open" | "signal_close"
+        atr_period=14,  # normalization ATR (causal, signal bar)
+        sl_atr_mult=1.0,  # R unit = sl_atr_mult * ATR(signal bar)
+        incomplete="partial",  # "partial" | "drop" near series end
     )
     events = collect_mfe_mae(df, spec)
 
@@ -77,10 +77,13 @@ from typing import Any, Callable
 import numpy as np
 import polars as pl
 
-from dsl import Context, InProcessProvider
-from dsl.exceptions import ProviderError
+from dsl import Context
 from dsl.interpreter import Interpreter
 from dsl.parser import parse
+from engine.dsl_feed import (
+    SeriesCache as _SeriesCache,
+    make_bar_context,
+)
 from engine.features import compute_atr
 
 
@@ -90,22 +93,6 @@ __all__ = (
     "collect_mfe_mae",
     "make_bar_context",
 )
-
-_BAR_COLUMNS = ("open", "high", "low", "close", "volume")
-_COMPUTED_INDICATORS = ("sma", "ema", "rsi", "atr")
-BAR_DSL_MANIFEST: dict[str, Any] = {
-    "indicators": {
-        **{name: {"attributes": []} for name in _BAR_COLUMNS},
-        **{
-            name: {
-                "attributes": ["value"],
-                "parameters": {"period": {"type": "float",
-                                          "default": 14.0}},
-            }
-            for name in _COMPUTED_INDICATORS
-        },
-    }
-}
 
 _SCHEMA: dict[str, Any] = {  # pl.DataType classes (runtime schema)
     "signal_ts": pl.Int64,
@@ -140,8 +127,7 @@ class MfeMaeSpec:
     def __post_init__(self) -> None:
         """Validate enum-ish fields and positive numerics eagerly."""
         if self.exit not in ("horizon", "sl_hit"):
-            raise ValueError(
-                f"exit must be horizon|sl_hit, got {self.exit!r}")
+            raise ValueError(f"exit must be horizon|sl_hit, got {self.exit!r}")
         if self.side not in ("long", "short"):
             raise ValueError(f"side must be long|short, got {self.side!r}")
         if self.entry not in ("next_open", "signal_close"):
@@ -167,127 +153,6 @@ class MfeMaeSpec:
     def from_dict(cls, d: dict[str, Any]) -> "MfeMaeSpec":
         """Rebuild a spec from :meth:`to_dict` output."""
         return cls(**d)
-
-
-class _SeriesCache:
-    """Lazily precomputed causal indicator series for one DataFrame.
-
-    All series are causal, so the value at bar ``j`` depends only on
-    bars ``<= j``; serving ``series[i - offset]`` for a context bound
-    to bar ``i`` is exactly prefix-correct.
-    """
-
-    def __init__(self, df: pl.DataFrame) -> None:
-        missing = [c for c in ("open", "high", "low", "close")
-                   if c not in df.columns]
-        if missing:
-            raise ValueError(f"df missing required columns: {missing}")
-        self.df = df
-        self.arrays: dict[str, np.ndarray] = {
-            "open": df["open"].to_numpy().astype(np.float64),
-            "high": df["high"].to_numpy().astype(np.float64),
-            "low": df["low"].to_numpy().astype(np.float64),
-            "close": df["close"].to_numpy().astype(np.float64),
-        }
-        if "volume" in df.columns:
-            self.arrays["volume"] = (
-                df["volume"].to_numpy().astype(np.float64))
-        self.computed: dict[tuple[str, int], np.ndarray] = {}
-
-    def get(self, indicator: str, params: dict[str, Any]) -> np.ndarray:
-        if indicator in self.arrays:
-            return self.arrays[indicator]
-        period = int(float(params.get("period", 14)))
-        key = (indicator, period)
-        if key not in self.computed:
-            self.computed[key] = self._compute(indicator, period)
-        return self.computed[key]
-
-    def _compute(self, indicator: str, period: int) -> np.ndarray:
-        if period < 1:
-            raise ProviderError(f"period must be >= 1, got {period}")
-        close = self.arrays["close"]
-        if indicator == "atr":
-            return np.asarray(
-                compute_atr(self.df, period=period), dtype=np.float64)
-        if indicator == "sma":
-            # expanding warm-up for t < period, then right-aligned MA
-            csum = np.cumsum(close)
-            out = np.empty_like(close)
-            for t in range(len(close)):
-                if t < period:
-                    out[t] = csum[t] / (t + 1)
-                else:
-                    out[t] = (csum[t] - csum[t - period]) / period
-            return out
-        if indicator == "ema":
-            alpha = 2.0 / (period + 1.0)
-            out = np.empty_like(close)
-            out[0] = close[0]
-            for t in range(1, len(close)):
-                out[t] = alpha * close[t] + (1.0 - alpha) * out[t - 1]
-            return out
-        if indicator == "rsi":
-            return self._rsi(close, period)
-        raise ProviderError(f"unknown computed indicator {indicator!r}")
-
-    @staticmethod
-    def _rsi(close: np.ndarray, period: int) -> np.ndarray:
-        """Wilder RSI with an expanding seed (causal, no NaN warm-up)."""
-        n = len(close)
-        out = np.full(n, 50.0)
-        if n < 2:
-            return out
-        diff = np.diff(close)
-        gain = np.where(diff > 0, diff, 0.0)
-        loss = np.where(diff < 0, -diff, 0.0)
-        cg, cl = np.cumsum(gain), np.cumsum(loss)
-        avg_g = avg_l = 0.0
-        for t in range(1, n):
-            k = t - 1  # number of diffs consumed so far
-            if k < period:
-                avg_g = cg[k] / (k + 1)
-                avg_l = cl[k] / (k + 1)
-            else:
-                avg_g = (avg_g * (period - 1) + gain[k]) / period
-                avg_l = (avg_l * (period - 1) + loss[k]) / period
-            out[t] = 100.0 if avg_l == 0 else 100.0 - 100.0 / (
-                1.0 + avg_g / avg_l)
-        return out
-
-
-def make_bar_context(cache: _SeriesCache, bar_idx: int) -> Context:
-    """Build a DSL ``Context`` bound to bar ``bar_idx``.
-
-    ``name[k]`` resolves to the value at bar ``bar_idx - k``; a
-    reference before the series start yields NaN (comparisons against
-    it are False, so signals stay silent during warm-up) - a signal
-    can therefore never read the future.
-    """
-    n = cache.df.height
-
-    def resolver(
-        indicator: str, params: dict[str, Any],
-        attributes: list[str], offset: int,
-    ) -> float:
-        if attributes and attributes != ["value"]:
-            raise ProviderError(
-                f"unsupported attributes {attributes!r} "
-                f"for indicator {indicator!r}")
-        if indicator == "volume" and "volume" not in cache.arrays:
-            raise ProviderError(
-                "column 'volume' not present in the bar DataFrame")
-        j = bar_idx - int(offset)
-        if j < 0:
-            # warm-up: history before the series start is undefined;
-            # NaN makes comparisons False so the signal stays silent
-            # (config errors like unknown indicators still raise)
-            return float("nan")
-        if j >= n:  # defensive; offsets are non-negative
-            raise ProviderError(f"{indicator}[{offset}] out of range")
-        return float(cache.get(indicator, params)[j])
-
-    return Context([InProcessProvider(BAR_DSL_MANIFEST, resolver)])
 
 
 def collect_mfe_mae(
@@ -325,7 +190,8 @@ def collect_mfe_mae(
     n = df.height
     ts = df["ts"].to_numpy().astype(np.int64)
     atr_ref = np.asarray(
-        compute_atr(df, period=spec.atr_period), dtype=np.float64)
+        compute_atr(df, period=spec.atr_period), dtype=np.float64
+    )
     r_unit = spec.sl_atr_mult
     full_window_end = n - 1
 
@@ -345,7 +211,8 @@ def collect_mfe_mae(
             walk_start = i + 1  # nothing after the close within bar i
         walk_end = min(walk_start + spec.horizon - 1, full_window_end)
         if spec.incomplete == "drop" and (
-                walk_start + spec.horizon - 1 > full_window_end):
+            walk_start + spec.horizon - 1 > full_window_end
+        ):
             continue
         a = float(atr_ref[i])
         if spec.side == "long":
@@ -371,19 +238,21 @@ def collect_mfe_mae(
                 sl_hit = True
                 if spec.exit == "sl_hit":
                     break  # window ends at the stop-touch bar (included)
-        rows.append({
-            "signal_ts": int(ts[i]),
-            "entry_ts": int(ts[entry_idx]),
-            "entry_idx": int(entry_idx),
-            "entry_price": entry_price,
-            "bars_measured": bars_measured,
-            "mfe_abs": mfe,
-            "mae_abs": mae,
-            "mfe_atr": mfe / a,
-            "mae_atr": mae / a,
-            "mfe_r": mfe / (r_unit * a),
-            "mae_r": mae / (r_unit * a),
-            "sl_hit": sl_hit,
-        })
+        rows.append(
+            {
+                "signal_ts": int(ts[i]),
+                "entry_ts": int(ts[entry_idx]),
+                "entry_idx": int(entry_idx),
+                "entry_price": entry_price,
+                "bars_measured": bars_measured,
+                "mfe_abs": mfe,
+                "mae_abs": mae,
+                "mfe_atr": mfe / a,
+                "mae_atr": mae / a,
+                "mfe_r": mfe / (r_unit * a),
+                "mae_r": mae / (r_unit * a),
+                "sl_hit": sl_hit,
+            }
+        )
 
     return pl.DataFrame(rows, schema=_SCHEMA).sort("signal_ts")

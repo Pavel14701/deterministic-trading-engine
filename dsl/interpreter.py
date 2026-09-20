@@ -419,6 +419,30 @@ class Interpreter:
                     f"Cannot evaluate {type(node)} as number"
                 )
 
+    def visit_numeric(self, ast: ASTNode) -> float:
+        """Evaluate an expression as a number (feature-style).
+
+        Arithmetic, indicator and historical accesses keep their
+        numeric value (warm-up NaN propagates); comparison/logical
+        expressions are evaluated signal-style and coerced to
+        1.0 (true) / 0.0 (false).  Genuine evaluation errors
+        (division by zero, unknown indicators) still raise.
+
+        Args:
+            ast: The parsed expression.
+
+        Returns:
+            The numeric feature value.
+
+        Raises:
+            EvaluationError: If the expression cannot be evaluated.
+
+        """
+        try:
+            return float(self._eval_arith_sync(ast))
+        except EvaluationError:
+            return float(bool(self._visit_sync(ast)))
+
     def _eval_params_sync(self, params: dict[str, ASTNode]) -> dict[str, Any]:
         """Evaluate all parameter expressions to numeric values synchronously.
 

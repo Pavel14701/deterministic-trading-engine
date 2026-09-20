@@ -1540,3 +1540,23 @@ Diagnostics on real panels (runs/probe_rel_seeds.log):
     semantically lossy but is the encoding every D.13 verdict was
     produced with - changing it would invalidate all comparisons.
     NaN-native is available via ENCODING_D8B for future families.
+
+## FeatureSpec DSL + MTF as-of adapter
+
+- engine/dsl_feed.py: shared bar-DSL plumbing (SeriesCache,
+  make_bar_context, BAR_DSL_MANIFEST) extracted verbatim from
+  mfe_mae.py; mfe_mae re-exports - one indicator implementation and
+  one causality contract for all bar-level DSL consumers.
+- engine/feature_spec.py: FeatureDef/FeatureSpec (JSON-serializable)
+  + collect_features(df, spec, event_idx) -> per-event Float64
+  matrix.  Numeric feature-style evaluation via the new
+  Interpreter.visit_numeric (arithmetic/historical keep numeric
+  value, warm-up NaN propagates; comparison/logical -> 1.0/0.0).
+  Causal by construction: prefix invariance and future-mutation
+  invariance are pinned by tests.  Fail fast: names/exprs validated
+  at spec construction, event_idx must be sorted/unique/in-range.
+- engine/mtf.py asof_join_features(): HTF columns into a base frame
+  under strict known_ts <= ts (closed bars only), optional age_col
+  (staleness is a legitimate known-at-decision-time input).
+  NOTE: resample_ohlcv buckets align to the epoch - MTF tests must
+  use a grid-aligned base ts (T0Q in tests).
