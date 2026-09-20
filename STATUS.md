@@ -2038,4 +2038,23 @@ Verdict unchanged: EV <= 0 -> filter step next, slow-alignment
 first.  Honest alternative: treat AVSL crosses as what they are
 (stop-flip events) or drop the track.
 
+Bug fixes in ta/src/custom/avs_base.py (pre-validation, no Pine
+cross-check by decision):
+1. CRITICAL _price_v_rolling: window denominator now uses PER-BAR
+   vpc_c[start+j] (Pine parity: src[i]/VPCc[i]/VPR[i] with i the
+   loop index), previously current-bar vpc_c[i] was broadcast over
+   the whole window.
+2. _compute_len_v: banker's round() replaced with half-up
+   floor(x+0.5), matching Pine's round().
+Unit tests added (ta/tests/tests_custom/test_avs.py, 9 tests):
+rolling mean on constant denominators, per-bar-VPCc regression
+(fails on pre-fix code), zero-denominator skip, L=0 passthrough,
+half-up rounding, len_v branches, vpcc clamp.  Full engine suite
+green (236 passed / 2 skipped); ruff clean.
+Fixed-code rerun (stand_div=2.0, runs/avsl_baseline_fixed.log):
+  TRAIN n=990 gross +0.05/-0.01/+0.05; TEST n=260 gross
+  -0.05/-0.02/-0.08 (3/5/8R).  Statistically identical to pre-fix:
+  the VPCc-shift error was small (VPCc moves slowly).  Verdict
+  unchanged: gross ~ 0 -> filters or close.
+
 

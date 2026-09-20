@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 
 from numba import jit
@@ -23,6 +25,10 @@ def _price_v_rolling(
     the window spans from start = max(0, i-L+1) to i inclusive. Values where
     the denominator is zero are ignored (replaced with 0). The result is
     normalised by dividing by L and by 100.
+
+    Each window bar is divided by ITS OWN bar's VPCc (series-indexed,
+    matching the Pine donor: ``src[i] * 1/VPCc[i] * 1/VPR[i]`` with i
+    the loop variable), not by the current bar's VPCc.
 
     Parameters
     ----------
@@ -52,15 +58,17 @@ def _price_v_rolling(
         L = len_v[i]  # noqa: N806
         if L > 0:
             start = max(0, i - L + 1)
-            denom = vpc_c[i] * vpr[start : i + 1]
-            valid = (vpc_c[i] != 0) & (vpr[start : i + 1] != 0)
-            # numba does not support np.divide kwargs (where=, out=):
-            # compute the masked division with an explicit loop
             seg = price[start : i + 1]
             values = np.zeros_like(seg)
+            # per-bar denominator: VPCc and VPR at the WINDOW bar
+            # (Pine: src[i]/VPCc[i]/VPR[i], i = loop index), not the
+            # current bar's VPCc for the whole window.
             for j in range(seg.shape[0]):
-                if valid[j] and denom[j] != 0.0:
-                    values[j] = seg[j] / denom[j]
+                vpcc_j = vpc_c[start + j]
+                vpr_j = vpr[start + j]
+                # exact-zero guard: skip zero denominators, not epsilon
+                if vpcc_j != 0.0 and vpr_j != 0.0:  # noqa: RUF069
+                    values[j] = seg[j] / (vpcc_j * vpr_j)
             out[i] = np.sum(values) / L / 100.0
         else:
             out[i] = price[i]
@@ -76,6 +84,10 @@ def _compute_len_v(vpc: np.ndarray, vpci: np.ndarray) -> np.ndarray:
     Else, if VPC < 0, length = round(abs(VPCI - 3)),
     otherwise length = round(VPCI + 3).
 
+    Rounding is half-up (mathematical), matching Pine's ``round()``
+    (Python's built-in ``round`` is banker's rounding and differs on
+    ``.5`` cases).
+
     Parameters
     ----------
     vpc : np.ndarray, shape (n,), dtype=np.float64
@@ -88,10 +100,6 @@ def _compute_len_v(vpc: np.ndarray, vpci: np.ndarray) -> np.ndarray:
     np.ndarray, shape (n,), dtype=np.int32
         Window length for each index (minimum 1).
 
-    Notes
-    -----
-    Uses Python's round() (bankers' rounding) - standard Python behaviour.
-
     """
     n = len(vpc)
     out = np.empty(n, dtype=np.int32)
@@ -99,9 +107,9 @@ def _compute_len_v(vpc: np.ndarray, vpci: np.ndarray) -> np.ndarray:
         if np.isnan(vpci[i]):
             out[i] = 1
         elif vpc[i] < 0:
-            out[i] = round(abs(vpci[i] - 3))
+            out[i] = math.floor(abs(vpci[i] - 3) + 0.5)
         else:
-            out[i] = round(vpci[i] + 3)
+            out[i] = math.floor(vpci[i] + 3 + 0.5)
     return out
 
 
