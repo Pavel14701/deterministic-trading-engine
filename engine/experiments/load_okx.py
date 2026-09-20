@@ -55,12 +55,16 @@ def run() -> None:
     CACHE.mkdir(parents=True, exist_ok=True)
     for sym in syms:
         for tf in tfs:
-            df = fetch_candles(
-                f"{sym}-USDT",
-                bar=tf,
-                max_bars=MAX_BARS[tf],
-                cache_dir=str(CACHE),
-            )
+            try:
+                df = fetch_candles(
+                    f"{sym}-USDT",
+                    bar=tf,
+                    max_bars=MAX_BARS[tf],
+                    cache_dir=str(CACHE),
+                )
+            except (RuntimeError, Exception) as exc:  # keep the sweep going
+                print(f"{sym} {tf}: FAILED {exc}", flush=True)
+                continue
             print(f"{sym} {tf}: {_stats(df, tf)}", flush=True)
 
 

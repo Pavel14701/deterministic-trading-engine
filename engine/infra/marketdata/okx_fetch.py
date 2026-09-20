@@ -137,6 +137,12 @@ def fetch_candles(
             params["after"] = cursor
         page = _get(endpoint, params)
         if not page:
+            # A transient empty page (rate-limit blips return empty data
+            # with code "0" sometimes) must not be mistaken for the end
+            # of history: re-ask once before concluding.
+            time.sleep(1.5)
+            page = _get(endpoint, params)
+        if not page:
             if endpoint == "/market/candles":
                 endpoint = "/market/history-candles"
                 continue
