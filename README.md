@@ -63,27 +63,24 @@ uv run python -m engine.experiments.maker_entry         # maker-entry study
 
 Every experiment is a library module in `engine/experiments/` — runnable,
 pinned to its data variant / encoding / metrics, writing artifacts into
-`runs/` and logging its verdict in **STATUS.md**:
+`runs/` and logging its verdict in **STATUS.md**. Full catalog with
+per-track status (active / survivor / closed / historical): see
+**`engine/experiments/README.md`**.
 
-| module | question it answers |
-|---|---|
-| `walk_forward_ab` | multi-asset LGBM (B) vs per-asset (A) — the baseline |
-| `cost_cap` | cost-aware row cap + AVSL-off on the WF protocol |
-| `ranker_only` | free ranker gate vs rule-table gate |
-| `feature_family` | DSL feature family A/B vs hand-built features |
-| `funding_carry` | delta-neutral funding carry feasibility |
-| `ablation` / `ablation_diag` | which stack layer carries the edge |
-| `matrix_2x2` | per-asset vs multi-asset × LGBM vs transformer |
-| `nested_cv` | model-selection bias discount |
-| `execution_costs` | optimistic vs pessimistic execution spread |
-| `adaptive_tp` | MFE/MAE-driven take-profit rules |
-| `ranking_baselines` | cost-aware stop-rule ranking head |
-| `portfolio` | portfolio layer on WF trade series |
-| `robustness` | follow-up robustness checks |
-| `joint_rank` | joint ranking over (stop rule × TP target) pairs |
-| `admission_policies` | FCFS vs REPLACE slot policies |
-| `maker_entry` | maker-or-skip vs always-market execution |
-| `ensemble_ab` | ranker ensemble (LGBM + CatBoost + logreg) vs single heads |
+| group | modules | state |
+|---|---|---|
+| **Live tracks** | `funding_carry_v3` (PASS, params frozen); preregs pending implementation: TTF v1 (taker-flow divergence), ProSP v2 (tail-probability portfolio), order-flow collector | one survivor + three pending |
+| **Data loaders** | `load_okx`, `load_yf`, `load_binance` (klines + OI merge-append) | infra, resumable |
+| **Carry & probability** | `funding_carry`, `funding_carry_v2`, `barrier_prob` | closed per prereg |
+| **Entry families** | `avsl_baseline`, `avsl_price_cross`, `avsl_trailing`, `donchian_breakout`, `quattro_donchian` | all closed: gross edge ≈ 0 net of costs |
+| **Order-Block rework** | `ob_raw_ev`, `ob_wf_ev`, `ob_delay_curve`, `ob_holdout_assets`, `ob_ldgrid`, `ob_lookback13`, `ob_lookback_grid`, `ob_struct_diagnostics` | closed: OB-retest track closed per prereg |
+| **Champion stack (historical)** | `walk_forward_ab`, `matrix_2x2`, `nested_cv`, `admission_policies`, `portfolio`, `robustness`, `execution_costs`, `maker_entry`, `cost_cap`, `ranker_only`, `ranking_baselines`, `feature_family`, `joint_rank`, `adaptive_tp`, `ablation`, `ablation_diag`, `regime_diag` | 🏛️ pre-D.13g artifacts INVALIDATED (sim gap-through-stop artifact); protocol designs remain the standard |
+| **Current-panel diagnostics** | `ensemble_ab` | closed: keep LightGBM-only |
+
+> ⚠️ The headline numbers above quote the retired champion stack — they
+> were produced before the D.13g simulator fix and are retained as
+> history, not as live-defensible estimates. The live-defensible result
+> is `funding_carry_v3` (see STATUS.md).
 
 ## Validation protocol (why the numbers are defensible)
 
