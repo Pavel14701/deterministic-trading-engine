@@ -23,6 +23,81 @@ defined once in `experiments/__init__.py` and imported everywhere
 (`from experiments import REPO`) so module paths stay
 depth-independent.  Import smoke: all 37 modules OK.
 
+### HISTORICAL RE-RUN PROGRAM (2026-09-21) -- PRE-REGISTRATION
+
+D.13g fix invalidated the 16 panel-era modules (experiments/panel/).
+This is an AUDIT of their verdicts on the rebuilt panel -- not
+re-tuning.  Frozen before any run:
+
+- Rebuilt panel: data/mtf_dataset/*_1h.parquet (built 2026-09-20,
+  post-D.13g builder); raw 1m: data/okx/raw_*_1m.parquet.
+- Simulator: current engine.sim (gap-check + wrong-side guard); pess
+  labels computed at load time by the fixed code.
+- Module params: AS-IS, unchanged.  Module gates: as in the original
+  pre-registrations, unchanged.
+- wf_trades.parquet / wf_picks.parquet regenerated 2026-09-21 21:48
+  (walk_forward_ab re-run: B wins 4/8, both arms negative -- champion
+  head stays retired).
+
+Scope, priority order (group A only -- modules whose NUMBERS feed
+decisions): matrix_2x2 -> admission_policies -> ablation(+ablation_diag)
+-> joint_rank -> adaptive_tp -> cost_cap.  Already done: walk_forward_ab
+(above), ensemble_ab (whole grid negative, "dead pool" -- STATUS above).
+
+NOT re-run (group B/C -- procedures or structural conclusions, numbers
+not decision-bearing): nested_cv, portfolio, robustness,
+execution_costs, maker_entry (adverse-selection conclusion is
+panel-independent), ranker_only, ranking_baselines, feature_family,
+regime_diag (already negative).
+
+Outcome classes per module: SURVIVES (verdict unchanged) / FLIPS
+(PASS<->FAIL -- important, not a bug) / MAGNITUDE (verdict same,
+numbers moved).  KILL criterion for the whole protocol: >=6 of 8
+flips -> the original panel distorted results so deeply that the
+protocol designs themselves are suspect -> full re-audit before any
+further panel work.
+
+#### HISTORICAL RE-RUN -- RESULTS (all 8 group-A modules, 2026-09-21)
+
+Flips: 0/8.  KILL criterion NOT triggered -- WF folds, embargo and
+admission semantics stand.  All artifacts: runs/rerun_*.log,
+runs/{ablation,admission_policies,cost_cap}.json, runs/d8b/.
+
+1. walk_forward_ab  -- MAGNITUDE: B wins 4/8 (was 6/8), both arms
+   negative (A pess -0.047 / B -0.038).  Champion head stays retired.
+2. ensemble_ab      -- SURVIVES: whole grid negative, "dead pool";
+   LightGBM-only stays.
+3. matrix_2x2       -- SURVIVES w/ magnitude shift: TRF still adds
+   nothing (D-B CI [-0.445, +0.002] -- upper bound at zero; was
+   [-0.507, -0.188]).  A -0.006 / B +0.083 (n=35, ns) / C -0.150 /
+   D -0.134.  B-A CI [-0.189, +0.385] -- multi-asset LGBM edge is not
+   significant.  Nothing positive anywhere.
+4. admission_policies -- MAGNITUDE (level): REPLACE-low vs FCFS
+   EV-gain CI [+0.9R, -0.5R] (+12% .. -6%) -- was "+28%".  Mechanism
+   direction holds in point estimate (REPLACE-low -6.5R > FCFS -7.3R,
+   fewer dd), but NOT significant; all arms negative.
+5. ablation(+diag)  -- SURVIVES, strengthened: OB contribution
+   A-B = +0.021R, AVSL A-C = +0.043R, detector-free stack D -0.063R
+   explains 90% of A.  Placebo panels beat the real-detector panel in
+   8/8 folds (Bs*/Ds* - A per fold +0.3..+1.4R) -- real detectors are
+   noise-or-worse, not merely neutral.  Low-cost half of test rows:
+   EV ~0; high-cost half: -0.19..-0.28R.
+6. joint_rank       -- SURVIVES: ungated test pess -0.091 (n=50);
+   gated test pess -0.609 (n=3).  Joint stop-x-TP ranking stays
+   rejected.
+7. adaptive_tp      -- SURVIVES (vacuously): rebuilt panel yields
+   almost no candidates for this analysis (n<=2 per cell, val n=0).
+   No adaptive-TP edge; the old "same EV, half DD" claim is not
+   reproducible on the clean panel either way.
+8. cost_cap         -- SURVIVES: caps cut DD (A 24.1R -> C|cap=0.15
+   14.8R) while EV stays negative (-0.111 -> -0.043) -- cap is a DD
+   lever, not free EV, exactly as pre-registered.
+
+Bottom line: the panel-era NEGATIVE verdicts all survive the D.13g
+fix; the era's positive headline numbers remain retired.  The dead
+pool is confirmed dead.  Panel-era infra is closed for re-runs; new
+work goes to the live tracks (carry re-validation, TTF v1, ProSP v2).
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
