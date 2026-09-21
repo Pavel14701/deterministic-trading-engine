@@ -310,6 +310,40 @@ Expectation on record (from the sketch, not a gate): MR-1 ~20%,
 MOM-1 ~15%, XSEC-1 ~25%, HYB-1 ~20% pass probability; EV near zero
 after costs is the base case for the directional pair.
 
+#### Z-SCORE TRACK -- RESULTS (2026-09-21): KILL, ALL FOUR FAIL
+
+Single run, no tuning, per the frozen prereg (commit d25cad9).
+29/30 assets, grid 61001 bars, PRIMARY = first 2/3 .. 2024-05-27,
+F3 = last 1/3.  Gates evaluated on PRIMARY only; F3 shown after.
+
+- MR-1:  n=2307  WR 46.1%  ev_net -0.312R  eventDD 99.9%
+         G1 0/29  G2 -2.05  F3 -2.17              -> FAIL (all of G1-G4)
+- MOM-1: n=5584  WR 53.0%  ev_net -0.057R  eventDD 98.2%
+         G1 2/29  G2 -1.04  F3 -3.83              -> FAIL (G4 gross
+         +0.012R was the only near-pass; net of the pessimism stack
+         it is negative)
+- XSEC-1: G1 1/29  G2 -1.56  streamDD 0.4% (only gate passed)
+         G4 gross mean -1e-5 (strictly non-positive)  F3 -2.52
+                                                          -> FAIL
+- HYB-1: n=6650  WR 50.1%  ev_net -0.153R  eventDD 100%
+         G1 0/29  G2 -2.59  F3 -5.35              -> FAIL (worst;
+         the regime filter added nothing over its components)
+
+KILL CRITERION TRIGGERED on every strategy: the z-score track is
+CLOSED on crypto 1H majors.  No re-params, no filters, no universe
+expansion; revival only via a NEW prereg with a genuinely different
+hypothesis class.  Cross-strategy PRIMARY stream correlations
+(reported): MR-1 x MOM-1 -0.75, HYB-1 anti-correlated with both
+(-0.85 / +0.76 -- it is just their regime sandwich), XSEC-1
+orthogonal (+0.10 / -0.03) -- the "different class" bet did not help:
+even orthogonal XSEC-1 has zero gross edge after ranking noise.
+
+Conclusion per the track plan: z-score as a signal is dead on
+crypto 1H majors, consistent with the panel-era finding that
+single-name price-derived signals do not survive the taker cost
+stack.  Attention returns to TTF v1 / ProSP v2 and the carry
+priorities (P3 OKX 96d, P4 low-cap).
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.

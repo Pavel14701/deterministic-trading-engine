@@ -1,0 +1,3 @@
+| module | status | verdict / state |
+|---|---|---|
+| `zscore.runner` | ❌ DEAD — KILL per pre-reg (STATUS 2026-09-21) | 4 z-score families (MR-1 / MOM-1 / XSEC-1 / HYB-1) on Binance 1H, 29 majors, event + stream basis. **All G1–G4 FAIL on all four** — best case MOM-1 ev_net −0.06R, XSEC-1 gross mean strictly ≤0. Cross-correlations: HYB-1 is just an MR×MOM regime sandwich (|ρ| 0.75–0.85), XSEC-1 orthogonal but zero-edge. Params frozen, track closed — revival only via NEW prereg. Evidence: [STATUS](../../STATUS.md), `runs/zscore_report.json` |
