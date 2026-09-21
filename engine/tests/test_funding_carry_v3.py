@@ -7,7 +7,7 @@ bug at least once.
 """
 import numpy as np
 
-from experiments.funding_carry_v3 import per_asset_stream
+from experiments.carry.funding_carry_v3 import per_asset_stream
 
 
 def test_short_side_earns_positive_funding():

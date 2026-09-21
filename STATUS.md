@@ -14,6 +14,15 @@ run commands are `python -m experiments.<name>`.  The catalog moved to
 `experiments/README.md`.  STATUS.md history above keeps the old paths
 on purpose (evidence trail of its time).
 
+LAYOUT-2 (same day): `experiments/` re-grouped into track packages -
+`loaders/` (3), `carry/` (4: funding_carry x3 + barrier_prob),
+`avsl/` (5), `ob/` (8), `panel/` (18, champion-stack + diagnostics);
+each has its own README, `experiments/README.md` is now the index.
+Run commands: `python -m experiments.<track>.<name>`.  REPO is now
+defined once in `experiments/__init__.py` and imported everywhere
+(`from experiments import REPO`) so module paths stay
+depth-independent.  Import smoke: all 37 modules OK.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.

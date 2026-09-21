@@ -54,9 +54,11 @@ uv run ruff check engine dsl experiments
 uv run mypy engine experiments
 
 # experiments (each writes JSON/parquet artifacts into runs/):
-uv run python -m experiments.walk_forward_ab     # walk-forward A/B
-uv run python -m experiments.admission_policies  # REPLACE-low vs FCFS
-uv run python -m experiments.maker_entry         # maker-entry study
+uv run python -m experiments.panel.walk_forward_ab      # walk-forward A/B
+uv run python -m experiments.panel.admission_policies   # REPLACE-low vs FCFS
+uv run python -m experiments.panel.maker_entry          # maker-entry study
+uv run python -m experiments.loaders.load_binance       # Binance kl+OI sweep
+uv run python -m experiments.carry.funding_carry_v3     # live carry track
 ```
 
 ## Experiments
