@@ -174,6 +174,73 @@ audited; protocol designs (WF folds, embargo, admission, DD
 machinery) stand; the single-split selection bias number is the one
 era figure that was materially optimistic and is now corrected.
 
+### NEAR-ZERO QUOTING + NEW TRACKS (2026-09-21) -- PRE-REGISTRATIONS
+
+Follow-up to the nested_cv kill: three priorities, pre-registered
+before any run.
+
+#### P2 -- carry v3 F3 honest quoting (bootstrap CI)
+
+Params were FROZEN ex ante (prereg efcbd5), no hyperparameter
+selection ever happened -- so single-selection bias does not apply.
+The near-zero risk for F3 (+1.45% ann) is SAMPLING NOISE.  Frozen
+procedure: moving-block bootstrap on the F3 portfolio daily
+stream, block=30d, B=10,000, seed=7; report 95% CI on ann% for
+F1/F2/F3 and per-asset F3 CIs.  Rule: F3 is quotable as edge only if
+the CI excludes 0 AND excludes the risk-free benchmark; otherwise
+F3 stays "window closing, not quotable".  Params/streams AS-IS.
+
+#### P3 -- OKX 96d tradability re-validation (STAGED, not run)
+
+Goal: can the frozen v3 rules be traded on OKX at all (fee structure,
+funding sign-flip cadence, per-asset coverage over the last ~94d the
+OKX API serves)?  Data: engine/infra okx_fetch.fetch_funding_history
+(~94d cap, verified).  Design prereg (fee assumptions, gate) must be
+written BEFORE the fetch.  Status: staged, do not run until the
+design prereg is committed.
+
+#### P4 -- low-cap carry (NEW hypothesis, no era contamination)
+
+Hypothesis: funding-carry crowding is concentrated in large-cap
+perps; low-cap perps carry higher uncrowded funding with similar
+flip dynamics, so the v3 rule set retains positive net carry there
+even in the F3 regime.  Pre-registered from scratch (no selection):
+
+- Universe (rule-based, frozen at first pull): Binance USDT-M perps
+  NOT in the current 29-asset UNIVERSE, listing age >= 180d at pull
+  date, median daily quote volume over the pull window >= $5M,
+  top 30 by that volume.  No manual adds/drops, ever.
+- Params: v3 rules AS-IS (DEAD_ZONE, MAKER_RT, trailing signal,
+  hold-until-flip).  No tuning.  No seed variations.
+- Evaluation: same fold logic anchored at pull date -- PRIMARY =
+  full available history pooled; confirmation = trailing 12 months.
+  Gate (frozen): portfolio Sharpe_NW >= 1.0 on PRIMARY and >= 0.7 on
+  the trailing 12m, portfolio maxDD <= 15%, >= 60% of universe
+  assets with Sharpe_NW >= 0 and active >= 60d.  Block-bootstrap CI
+  (P2 procedure) on PRIMARY and trailing-12m ann% must exclude 0.
+- Kill: if PRIMARY gate fails, track closed, no re-universe, no
+  re-params (revival = NEW prereg, new universe snapshot date).
+
+#### P2 -- RESULTS (2026-09-21)
+
+Moving-block bootstrap (30d, B=10k, seed=7) on the frozen v3 portfolio
+stream:
+
+- F1 (2023-09..2024-08): ann +13.54%, CI95 [+8.19, +22.51] -- quotable
+- F2 (2024-09..2025-08): ann +3.75%, CI95 [+0.92, +7.62] -- quotable
+- F3 (2025-09..2026-09): ann +1.45%, CI95 [+0.52, +2.22] --
+  excludes 0 (statistically positive) but the UPPER bound is below
+  the risk-free rate (~4-5%).  Per the frozen rule (must exclude 0
+  AND the risk-free benchmark) F3 is NOT quotable as tradable edge:
+  the "window closing" verdict is confirmed with an honest interval.
+
+F3 per-asset CIs: 3 of 29 assets quotably positive -- APT +14.2
+[+2.0, +31.4], FIL +8.7 [+4.1, +15.8], WIF +5.7 [+1.5, +11.6]; the
+rest of the universe spans deeply negative (ETC -2.7, ARB -2.2,
+OP -2.1).  Motivating observation for P4 (recorded post hoc, does
+not alter the frozen P4 universe rule): the F3-positive names sit
+outside the mega-cap head of the universe.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
