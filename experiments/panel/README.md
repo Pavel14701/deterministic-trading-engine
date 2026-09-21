@@ -1,5 +1,10 @@
 # panel — champion-stack panel experiments (HISTORICAL) + diagnostics
 
+> All positive numbers in this group are INVALIDATED by the D.13g
+> simulator artifact. The only live-defensible result in the repo is
+> `carry/funding_carry_v3` (PASS per pre-reg, but decaying — see the
+> root index).
+
 All `HISTORICAL` modules ran on the pre-fix simulator / panel whose
 labels booked gap-through-stop entries as ~+1R wins (8–12% of rows) and
 wrong-side stops as instant wins (8.7%). The chain produced the

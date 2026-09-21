@@ -8,7 +8,7 @@ Run: `uv run python -m experiments.loaders.<name> [args]`
 |---|---|---|
 | `load_okx` | `data/okx21/raw_{SYM}-USDT_{TF}.parquet` — OKX OHLCV, 34 assets, 15m/1H/4H/1D | resumable, depth grows run over run |
 | `load_yf` | `data/yf/` — Yahoo fallback in the okx21 schema | 15m→60d, 1h→730d limits |
-| `load_binance` | `data/binance/kl_*` (1H klines **with taker_buy_volume**, ~6.8y) and `data/binance/oi_*` (OI, **merge-append**: run ≥1×/30d to accumulate) | the TTF v1 / ProSP v2 feature source; OI accumulation track |
+| `load_binance` | `data/binance/kl_*` (1H klines **with taker_buy_volume**, ~6.8y) and `data/binance/oi_*` (OI, **merge-append**: run WEEKLY, hard limit 30d, to accumulate) | the TTF v1 / ProSP v2 feature source; OI accumulation track |
 
 Symbol note: TON → GRAM rebrand on Binance USDT-M (TONUSDT is
 SETTLING, GRAMUSDT is a new contract from 2026-07-02).  The TON-era
