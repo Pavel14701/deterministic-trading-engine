@@ -2604,6 +2604,46 @@ sustained, which the 97d sample does not show.  REJECTED at current
 cost assumptions; reopening requires either maker execution on the
 perp leg (~5x cost cut) or demonstrated sustained high funding.
 
+### FUNDING CARRY v2 -- PRE-REGISTRATION (2026-09-20, fixed BEFORE run)
+
+User challenge accepted: v1 was daily cross-sectional rotation (2.11
+new positions/day), not carry.  Gross +1.59bp/day (96% hit) is real
+persistence; the kill was execution-frequency + fee class, declared
+fixable.  v2 tests the user's fixes.  DATA LIMIT (verified live):
+OKX /public/funding-rate-history serves only ~94 days (0 records
+beyond cache via after-cursor) -- "fetch 3 years" is IMPOSSIBLE on
+OKX public API.  Longer persistence cross-check = Binance funding
+API (years of history, different venue, clearly labeled as such,
+NOT tradability evidence for OKX).
+
+Pinned variants (all declared now, no tuning between runs):
+  V-daily-taker : v1 as-is (baseline for continuity).
+  V-weekly-taker: rebalance every 7 days, taker round trip 0.30%
+                  (2x (spot 0.10% + perp 0.05%)).
+  V-weekly-maker: PRIMARY.  rebalance every 7 days, maker round trip
+                  0.20% (2x (spot 0.08% + perp 0.02%)).  NOTE: the
+                  user's 5x maker cut is wrong for a delta-neutral
+                  book -- the SPOT leg dominates and only drops
+                  0.10 -> 0.08; real cut is 1.5x (0.30% -> 0.20%).
+  Per-asset dead zone: skip positions with |trailing 3d mean| < 2bp/
+  day (replaces v1's global OR-mask, which effectively never filtered).
+  Per-asset slow carry (user's Sharpe gate): hold short while trail-
+  ing 3d mean > +2bp/day, long while < -2bp/day, exit on sign flip;
+  half round-trip charged at entry and exit (maker fees).
+  K=3/3, signal decided on d-1 data, gross stream from held book.
+
+PRE-REGISTERED gates (primary = V-weekly-maker, else the track
+closes; per-asset gate uses OKX 97d window):
+  W-G1: portfolio net annualized >= 3% AND net daily Sharpe >= 1.0.
+  W-G2: per-asset slow-carry net Sharpe >= 1.0 on >= 3 assets.
+  W-G3: portfolio turnover <= 0.3 new positions/day.
+Declared optimism: maker fills assumed (no adverse-selection model
+on the limit legs; carry entries are non-urgent, so plausible, but
+not free).  Binance cross-check outputs (context, not gates): lag-1
+autocorr of daily funding and top-quartile membership persistence
+over 3 years.
+
+
 
 
 
