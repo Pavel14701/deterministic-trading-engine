@@ -387,6 +387,38 @@ theme: single-name price-derived entries on crypto majors carry no
 post-cost edge.  Next: TTF v1 run (prereg in STATUS), P4 low-cap
 carry fetch_funding.
 
+#### AVSL PRICE-CROSS "RR-PROFILE" AUDIT (2026-09-21): ILLUSION, 0/10
+
+Hypothesis checked (from the existing avsl_price_cross_atr.log, no
+new run): does a trend-following RR profile (tight stop = 1xATR(14),
+wide TP 3/5/8R, horizon 192) rescue the AVSL price-cross entry, the
+way it was hoped it might rescue z-score and Donchian?
+
+Answer: no, and the reason is structural.
+
+1. CONSISTENCY 0/10: across all 10 assets x 2 arms x 3 TPs, not one
+   cell has net > 0 on BOTH train and test.  The single train-plus
+   (AVAX, 8R, net +0.119, n=1634) flips to -0.334 on test.  The
+   pre-fixed decision rule ("0-3/10 -> beta, close") fires at zero.
+2. WR SITS AT BREAK-EVEN AT EVERY RR: 25.5% at TP=3R (BE 25%),
+   ~17% at 5R (BE 16.7%), ~12% at 8R (BE 11.1%).  A tight-stop /
+   wide-TP profile does not create edge, it rescales zero: WR at
+   break-even for 3 different RRs is direct evidence of no
+   conditional post-entry drift.  Same conclusion as the z-score
+   MFE post-mortem (MFE_p75 = 1.01R), measured independently.
+3. MULTIPLE TESTING: 120 cells; best cell ~1.6 sigma vs expected
+   max ~2.6 sigma -- not significant even before correction.
+4. COSTS: 10bp round trip over a 1xATR(14) 15m stop is 0.15-0.5R --
+   would eat any plausible gross; gross is not there anyway.
+
+CONSEQUENCE FOR THE "RR-INSIGHT": the RR profile changes the SHAPE
+of the P&L distribution, not its mean.  Re-running dead entries with
+different stop/TP geometry is not a new hypothesis class.  Any
+future directional prereg must show gross edge first (WR > break-even
+or MFE_p75 >= 2R on taken trades), before any exit/RR design.
+AVSL family stays closed; z-score stays closed; Donchian stays
+closed.  Next: TTF v1 (prereg exists, runner missing), carry P3/P4.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
