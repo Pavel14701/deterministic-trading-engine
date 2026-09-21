@@ -3,6 +3,132 @@
 Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done · ⬜ not started ·
 ⬜=spec only. Full per-task detail: `legacy/dev_docs/tz/TZ-00-roadmap.md` (archived).
 
+## 2026-09-21 — data feasibility audit + TTF v1 / ProSP v2 preregs + OI accumulation
+
+User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
+1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
+three-track plan, amended by a live data audit before any prereg.
+
+### DATA FEASIBILITY (verified live 2026-09-21, decisive for the plan)
+
+| source | real depth | verdict |
+|---|---|---|
+| OKX OI history (rubik open-interest-history) | ~8.3h (100 x 5m; `bar` ignored; pagination does not deepen: 500 rows within 0.35d) | backtest impossible |
+| Binance OI (fapi openInterestHist) | hard cap ~30d (endTime 40d back -> HTTP 400, reproduced) | non-gated screen only |
+| OKX long/short account ratio | 2d | useless |
+| Binance topLongShortPositionRatio | ~21d (30d cap) | useless |
+| Binance klines taker buy volume (field 9) | full history, oldest 1H bar 2019-09-08 | BACKTESTABLE |
+| Binance funding 3y | cached (data/funding_binance) | carry v3 PASS |
+
+Decision (user-approved): the OI-Price Divergence track AS WRITTEN
+(gated walk-forward Sharpe on OKX OI 5m) is NOT registrable -- the
+panel does not exist (8h vs the repo standard ~449d; the funding
+track with 97d was already rejected as thin).  Amended: the
+positioning signal is tested via taker-flow (taker buy volume from
+Binance klines, 6y depth) = TTF v1 below; OI accumulation starts
+now (infra, zero-regret); ProSP runs as barrier v2 with funding +
+taker-flow features.  LGBM, not XGBoost (repo standard, declared).
+
+### Infra added (no gates)
+
+- `engine/infra/marketdata/binance_fetch.py`: `fetch_klines`
+  (full history, incremental page-cache, closed bars only,
+  keeps `taker_buy_volume`) and `fetch_oi_history`
+  (merge-append 30d window; running >= 1x/30d accumulates an
+  unbounded panel).  Driver `engine/experiments/load_binance`
+  (universe = the funding UNIVERSE mapped to Binance symbols,
+  cache data/binance/).  Tests: engine/tests/test_binance_fetch.py
+  (6: merge keep-old/dedup/no-shrink, kline parse, in-progress bar
+  dropped).
+- OI ACCUMULATION TRACK: run
+  `python -m engine.experiments.load_binance <SYM> oi` at least
+  every 30 days per symbol (weekly cron recommended).  No backtest
+  until >= 180d contiguous; the eval prereg will be written BEFORE
+  the first backtest.  No peeking at the accumulating panel for
+  signal design.
+
+### TTF v1 (taker-flow divergence) -- PRE-REGISTRATION (fixed BEFORE run)
+
+Backtestable replacement for OI-Price Divergence: aggressive-flow
+divergence against price, same four-regime logic, order-flow proxy
+instead of OI.  Data: Binance USDT-M 1H klines, 6 majors (BTC, ETH,
+SOL, BNB, XRP, DOGE), ~6y.
+
+Frozen parameters (from the user's plan, no tuning):
+  tbv_share = taker_buy_volume / volume (1H bar)
+  s = Z(tbv_share, trailing 336 bars)
+  r = close-to-close return over trailing 24 bars
+  LONG regime: r < 0 AND s >= +2.0 (buy aggression into decline =
+  accumulation); SHORT mirrored: r > 0 AND s <= -2.0.
+  Confirmation: signal bar closes in the intended direction
+  (close > open for long).  Entry at next bar open.
+  Exit: |s| < 0.5, or opposite divergence, or stop.
+  Stop: 2.0 x ATR(24 bars) from entry; no take-profit.
+  One position per asset; notional 1.0.
+  Costs: taker both legs, 0.075% per side (= 0.15% round trip),
+  charged at entry and exit halves.
+  Signals use completed bars only (no lookahead).
+
+Evaluation: F1 = 2021-01-01..2023-08-31, F2 = 2023-09-01..2025-08-31,
+PRIMARY = F1+F2 pooled; F3 = 2025-09-01..now = confirmation,
+reported not gated.  Daily net streams per asset; Sharpe_NW with
+the funding_carry_v3 estimator (Newey-West lags 1..5, factor
+clamped [1, 5]); activity floor 60d.
+
+PRE-REGISTERED gates (all on PRIMARY, else the track is closed,
+no re-tuning):
+  T-G1: Sharpe_NW >= 1.0 on >= 3 of 6 assets.
+  T-G2: portfolio (equal-weight, flat contributes 0) Sharpe_NW >= 1.0.
+  T-G3: portfolio max drawdown <= 20%.
+  T-G4 (sanity): gross (pre-cost) portfolio Sharpe > 0 -- if the
+     signal cannot beat zero before costs it does not exist.
+  Sanity outputs, not gates: n trades per asset (if n < 200 on
+  PRIMARY the result is INCONCLUSIVE, not PASS), fold-by-fold
+  table, gross-vs-net per fold.
+
+### PROSP v2 (probability-based portfolio) -- PRE-REGISTRATION (fixed BEFORE run)
+
+Successor to barrier-probability v1 (CLOSED: model Brier 0.21747 >
+baseline 0.21688 on price/vol/structure features).  v2 tests the
+declared missing ingredient -- flow/positioning features -- as
+tail-event probabilities, not point returns.
+
+Data & labels: Binance USDT-M 1H, the 29-asset Binance universe.
+Labels per (asset, bar t, daily): label_up = 1 iff close(t+24)/
+close(t) - 1 > +2%; label_dn mirrored (< -2%).  Labels from future
+bars only; the 7d embargo guards the label gap.
+
+Features (frozen list): tbv_share z(336), tbv_share delta(24),
+funding z(3d, from data/funding_binance), ret(24), ret(168),
+ATR(24) z(336), volume z(336), range/close z(336).  No price level,
+no calendar features.
+
+Model: LightGBM binary classifier, two tasks (up-tail, dn-tail),
+pooled across assets.  Params frozen at the repo defaults
+(n=400, lr=0.05, leaves=15, mcs=40); isotonic calibration on the
+56d window before the embargo gap (barrier v1 protocol).
+
+Walk-forward: 8 folds x 56d, expanding train, 7d embargo, per the
+repo WF protocol; predictions only on embargoed TEST bars.
+
+Portfolio rule (frozen): daily, rank assets by
+P(up-tail) - P(dn-tail); long top 3, short bottom 3, equal weight,
+rebalanced daily; cost 0.15% RT per leg change; skip a leg if the
+asset's panel row is incomplete.  No vol targeting in v2 (declared).
+
+PRE-REGISTERED gates (pooled TEST, else v2 closed, no re-tuning):
+  P-G1 (kill, user's criterion): mean calibrated Brier (both tasks)
+     < constant class-rate baseline, AND per-fold improvement > 0
+     on >= 5 of 8 folds.
+  P-G2: top-minus-bottom tercile net daily EV > 0 on pooled TEST.
+  P-G3: portfolio net Sharpe_NW >= 1.0 on pooled TEST.
+Reported, not gated: reliability deciles, per-fold portfolio
+Sharpe, long-only vs long-short split.
+
+Standing rule honored: no parameter was fit on any test window;
+TTF/ProSP params come from the user's plan and repo defaults, and
+were written here before either experiment runs.
+
 ## 2026-09-20 — ranker ensemble package (`engine/ensemble/`)
 
 - `engine/ensemble/`: `base` (RankerComponent interface, ComponentConfig,
