@@ -22,6 +22,7 @@ from experiments.carry.funding_carry_v3 import (
     trailing_signal,
 )
 
+
 BLOCK = 30  # days
 B = 10_000
 SEED = 7
