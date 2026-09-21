@@ -2520,6 +2520,51 @@ re-litigation of the one-asset miss: the gate was fixed before the
 run (that is its entire point).  NEXT TRACK per prereg: funding
 carry (OKX /public/funding-rate-history availability + pipeline).
 
+### BARRIER-PROBABILITY MODEL -- PRE-REGISTRATION (2026-09-20, fixed BEFORE run)
+
+New frame (user proposal): not direction, but P(hit TP before SL) --
+first passage time.  Baseline no-edge P = sl_r/(tp_r+sl_r) (zero-drift
+Brownian); any calibrated deviation from it is the tradeable signal.
+User's own success prior: 30%.  ONE shot, gates below fixed now.
+
+Pinned spec:
+  Data: 6 majors 1H okx21 (BTC ETH SOL XRP DOGE BNB), entry = next
+  bar open after the signal bar (generator rule), R = 1xATR14(signal).
+  Barrier grid (tp_r/sl_r): (1,1) (1.5,1) (2,1) (3,1) (4,1.5) --
+  taken from the user spec as-is; both sides; horizon 48 bars.
+  Label: 1 = TP touched before SL with SL-FIRST pessimism (both in
+  one bar -> 0); timeout (neither in 48 bars) -> 0.  Declared: the
+  label is P(TP-first within horizon), timeouts count as losses.
+  Features (entry-time only, causal): atr_pct, atr pct-rank(500),
+  bollinger width + pct-rank, returns 1/4/12/48 bars, signed distance
+  to Donchian(20) and Donchian(55) edges in ATR, (close-SMA200)/ATR.
+  NO funding features in v1 (fetch infra exists; time-alignment is a
+  v2 item -- declared, not an omission).
+  Models: LightGBM binary per (side x config) = 10 models, pooled
+  across the 6 assets.  Walk-forward: wf_folds 8x56d; per fold, train
+  = past-only with 7d embargo (fold_masks); isotonic calibration on
+  the 56d window immediately before the embargo gap; test = the fold.
+  No tuning of LGBM params (n=400, lr=0.05, leaves=15, mcs=40 --
+  the adaptive_tp defaults), fixed now.
+  Trading rule on test bars: EV = P_cal*RR - (1-P_cal) - cost_R,
+  RR = tp_r/sl_r, cost_R = (2*COMM+GEN_SLIP)*fill/(sl_r*ATR); per bar
+  take the max-EV side+config; trade iff EV > 0; per-asset position
+  slot (state machine); P&L from the PESSIMISTIC sim_trade (SL-first,
+  slip, gap 0.25 ATR) -- the binary EV formula never touches P&L.
+
+PRE-REGISTERED gates (all must PASS on pooled TEST, else the
+barrier-probability track v1 is closed with no re-tuning):
+  K1 calibration: pooled Brier(calibrated model) < Brier(baseline
+     b/(a+b)) AND per-config improvement > 0 on >= 7/10 configs.
+  K2 EV edge: top-decile (by model EV) pessimistic per-trade EV > 0
+     on pooled TEST with n >= 300.
+  K3 risk: pooled taken-trade curve maxDD <= 20R on TEST.
+Sanity outputs (not gates): measured baseline-P table vs b/(a+b)
+  theory; reliability deciles.  Parallel track: funding_carry.py
+  (already implemented, never run) executed as-is, results reported
+  separately; no interaction with this prereg.
+
+
 
 Variant of the KILLED Donchian 4H (TEST 2/6 -> closed).  External
 spec ("Quattro Donchian" / "Bitcoin Comet" family), claimed but
