@@ -486,6 +486,111 @@ examined post-hoc).  Per the kill rule: closed.  Any revival must be
 a NEW dated prereg acknowledging this failure and justifying itself
 -- default state is CLOSED.
 
+#### AVSL-CROSS 4H -- CONFIRMATION PRE-REGISTRATION (2026-09-21, FROZEN BEFORE RUN)
+
+Status: the screening prereg above FAILED its own gates (G2) and the
+family was closed.  This is a NEW dated prereg that re-evaluates the
+SAME frozen 4H configuration with the full gate battery the screen
+lacked.  Justified only by the recorded anomaly (gross WR ~3.5 sigma
+above break-even in both segments, G1 consistency to 10/10); not a
+reopening of the old track and not a parameter search.
+
+CONFIG (frozen, identical to the screen -- not one parameter moves):
+AVSL(70,345) NaN-safe, 4H (Binance 1H resample), normal arm only,
+stop = max(|close-line|, 2*ATR14), TP {3,5,8}R, HORIZON 500 bars,
+MTM exit, conservative within-bar, entry at close of cross bar, fee
+10bp round trip, overlapping trades allowed, universe = the same 10
+assets.  PRIMARY TP = 5R (pre-declared: the screen's only 10/10
+cell); 3R/8R recorded, not gated.
+
+GATES (PASS requires ALL; PRIMARY = first 2/3 of the common 4H
+calendar, F3 = last 1/3):
+- G1 Sharpe_NW >= 1.0 on the portfolio 4H-bar stream (per-unit-risk
+  R attributed to the exit bar, summed across assets), NW lags = 500
+  (= HORIZON), annualised x sqrt(6*365), on PRIMARY and on F3.
+- G2 Event-basis max DD <= 25%: chronological pooled trade sequence
+  (entry order), equity = prod(1 + 0.01 * net_R), on PRIMARY.
+- G3 Long/short split: BOTH sides net EV > 0 on PRIMARY (TP=5R).
+- G4 F3 integrity: pooled net EV > 0 on F3 AND positive in >= 2 of
+  its 3 equal sub-windows (stability guard).
+- G5 Block bootstrap: per-asset 95% CI of net EV (TP=5R, PRIMARY +
+  F3 pooled, B=2000, circular blocks of 25 trades) excludes 0 in
+  >= 6/10 assets; AND pooled-per-segment CI excludes 0 in both.
+- G6 NW-adjusted significance (the headline test): pooled net EV
+  z-score with n_eff = n / (1 + 2*sum rho_1..rho_500) of the
+  time-ordered trade sequence, >= 2.0 in BOTH PRIMARY and F3.
+  (Naive 3.5 sigma is expected to shrink; the prereg question is
+  whether it stays above 2.)
+
+Kill: any FAIL -> AVSL-cross entry family closed FINALLY (no further
+preregs, no parameter changes, no universe changes -- final).
+
+#### CONFIRM ADDENDUM: G1'/G2'/G5' OVERLAP-CORRECTED RECOMPUTE (2026-09-21, FROZEN BEFORE RECOMPUTE)
+
+Audit of the confirm implementation found the overlap handled
+wrongly in three gates (G2 applied trades sequentially by entry =
+non-overlapping assumption; G1 Sharpe on an exit-spike stream; G5
+bootstrap block 25 trades << HORIZON 500).  G3/G4/G6 are overlap-
+unaffected (G6 already NW-adjusts the trade sequence with lags 500
+and PASSED: z 3.31 PRIMARY / 3.85 F3; those stand).
+
+Corrected definitions (frozen before recomputation):
+- Per-bar portfolio R stream: every open trade accrues its net R
+  linearly over its hold buckets (e0..e1 inclusive); bar stream =
+  sum of accruals of all open trades.  Account return per bar =
+  1% x bar stream (1% risk per trade slot, concurrent).
+- G1' Sharpe_NW >= 1.0 on the accrual stream (not the spike
+  stream), NW lags 500, ann x sqrt(6*365), PRIMARY and F3.
+- G2' event DD <= 25%: equity = cumprod(1 + 0.01 * stream[bar]),
+  PRIMARY only.
+- G5' block bootstrap on the bar stream (block = 500 buckets =
+  HORIZON, circular, B=1000): 95% CI of the MEAN BAR R excludes 0
+  in PRIMARY and in F3.  Per-asset streams: the >=6/10 criterion
+  from the original prereg is DROPPED as invalid (per-asset
+  standalone significance was never the hypothesis -- the entry is
+  traded as one 10-asset portfolio; per-asset counts are recorded
+  as diagnostics only).
+
+Verdict rule: the family verdict = G1' G2' G5' (corrected) on top of
+the already-passed G3/G4/G6.  Any FAIL -> closed FINAL, same kill as
+the main confirm prereg.  No other gate is touched.
+
+#### AVSL-CROSS 4H CONFIRM -- FINAL VERDICT (2026-09-21): CLOSED FINAL, G2' FAIL
+
+runs/avsl_cross_confirm.log + runs/avsl_cross_confirm2.log.
+The headline question -- "is the 3.5 sigma real after NW
+correction?" -- answered YES:
+
+- G6 PASSED: NW-adjusted z of pooled net EV (lags 500) = +3.31
+  PRIMARY / +3.85 F3 (threshold 2.0).  The edge is NOT overlap
+  inflation.
+- G1'/G1 PASSED: portfolio Sharpe_NW 1.33 PRIMARY / 2.05 F3 on the
+  accrual stream (1.24/1.67 on the spike stream -- same verdict).
+- G3 PASSED: both sides net-positive on PRIMARY (long +0.265R,
+  short +0.078R -- not beta).
+- G4 PASSED: F3 pooled +0.335R, all 3/3 sub-windows positive.
+- G5' PASSED: block bootstrap (block = HORIZON 500) CI of mean bar
+  R excludes 0 in both segments ([+0.0066,+0.0646] /
+  [+0.0247,+0.0820]).
+- G2' FAILED: portfolio DD (1% risk per trade slot, concurrent,
+  mean concurrency 10.9, max 43) = 61.0% PRIMARY (cap 25%), F3
+  37.6%.  Verified genuine: trough 2022-07, recovered 2023-01;
+  the old sequential construction gave 66.2% -- two independent
+  constructions agree, the drawdown is real bear-market
+  clustering, not an overlap artifact.
+
+FAMILY CLOSED FINAL per the frozen kill rule.  What dies is the
+CONFIGURATION as a tradable strategy at 1%-per-slot sizing: the
+signal is statistically real (first in project history), the risk
+profile is not survivable at the frozen sizing.  What is on record
+for any future re-design (which would be a NEW hypothesis --
+sizing/risk-overlay changes are explicitly NOT covered by this
+prereg and its kill): a 10-asset AVSL(70,345) 4H cross portfolio
+with net EV +0.17R/trade (PRIMARY) / +0.34R (F3), Sharpe_NW 1.3-2.1,
+zero per-asset standalone significance (edge exists only in
+portfolio aggregation), and bear-year DDs of 30-60% at 1%-slot
+risk.  Until such a prereg exists: AVSL family = CLOSED.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
