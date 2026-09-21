@@ -2486,7 +2486,40 @@ Also verified: risk_ref normalization scales costs exactly inversely
 ignored (hardcoded i0+47 == HOLD-1 in maker); semantics identical,
 no change made.
 
-### QUATTRO DONCHIAN 4H -- PRE-REGISTRATION (2026-09-20, fixed BEFORE run)
+### OKX EXPANSION LOADER -- DONE (PHASES_DONE, log line 1439)
+
+Final state: data/okx21 1H = 34/34 (complete, all validated; the
+34-asset prereg ran with ZERO skips), 15m = 27/34 -- 7 assets failed
+at 15m (end-of-run burst of OKX /market/candles + /history-candles
+4-attempt failures: VET, ICP, HBAR, ETC, BCH, TRX, SHIB, PEPE, WIF,
+TON among the FAILED lines; 54 FAILED lines total across both
+phases).  1m legacy files remain 4 (BTC/DOGE/ETH/SOL).  Watcher
+(pid 2832) fired correctly: runs/donchian_1h_34_prereg.log was
+auto-created and ran to completion once the 34th 1H file landed.
+
+### DONCHIAN 34-GATE 1H CONFIRMATION -- RESULT :x: (FAIL -> DONCHIAN CLOSED)
+
+Pre-registered gates (fixed in 917bf70, any FAIL = Donchian closed
+entirely -> funding carry).  TEST segment, full (both sides):
+  G1 positive net-R: 27/34 (need >=17) -- PASS
+     negatives: TRX -35.0R (worst), BCH -9.5, SHIB -5.9, LTC -6.6,
+     AVAX -0.3, APT -0.8, BNB -0.2
+  G2 median test maxDD: 14.9R (need <=20) -- PASS
+     (unlike the 6-major TRAIN audit's 27-46R: bigger universe
+     dilutes the DD tails)
+  G3 recovery >= 1.0: 16/34 (need >=17) -- FAIL (BY ONE ASSET)
+  OVERALL: FAIL -> per prereg, DONCHIAN TRACK CLOSED ENTIRELY.
+Per-asset test totR highlights: XRP +47.1 (dd 4.8), ARB +41.5 (10.5),
+INJ +39.4 (9.4), DOT +29.4 (12.4), SOL +28.1 (5.3), ALGO +25.6 (11.0),
+FIL +25.4, HBAR +22.4, TIA +23.8; evN med ~+0.17, n=58-106/asset.
+Honest reading: 27/34 positive in the SAME bull window that lifted
+every long-biased test, train positives only 11/34 -- the wide
+universe test inherits the regime-beta problem, and the recovery
+factor (tot/DD) gate kills it even before that discussion.  NO
+re-litigation of the one-asset miss: the gate was fixed before the
+run (that is its entire point).  NEXT TRACK per prereg: funding
+carry (OKX /public/funding-rate-history availability + pipeline).
+
 
 Variant of the KILLED Donchian 4H (TEST 2/6 -> closed).  External
 spec ("Quattro Donchian" / "Bitcoin Comet" family), claimed but
