@@ -9,7 +9,7 @@
    why did test n drop from 31 to 23?
 4. Null bootstrap of the "4 of 10 assets positive" holdout pattern.
 
-Usage:  uv run python -m engine.experiments.ob_ldgrid
+Usage:  uv run python -m experiments.ob_ldgrid
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ from engine.backtest.protocol import (
     N_FOLDS,
     wf_folds,
 )
-from engine.experiments.ob_raw_ev import _simulate_block
+from experiments.ob_raw_ev import _simulate_block
 from ta.src.custom.market_structure import identify_order_blocks
 from ta.src.custom.market_structure.configs import TIMEFRAME_CONFIGS
 from ta.src.volatility.atr import atr_ind

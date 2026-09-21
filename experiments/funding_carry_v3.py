@@ -19,14 +19,15 @@ from pathlib import Path
 
 import numpy as np
 
-from engine.experiments.funding_carry import UNIVERSE
-from engine.experiments.funding_carry_v2 import (
+from experiments.funding_carry import UNIVERSE
+from experiments.funding_carry_v2 import (
     DEAD_ZONE,
     MAKER_RT,
     binance_daily_funding,
     build_panel,
     trailing_signal,
 )
+
 
 NW_LAGS = 5
 ACTIVITY_FLOOR_DAYS = 60

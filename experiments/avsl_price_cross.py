@@ -9,7 +9,7 @@ fade).  TP {3,5,8}R, horizon 192 bars, MTM exit, conservative
 within-bar (stop wins).  Per-asset readout (BTC + 9 holdout, no
 pooling): train = folds 0-3, test = folds 4-7 (protocol 8x56d).
 
-Usage:  uv run python -m engine.experiments.avsl_price_cross
+Usage:  uv run python -m experiments.avsl_price_cross
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ import polars as pl
 REPO = Path(__file__).resolve().parent.parent.parent
 
 from engine.backtest.protocol import FOLD_DAYS, N_FOLDS, wf_folds
-from engine.experiments.avsl_baseline import DAY, TPS, WARMUP, _fast_line, _sim
+from experiments.avsl_baseline import DAY, TPS, WARMUP, _fast_line, _sim
 from ta.src.volatility.atr import atr_ind
 
 

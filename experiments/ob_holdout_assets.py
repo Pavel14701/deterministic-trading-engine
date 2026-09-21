@@ -7,7 +7,7 @@ dynamic would be per-asset adaptation), revATR 2.5, cw 36 (presets),
 TP {4R, 6R} only, stop = zone edge + 0.25 ATR, horizon 48, gross R.
 No tuning on holdout assets, no pooling before per-asset readout.
 
-Usage:  uv run python -m engine.experiments.ob_holdout_assets
+Usage:  uv run python -m experiments.ob_holdout_assets
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ import polars as pl
 REPO = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO))
 
-from engine.experiments.ob_raw_ev import _simulate_block
+from experiments.ob_raw_ev import _simulate_block
 from ta.src.custom.market_structure import identify_order_blocks
 from ta.src.custom.market_structure.configs import TIMEFRAME_CONFIGS
 from ta.src.volatility.atr import atr_ind

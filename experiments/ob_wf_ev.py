@@ -19,7 +19,7 @@ across folds: EV vs pivot age (``break_idx - idx``, tests the
 and retest-delay distribution.  Net with taker fees is reported for
 reference only; the go/no-go criterion is gross fold stability.
 
-Usage:  uv run python -m engine.experiments.ob_wf_ev
+Usage:  uv run python -m experiments.ob_wf_ev
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ REPO = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO))
 
 from engine.backtest.protocol import EMBARGO_DAYS, FOLD_DAYS, N_FOLDS, wf_folds
-from engine.experiments.ob_raw_ev import _simulate_block
+from experiments.ob_raw_ev import _simulate_block
 from ta.src.custom.market_structure import identify_order_blocks
 from ta.src.custom.market_structure.configs import TIMEFRAME_CONFIGS
 from ta.src.volatility.atr import atr_ind

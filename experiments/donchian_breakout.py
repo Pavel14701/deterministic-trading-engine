@@ -10,8 +10,8 @@ from __future__ import annotations
 import numpy as np
 
 from engine.backtest.protocol import wf_folds
-from engine.experiments.avsl_baseline import DAY
-from engine.experiments.avsl_trailing import REPO, TAKER_FEE, _read_okx
+from experiments.avsl_baseline import DAY
+from experiments.avsl_trailing import REPO, TAKER_FEE, _read_okx
 from ta.src.overlap.ema import ema_ind
 from ta.src.volatility.atr import atr_ind
 
@@ -104,7 +104,7 @@ def run() -> None:
     tfs = [a for a in args if a != "all34"] or ["4H"]
     universe = ASSETS
     if all34:
-        from engine.experiments.load_okx import ALL
+        from experiments.load_okx import ALL
 
         universe = tuple(ALL)
     print(

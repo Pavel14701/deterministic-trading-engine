@@ -11,7 +11,8 @@ Layout (subpackages by function):
 - ``model``      - LGBM ranker head, feature builders, rule tables;
 - ``metrics``    - per-trade R performance metrics;
 - ``datasets``   - dataset assembly pipelines from raw OKX caches;
-- ``experiments``- reproducible experiment drivers (runnable modules).
+  (the former ``experiments`` subpackage now lives in the top-level
+  ``experiments/`` package: runnable experiment drivers)
 """
 
 from engine.features.indicators import (

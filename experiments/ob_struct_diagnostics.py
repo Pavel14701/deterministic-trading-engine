@@ -19,7 +19,7 @@ Pre-registered metric set (per asset, 15m):
 EV columns are the measured holdout gross EVs (fixed working point,
 runs/ob_holdout_assets.log) - used only for Spearman correlation.
 
-Usage:  uv run python -m engine.experiments.ob_struct_diagnostics
+Usage:  uv run python -m experiments.ob_struct_diagnostics
 """
 
 from __future__ import annotations

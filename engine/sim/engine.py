@@ -4,7 +4,7 @@ Library part: ``sim`` (one signal -> optimistic/pessimistic R, net of
 costs) and ``pess`` (per-row pessimistic R for labeled panel rows).
 The cost constants are the validated taker-path model.  The joint
 ranking experiment over (stop rule x TP target) pairs lives in
-``engine.experiments.joint_rank``.
+``experiments.joint_rank``.
 """
 
 from __future__ import annotations

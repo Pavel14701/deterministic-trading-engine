@@ -7,7 +7,7 @@ Arms (all with delay [5,10), TP {4R, 6R}, revATR 2.5, zone 0.2):
   C (primary)   lookback=13 static, cw=54   - full pre-registered arm
 
 Decision on train (folds 0-3 + 7d embargo); test folds 4-6 readout.
-Usage:  uv run python -m engine.experiments.ob_lookback13
+Usage:  uv run python -m experiments.ob_lookback13
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from engine.backtest.protocol import (
     N_FOLDS,
     wf_folds,
 )
-from engine.experiments.ob_raw_ev import _simulate_block
+from experiments.ob_raw_ev import _simulate_block
 from ta.src.custom.market_structure import identify_order_blocks
 from ta.src.custom.market_structure.configs import TIMEFRAME_CONFIGS
 from ta.src.volatility.atr import atr_ind

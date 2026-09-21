@@ -21,7 +21,7 @@ EV in R (gross and net), win-rate, plus calibration distributions
 (retest delay in bars -> ``confirmation_window``, zone width in ATR)
 used to tune the presets.
 
-Usage:  uv run python -m engine.experiments.ob_raw_ev
+Usage:  uv run python -m experiments.ob_raw_ev
 """
 
 from __future__ import annotations

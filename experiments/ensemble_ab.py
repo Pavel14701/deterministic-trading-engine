@@ -18,14 +18,14 @@ Config grid is FIXED before the run (TZ item 8: no config fishing):
   stacking         3 members, logreg meta on past-only OOF scores
 
 Per config, pooled over folds: replayed-trade pooled_stats (mean R /
-n / dd / bucketed sharpe), score-ranked decile spread and top-decile
+n / dd / bucketed sharpe), score-ranked decile spread  and top-decile
 EV on test picks (r_pess), flips@1e-6 (share of candidates whose
 top-pick rule changes under 1e-6 score noise), peak gate EV (max mean
 R over score-quantile gates).  Acceptance: ensemble beats the best
 single component on peak gate EV and decile spread, dd not worse;
 otherwise keep LightGBM-only (TZ item 6).
 
-Usage: python engine/experiments/ensemble_ab.py [--quick]
+Usage: python -m experiments.ensemble_ab [--quick]
   --quick: last 3 folds, catboost 60 iters - smoke/regression mode.
 Full run saves runs/ensemble_ab.json.
 """

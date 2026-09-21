@@ -7,7 +7,7 @@ TP grid {2, 2.5, 3, 3.5, 4, 5}R.  Train = WF folds 0-3 + 7d embargo
 (decision segment), test = folds 4-6 held out, same a priori cells.
 L=30 static ~ the dynamic preset (2 * median ATR clamps to 30).
 
-Usage:  uv run python -m engine.experiments.ob_lookback_grid
+Usage:  uv run python -m experiments.ob_lookback_grid
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from engine.backtest.protocol import (
     N_FOLDS,
     wf_folds,
 )
-from engine.experiments.ob_raw_ev import _simulate_block
+from experiments.ob_raw_ev import _simulate_block
 from ta.src.custom.market_structure import identify_order_blocks
 from ta.src.custom.market_structure.configs import TIMEFRAME_CONFIGS
 from ta.src.volatility.atr import atr_ind

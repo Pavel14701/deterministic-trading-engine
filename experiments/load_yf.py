@@ -8,7 +8,7 @@ experiments run unchanged.  Yahoo limits: 15m -> 60d, 1h -> 730d,
 1d -> full history.  4H is resampled from 1H.  Prints per-file
 stats: bars, span, missing bars, zero-volume bars.
 
-Usage:  uv run python -m engine.experiments.load_yf [15m|1H|4H|1D|all]
+Usage:  uv run python -m experiments.load_yf [15m|1H|4H|1D|all]
 """
 
 from __future__ import annotations

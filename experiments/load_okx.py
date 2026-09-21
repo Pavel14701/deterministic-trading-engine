@@ -13,7 +13,7 @@ incremental: when the cached file is shorter than the cap the fetcher
 walks backwards from the oldest cached bar, so depth grows run over
 run.  New (2026) listings simply end where the coin was listed.
 
-Usage:  python -m engine.experiments.load_okx [SYM ...] [15m|1H|4H|1D|all]
+Usage:  python -m experiments.load_okx [SYM ...] [15m|1H|4H|1D|all]
 """
 
 from __future__ import annotations
@@ -22,8 +22,8 @@ import sys
 
 from pathlib import Path
 
-from engine.experiments.load_yf import _stats
 from engine.infra.marketdata.okx_fetch import fetch_candles
+from experiments.load_yf import _stats
 
 
 REPO = Path(__file__).resolve().parent.parent.parent

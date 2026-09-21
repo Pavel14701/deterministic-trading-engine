@@ -95,7 +95,7 @@ preview = true
 # standards): readability fixes welcome, but docstrings, line length
 # and style pedantry are not enforced there.  The library core
 # (infra/features/structure/sim/backtest/model/metrics) is fully clean.
-"engine/experiments/**" = ["E501", "D", "B905", "RUF069", "B007", "N", "E402", "E741", "E702"]
+"experiments/**" = ["E501", "D", "B905", "RUF069", "B007", "N", "E402", "E741", "E702"]
 "engine/datasets/**" = ["E501", "B905", "RUF069", "B007"]
 
 [tool.ruff.format]
@@ -140,7 +140,7 @@ check_untyped_defs = true
 # suites and standards; they are only pulled in here via imports.
 [[tool.mypy.overrides]]
 module = [
-    "engine.experiments.*",
+    "experiments.*",
     "engine.datasets.*",
     "engine.tests.*",
     "ta.*",

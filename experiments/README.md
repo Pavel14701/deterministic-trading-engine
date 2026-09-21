@@ -3,7 +3,7 @@
 Every experiment is a runnable library module:
 
 ```bash
-uv run python -m engine.experiments.<name> [args]
+uv run python -m experiments.<name> [args]
 ```
 
 Results land in `runs/` (JSON/log artifacts); every verdict is recorded

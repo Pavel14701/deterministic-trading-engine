@@ -29,10 +29,12 @@ import niquests
 import numpy as np
 import polars as pl
 
+
 REPO = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO))
 
-from engine.experiments.funding_carry import UNIVERSE, daily_funding
+from experiments.funding_carry import UNIVERSE, daily_funding
+
 
 BINANCE_BASE = "https://fapi.binance.com"
 BINANCE_YEARS = 3
@@ -230,7 +232,6 @@ def per_asset_slow_carry(mat: np.ndarray, sig: np.ndarray,
         )
         out.append((UNIVERSE[j], float(shp), int(v.size)))
     return out
-
 
 
 def persistence_stats(mat: np.ndarray) -> dict:

@@ -50,22 +50,22 @@ data/ runs/  parquet data and experiment artifacts (d-prefixed filenames are
 ```bash
 uv sync --all-packages
 uv run pytest                 # unit suite (engine/tests + dsl/tests)
-uv run ruff check engine dsl
-uv run mypy engine
+uv run ruff check engine dsl experiments
+uv run mypy engine experiments
 
 # experiments (each writes JSON/parquet artifacts into runs/):
-uv run python -m engine.experiments.walk_forward_ab     # walk-forward A/B
-uv run python -m engine.experiments.admission_policies  # REPLACE-low vs FCFS
-uv run python -m engine.experiments.maker_entry         # maker-entry study
+uv run python -m experiments.walk_forward_ab     # walk-forward A/B
+uv run python -m experiments.admission_policies  # REPLACE-low vs FCFS
+uv run python -m experiments.maker_entry         # maker-entry study
 ```
 
 ## Experiments
 
-Every experiment is a library module in `engine/experiments/` — runnable,
+Every experiment is a runnable module in `experiments/` (top-level, moved out of the engine package) — runnable,
 pinned to its data variant / encoding / metrics, writing artifacts into
 `runs/` and logging its verdict in **STATUS.md**. Full catalog with
 per-track status (active / survivor / closed / historical): see
-**`engine/experiments/README.md`**.
+**`experiments/README.md`**.
 
 | group | modules | state |
 |---|---|---|

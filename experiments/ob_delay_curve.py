@@ -11,7 +11,7 @@ the SAME a priori buckets only - no re-selection.
 Detection runs on the causal prefix up to each segment's end, so the
 ATR median used for ``reversal_atr_multiple`` never sees beyond it.
 
-Usage:  uv run python -m engine.experiments.ob_delay_curve
+Usage:  uv run python -m experiments.ob_delay_curve
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ from engine.backtest.protocol import (
     N_FOLDS,
     wf_folds,
 )
-from engine.experiments.ob_raw_ev import _simulate_block
+from experiments.ob_raw_ev import _simulate_block
 from ta.src.custom.market_structure import identify_order_blocks
 from ta.src.custom.market_structure.configs import TIMEFRAME_CONFIGS
 from ta.src.volatility.atr import atr_ind

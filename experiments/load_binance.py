@@ -13,7 +13,7 @@ products into data/binance/:
   unbounded panel into oi_{SYM}USDT_1h.parquet.  Zero-regret
   accumulation track -- no backtest until ~180d contiguous.
 
-Usage:  python -m engine.experiments.load_binance [SYM ...] [kl|oi|all]
+Usage:  python -m experiments.load_binance [SYM ...] [kl|oi|all]
 """
 
 from __future__ import annotations
@@ -22,12 +22,12 @@ import sys
 
 from pathlib import Path
 
-from engine.experiments.funding_carry import UNIVERSE
-from engine.experiments.load_yf import _stats
 from engine.infra.marketdata.binance_fetch import (
     fetch_klines,
     fetch_oi_history,
 )
+from experiments.funding_carry import UNIVERSE
+from experiments.load_yf import _stats
 
 
 REPO = Path(__file__).resolve().parent.parent.parent

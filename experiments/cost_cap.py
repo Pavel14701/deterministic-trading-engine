@@ -51,7 +51,7 @@ VARIANT_DIRS = {"A": "A", "C": "C"}
 CAPS = (None, 0.15, 0.10, 0.075)
 # label-permutation control: PERMUTE=0 -> normal run;
 # PERMUTE=<seed> -> shuffle r_net before the table fit; test EV must
-# collapse to ~0.  Usage: python -m engine.experiments.cost_cap [PERMUTE]
+# collapse to ~0.  Usage: python -m experiments.cost_cap [PERMUTE]
 PERMUTE = int(sys.argv[1]) if len(sys.argv) > 1 else 0
 
 

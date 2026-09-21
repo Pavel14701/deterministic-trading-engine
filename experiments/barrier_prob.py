@@ -10,21 +10,24 @@ the pessimistic simulator.  Gates K1-K3 fixed before the run.
 from __future__ import annotations
 
 import sys
+
 from pathlib import Path
 
 import lightgbm as lgb
 import numpy as np
+
 from numpy.lib.stride_tricks import sliding_window_view
+
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from engine.backtest.protocol import fold_masks, wf_folds
-from engine.experiments.avsl_baseline import DAY
-from engine.experiments.avsl_trailing import REPO, _read_okx
-from engine.experiments.donchian_breakout import _roll
-from engine.sim.state_machine import run_state_machine
+from engine.backtest.protocol import wf_folds
+from experiments.avsl_baseline import DAY
+from experiments.avsl_trailing import REPO, _read_okx
+from experiments.donchian_breakout import _roll
 from ta.src.volatility.atr import atr_ind
+
 
 ASSETS = ("BTC", "ETH", "SOL", "XRP", "DOGE", "BNB")
 CONFIGS = ((1.0, 1.0), (1.5, 1.0), (2.0, 1.0), (3.0, 1.0), (4.0, 1.5))
@@ -44,7 +47,6 @@ def _features(o, h, l, c, atr):
     for i in range(500, n):
         w = atr_pct[i - 500:i]
         atr_pctr[i] = (w < atr_pct[i]).mean() if np.isfinite(atr_pct[i]) else np.nan
-    mid = _roll(c, 20, np.mean)
     sd = _roll(c, 20, np.std)
     bbw = 4.0 * sd / c
     bbw_pctr = np.full(n, np.nan)
@@ -56,8 +58,11 @@ def _features(o, h, l, c, atr):
     dc55u = np.concatenate(([np.nan], _roll(h, 55, np.max)[:-1]))
     dc55l = np.concatenate(([np.nan], _roll(l, 55, np.min)[:-1]))
     sma200 = _roll(c, 200, np.mean)
+
+    def ret(k: int) -> np.ndarray:
+        return np.concatenate((np.full(k, np.nan), c[k:] / c[:-k] - 1))
+
     with np.errstate(invalid="ignore", divide="ignore"):
-        ret = lambda k: np.concatenate((np.full(k, np.nan), c[k:] / c[:-k] - 1))
         return {
             "atr_pct": atr_pct, "atr_pctr": atr_pctr, "bbw": bbw,
             "bbw_pctr": bbw_pctr, "ret1": ret(1), "ret4": ret(4),
@@ -148,7 +153,7 @@ def run() -> None:
         feats = _features(o, h, l, c, atr)
         labs = {}
         for tp_r, sl_r in CONFIGS:
-            labs[(tp_r, sl_r)] = _barrier_labels(o, h, l, atr, tp_r, sl_r)
+            labs[tp_r, sl_r] = _barrier_labels(o, h, l, atr, tp_r, sl_r)
         data[sym] = dict(ts=ts, o=o, h=h, l=l, c=c, atr=atr,
                          feats=feats, labs=labs)
         print(f"{sym:>5}: {len(c)} bars", flush=True)
@@ -174,7 +179,7 @@ def run() -> None:
                 Xtr, ytr, Xcal, ycal, Xte, yte, meta = [], [], [], [], [], [], []
                 for sym, d in data.items():
                     ts = d["ts"]
-                    lab = d["labs"][(tp_r, sl_r)][si]
+                    lab = d["labs"][tp_r, sl_r][si]
                     m_tr = (ts < cal_lo) & np.isfinite(lab)
                     m_cal = (ts >= cal_lo) & (ts < cal_hi) & np.isfinite(lab)
                     m_te = (ts >= fs) & (ts < fe) & np.isfinite(lab)
@@ -197,10 +202,10 @@ def run() -> None:
                 iso = IsotonicRegression(out_of_bounds="clip")
                 iso.fit(m.predict_proba(Xcal)[:, 1], ycal)
                 p_te = iso.predict(m.predict_proba(Xte)[:, 1])
-                brier_mod[(tp_r, sl_r)].append(
+                brier_mod[tp_r, sl_r].append(
                     float(np.mean((p_te - yte) ** 2)))
                 base = sl_r / (tp_r + sl_r)
-                brier_base[(tp_r, sl_r)].append(
+                brier_base[tp_r, sl_r].append(
                     float(np.mean((base - yte) ** 2)))
                 rr = tp_r / sl_r
                 r0 = 0

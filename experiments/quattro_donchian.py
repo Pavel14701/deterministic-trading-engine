@@ -12,9 +12,9 @@ from __future__ import annotations
 import numpy as np
 
 from engine.backtest.protocol import wf_folds
-from engine.experiments.avsl_baseline import DAY
-from engine.experiments.avsl_trailing import REPO, TAKER_FEE, _read_okx
-from engine.experiments.donchian_breakout import ASSETS, _roll
+from experiments.avsl_baseline import DAY
+from experiments.avsl_trailing import REPO, TAKER_FEE, _read_okx
+from experiments.donchian_breakout import ASSETS, _roll
 from ta.src.volatility.atr import atr_ind
 
 
@@ -138,7 +138,6 @@ def run() -> None:
             ("TRAIN", int(ts[0]), folds[4][0] - 7 * DAY),
             ("TEST", folds[4][0], int(ts[-1])),
         )
-        test_stats = None
         for name, lo, hi in segs:
             tr = _simulate(cp, op, hp, lp, hh20, ll20, sma, atr, lo, hi,
                            long_only, ts)

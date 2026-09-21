@@ -2,7 +2,7 @@
 
 Library part: ``maker_sim`` / ``market_sim`` (signal -> pessimistic R
 with limit-fill vs market-entry mechanics).  The maker-entry grid
-experiment lives in ``engine.experiments.maker_entry``.
+experiment lives in ``experiments.maker_entry``.
 
 Question: does entering on a limit order placed delta*ATR into the zone
 beat the current always-market execution (0.25R round-trip cost)?

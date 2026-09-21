@@ -13,7 +13,7 @@ gross/net (R), win%, avg hold bars, maxDD (R).  Train = folds 0-3,
 test = folds 4-7.  Fixed constants per pre-registration: k=2.0,
 buffer=0.3, N=10.  No tuning.
 
-Usage:  uv run python -m engine.experiments.avsl_trailing
+Usage:  uv run python -m experiments.avsl_trailing
 """
 
 from __future__ import annotations
@@ -29,8 +29,8 @@ import polars as pl
 REPO = Path(__file__).resolve().parent.parent.parent
 
 from engine.backtest.protocol import FOLD_DAYS, N_FOLDS, wf_folds
-from engine.experiments.avsl_baseline import DAY, WARMUP
-from engine.experiments.load_yf import TICKERS
+from experiments.avsl_baseline import DAY, WARMUP
+from experiments.load_yf import TICKERS
 from ta.src.custom.avs_base import (
     _avs_base,
     _compute_len_v,
@@ -380,7 +380,7 @@ def run() -> None:
         # stuck at $0.017 after a fake -99.5% 1H print, Aug 2025).
         universe = [t for t in TICKERS if t != "TON"]
     else:
-        from engine.experiments.load_okx import ALL  # 34 okx spot assets
+        from experiments.load_okx import ALL  # 34 okx spot assets
 
         universe = [f"{s}-USDT" for s in ALL]
     syms = [

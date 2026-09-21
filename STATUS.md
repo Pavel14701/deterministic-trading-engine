@@ -5,6 +5,15 @@ Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done ·
 
 ## 2026-09-21 — data feasibility audit + TTF v1 / ProSP v2 preregs + OI accumulation
 
+LAYOUT: `engine/experiments/` moved to the top-level `experiments/`
+package (user directive: scripts laid out in `experiments/`).  Imports
+`engine.experiments.*` -> `experiments.*` everywhere (incl.
+engine/tests/test_funding_carry_v3.py); ruff per-file-ignores and the
+mypy override retargeted; CI lint/type steps now cover `experiments`;
+run commands are `python -m experiments.<name>`.  The catalog moved to
+`experiments/README.md`.  STATUS.md history above keeps the old paths
+on purpose (evidence trail of its time).
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
