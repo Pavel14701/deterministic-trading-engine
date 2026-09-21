@@ -2564,6 +2564,47 @@ Sanity outputs (not gates): measured baseline-P table vs b/(a+b)
   (already implemented, never run) executed as-is, results reported
   separately; no interaction with this prereg.
 
+### BARRIER-PROBABILITY v1 -- RESULT :x: (FAIL all gates, track v1 CLOSED)
+
+runs/barrier_prob_prereg.log.  Smoke sanity first: measured raw
+P(TP-first) for (2R,1R) on BTC 1H = 0.329 vs Brownian baseline 0.333
+-- the b/(a+b) theory is CONFIRMED almost exactly, i.e. the raw
+probability carries no drift edge to begin with.
+
+Gates (pooled TEST, 8 folds x 56d, 6 majors, 10 side-x-config models
++ isotonic cal):
+  K1 calibration: FAIL -- model Brier 0.21747 vs constant-baseline
+     0.21688 (model WORSE); improvement on 1/10 configs only.
+  K2 top-decile EV: FAIL -- pess EV = -0.372R (n=1306); all taken
+     trades -0.400R, win 32%.
+  K3 maxDD: FAIL (5279R across 13,057 trades -- artifact of scale;
+     the real story is per-trade EV ~ -0.4R: the EV>0 rule is not
+     selective, pessimistic costs ~0.25-0.35R at 1R stops dominate).
+Verdict: entry-time vol/momentum/structure features do NOT shift
+P(TP-first) enough to beat the constant baseline, let alone clear
+taker costs.  The informative null the user predicted: on this
+feature set first-passage probability is NOT predictable.  Track v1
+CLOSED per prereg; v2 (funding/OI features, higher-RR configs where
+the cost fraction is smaller) would need a NEW prereg -- standing
+rule: no re-tuning after a kill.
+
+### FUNDING CARRY -- RESULT :x: (REJECTED: costs >> carry; data thin)
+
+runs/funding_carry.log, runs/funding_carry.json.  Pipeline executed
+as-is (bug fixed en route: REPO was engine/ not repo root -- commit
+this one).  Data: OKX funding history gave only ~97 days x 29 assets
+(max_records=1800 insufficient for multi-year persistence analysis --
+rerun with paged history if this track reopens).  Results:
+gross carry +1.59bp/day (5.8% annualized, hit 96%, persistence high
+as expected) but turnover costs 10.5bp/day (2.11 new positions/day x
+0.3% round trip) -> net -32.6% annualized, hit 5%.  Even the
+top-k-dead-zone filter (2bp/day) cannot bridge a 9x cost-vs-carry
+gap; k=1 concentration would need top-asset funding >> 15bp/day
+sustained, which the 97d sample does not show.  REJECTED at current
+cost assumptions; reopening requires either maker execution on the
+perp leg (~5x cost cut) or demonstrated sustained high funding.
+
+
 
 
 Variant of the KILLED Donchian 4H (TEST 2/6 -> closed).  External
