@@ -13,6 +13,11 @@ products into data/binance/:
   unbounded panel into oi_{SYM}USDT_1h.parquet.  Zero-regret
   accumulation track -- no backtest until ~180d contiguous.
 
+Symbol note: TON -> GRAM rebrand on Binance USDT-M (TONUSDT is
+SETTLING, GRAMUSDT is a new contract from 2026-07-02).  The TON-era
+klines remain in kl_TONUSDT_1h.parquet; ``load_binance`` maps
+TON-USDT -> GRAMUSDT for all new collection.
+
 Usage:  python -m experiments.load_binance [SYM ...] [kl|oi|all]
 """
 
@@ -30,11 +35,16 @@ from experiments.funding_carry import UNIVERSE
 from experiments.load_yf import _stats
 
 
-REPO = Path(__file__).resolve().parent.parent.parent
+REPO = Path(__file__).resolve().parent.parent
 CACHE = REPO / "data" / "binance"
 
 # Binance USDT-M symbols are the OKX inst names without the dash.
-SYMBOLS = [u.replace("-", "") for u in UNIVERSE]
+# TON was rebranded to GRAM on Binance USDT-M (TONUSDT now SETTLING;
+# GRAMUSDT is a NEW contract, history from 2026-07-02 -- not a
+# continuous rename).  The TON-era klines stay cached as
+# kl_TONUSDT_1h.parquet; live collection continues under GRAMUSDT.
+SYMBOL_ALIASES = {"TON-USDT": "GRAMUSDT"}
+SYMBOLS = [SYMBOL_ALIASES.get(u, u.replace("-", "")) for u in UNIVERSE]
 MAX_BARS = {"1h": 60_000}  # ~6.8y at 1h: covers TTF v1 F1 (2021-01-)
 
 

@@ -26,7 +26,7 @@ from engine.infra.marketdata.okx_fetch import fetch_candles
 from experiments.load_yf import _stats
 
 
-REPO = Path(__file__).resolve().parent.parent.parent
+REPO = Path(__file__).resolve().parent.parent
 CACHE = REPO / "data" / "okx21"
 
 # The 10 assets already cached in data/okx21 (depth extension) ...

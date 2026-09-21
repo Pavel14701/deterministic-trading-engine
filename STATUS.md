@@ -18,6 +18,25 @@ User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
 
+### TON -> GRAM (same day, data note)
+
+Binance USDT-M rebranded TON: TONUSDT is now SETTLING, GRAMUSDT is a
+NEW contract (history from 2026-07-02 -- not a continuous rename).
+The TON-era klines (22 421 bars, 2024-03..2026-07) stay cached as
+kl_TONUSDT_1h.parquet; oi_TONUSDT was empty (the OI endpoint refuses
+settling symbols) and was removed.  load_binance maps
+TON-USDT -> GRAMUSDT (SYMBOL_ALIASES) for all new collection:
+kl_GRAMUSDT (1954 bars, 0 gaps) + oi_GRAMUSDT (744 rows, 31d) are in.
+Universe for the frozen preregs is untouched -- TON-USDT is the OKX
+inst name; only the Binance collection side is aliased.  Note: the
+GRAM funding history starts 2026-07-02, so any future funding-carry
+re-run on live Binance funding has ~2.7 months of depth for GRAM.
+
+Layout bug fixed here: 18 moved modules (avsl_*, ensemble_ab,
+funding_carry*, load_*, ob_*) computed REPO as three levels of
+.parent -- correct at engine/experiments/ depth, one level too deep
+after the move (stray projects/data/).  All now use .parent.parent.
+
 ### DATA FEASIBILITY (verified live 2026-09-21, decisive for the plan)
 
 | source | real depth | verdict |

@@ -23,7 +23,7 @@ import polars as pl
 import yfinance as yf
 
 
-REPO = Path(__file__).resolve().parent.parent.parent
+REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / "data" / "yf"
 
 TICKERS = {
