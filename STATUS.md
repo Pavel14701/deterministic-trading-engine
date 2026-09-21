@@ -672,6 +672,19 @@ Next stage per the track: live-scale prereg for S1-sized AVSL-cross
 (sizing/venue/monitoring) remains a SEPARATE new prereg; nothing in
 the frozen signal config moves.
 
+#### PROMOTION (2026-09-22): S1-sized AVSL-cross -> engine/passed/
+
+The configuration is planted into the core as
+`engine/passed/avsl_cross_s1.py` (self-contained, no experiments/
+imports; signal vendored via `ta` directly) with full docs in
+`engine/passed/README.md` and pure-function unit tests in
+`engine/tests/test_passed_avsl_cross_s1.py`.  Self-check
+`uv run python -m engine.passed.avsl_cross_s1` reproduces the
+frozen verdict numbers bit-for-bit (Sharpe 1.50/2.84, DD 22%/12%,
+EV +0.17/+0.33R, CIs identical to runs/risk_overlay.log) ->
+FROZEN GATES: PASS 5/5.  The frozen numbers are now a regression
+contract: any change to the module that moves them voids the PASS.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.

@@ -31,6 +31,9 @@ engine/      research library, subpackaged by function, tests co-located:
                model/       LGBM ranker head, feature builders, rule tables
                metrics/     per-trade R performance metrics
                datasets/    dataset assembly pipelines (OKX -> panels)
+               passed/      PRODUCTION-FROZEN strategies (cleared their
+                            full pre-registered battery; frozen numbers
+                            are a regression contract - see passed/README)
                experiments/ reproducible experiment drivers
                tests/       the unit suite (simulator, maker entry, zones,
                             library) — one package, one home
