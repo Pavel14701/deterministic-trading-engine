@@ -591,6 +591,49 @@ zero per-asset standalone significance (edge exists only in
 portfolio aggregation), and bear-year DDs of 30-60% at 1%-slot
 risk.  Until such a prereg exists: AVSL family = CLOSED.
 
+#### RISK-OVERLAY TRACK -- PRE-REGISTRATION (2026-09-22, FROZEN BEFORE RUN)
+
+Predecessor: AVSL-cross 4H confirmation (1e0e859) -- CLOSED FINAL by
+G2 (DD).  Justification for this NEW track: the signal itself passed
+5/6 gates including NW significance; it was killed by position
+SIZING, which is a separate layer.  The entry family stays CLOSED;
+this track tests sizing rules only, as a new hypothesis.
+
+FROZEN SIGNAL CONFIG (not one parameter moves; any change closes the
+track): AVSL(70,345) 4H cross, normal arm, stop =
+max(|close-line|, 2*ATR14), TP {3,5,8}R with PRIMARY=5R, HORIZON
+500, fee 10bp, universe = the same 10 assets, Binance 1H -> 4H
+resample, PRIMARY = first 2/3, F3 = last 1/3.
+
+SIZING HYPOTHESES (all four run in ONE pass; S1-S4 frozen, no new
+ones may be added after the run):
+- S1 vol-target: size = clip(target_vol / realized_vol, 0.25, 2.0),
+  target 20% ann., realized = std(log rets, last 100 4H bars) x
+  sqrt(6*365), measured at entry.
+- S2 regime: p = ATR14 percentile within last 500 bars at entry;
+  size x1.0 (p<=80), x0.5 (80<p<=90), x0.25 (p>90).
+- S3 concurrency cap: entry skipped if >=5 trades already open or
+  total open exposure >= 3x base size (baseline saw max 43 open).
+- S4 = S1 + S2 + S3 combined.
+
+GATES per config (PASS = ALL; kill: any FAIL closes THIS track):
+- G1' Sharpe_NW >= 1.0 on the sized accrual stream, PRIMARY and F3
+  (lags 500, ann x sqrt(6*365)).
+- G2' portfolio DD <= 25% on PRIMARY and F3 (equity =
+  cumprod(1 + 0.01 x sized bar stream)).
+- G3' net EV >= 0.10R per trade on PRIMARY and F3.
+- G4' >= 7/10 assets with positive net EV on PRIMARY and F3.
+- G5' block bootstrap (block 500, B 1000) CI of mean bar R excludes
+  0 on PRIMARY and F3.
+
+VERDICT RULE (risk-first, not EV-first): if >=1 config passes all
+five gates, the selected config is the MOST CONSERVATIVE passer
+(preferred order S3 > S4 > S1 > S2), never the most profitable.  If
+0 configs pass: the risk profile is fundamental (correlation, not
+vol) and the risk-overlay track is CLOSED.  F3 is holdout: no
+sizing parameter may be tuned on it (all thresholds above are
+pre-fixed).
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
