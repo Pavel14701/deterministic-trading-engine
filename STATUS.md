@@ -2637,11 +2637,47 @@ closes; per-asset gate uses OKX 97d window):
   W-G1: portfolio net annualized >= 3% AND net daily Sharpe >= 1.0.
   W-G2: per-asset slow-carry net Sharpe >= 1.0 on >= 3 assets.
   W-G3: portfolio turnover <= 0.3 new positions/day.
-Declared optimism: maker fills assumed (no adverse-selection model
-on the limit legs; carry entries are non-urgent, so plausible, but
-not free).  Binance cross-check outputs (context, not gates): lag-1
-autocorr of daily funding and top-quartile membership persistence
-over 3 years.
+### FUNDING CARRY v2 -- RESULT :x: (primary gate FAIL; track CLOSED per prereg)
+
+runs/funding_carry_v2.log, runs/funding_carry_v2.json.  Two bugs
+fixed en route (documented, no tuning: portfolio PnL sign inverted
+in first run -- hit 0.12 = mirror of v1's 0.96, caught and fixed
+before the recorded run; Binance symbol mapping 'LINK-USDT' ->
+'LINKUSDTUSDT' via str.replace).
+
+Portfolio variants (OKX 96d panel, 29 assets):
+  daily_taker : ann -76.7%, Sharpe -24.3, gross +0.90bp/d, 4.39
+                new pos/day (v1's cost disease, confirmed).
+  weekly_taker: ann -13.7%, Sharpe -5.5, gross +0.68bp/d, 0.89/day.
+  weekly_maker: ann -8.3%, Sharpe -5.0, gross +0.68bp/d, 0.89/day.
+KEY FINDING: weekly rotation does NOT preserve the gross edge -- it
+collapses +1.6 -> +0.68bp/d.  Cross-sectional funding extremes
+mean-revert within days: by the time you hold the top-3 for a week,
+the extreme has decayed.  And turnover stays 0.89/day (the whole
+6-name book churns every weekly rebalance) because extreme-tail
+membership is not persistent.  User's model partially confirmed
+(frequency costs dominate: -77% -> -14% just from weekly), partially
+refuted (gross edge does not survive holding; maker is 1.5x not 5x).
+
+Per-asset slow carry (W-G2, maker, hold-until-sign-flip): 15/29
+assets net Sharpe >= 1 (AAVE 34, DOGE 20, LINK 17, BTC 17 ...).
+Caveats: 96d single-regime window, no WF split possible, annualized
+Sharpe inflated ~2.7x by funding autocorr (rho=0.76 -> Newey-West).
+This is the user's actual mental model of carry and it is the ONLY
+surviving signal -- but per prereg it is a secondary gate.
+
+Binance 3y cross-check (1096d x 29): lag-1 autocorr 0.761, top-
+quartile weekly Jaccard 0.363 -- funding persistence is real and
+venue-independent, but moderate; extremes churn too fast for
+cross-sectional rotation at any frequency tested.
+
+Gates: W-G1 FAIL, W-G2 PASS, W-G3 FAIL (0.89 > 0.3).  OVERALL:
+FAIL -> funding carry track CLOSED per prereg 58849ca.  If anything
+here ever reopens, it is a NEW prereg for per-asset slow carry with
+a WF split and NW-corrected Sharpe, tested on Binance 3y first as
+the only source of multi-year funding history.  Order flow remains
+the next track (needs explicit user decision).
+
 
 
 
