@@ -2604,6 +2604,44 @@ sustained, which the 97d sample does not show.  REJECTED at current
 cost assumptions; reopening requires either maker execution on the
 perp leg (~5x cost cut) or demonstrated sustained high funding.
 
+### PER-ASSET SLOW CARRY v3 -- PRE-REGISTRATION (fixed BEFORE run)
+
+Follows user directive after v2: cross-sectional rotation is dead
+(extremes mean-revert faster than any rebalance frequency); the
+surviving signal is per-asset hold-until-sign-flip carry.  v3 tests
+it on 3y of funding history.
+
+Data: Binance USDT-M funding, 1096d x 29 assets (cached).  Binance
+is the only multi-year source; OKX tradability is an assumption to
+be re-validated on the OKX 96d panel BEFORE any live step.  Params
+frozen from v2 prereg (no tuning): signal = trailing 3d mean daily
+funding, entry |sig| >= 2bp/day, exit on sign flip, maker half
+round-trip (0.10%) charged at entry and exit, side = receive funding
+(short perp + long spot for positive funding, mirror for negative).
+
+CONTAMINATION CONTROL: the (3d, 2bp) params were chosen while
+looking at OKX 2026-06..09, so the trailing year is tainted.
+  PRIMARY eval = F1+F2 pooled (2023-09..2025-08, pre-observation).
+  F3 (2025-09..2026-09) = reported confirmation, not gated.
+No parameters are fit anywhere; WF means evaluation windows, not
+fitting.
+
+Metrics: per-asset daily net streams; Sharpe_ann and Sharpe_NW with
+Newey-West factor sqrt(1+2*sum(rho_k, k=1..5)), factor clamped to
+[1,5].  Asset counts toward the gate only if in-position >= 60 days
+over the eval window (activity floor).  Portfolio = equal-weight
+fixed 29 slots (flat contributes 0).
+
+PRE-REGISTERED gates (all on PRIMARY F1+F2):
+  C-G1: Sharpe_NW >= 1.0 on >= 10 of 29 assets.
+  C-G2: portfolio Sharpe_NW >= 1.0.
+  C-G3: portfolio max drawdown <= 20%.
+Reported, not gated: F3 per-asset/portfolio Sharpe_NW, fold-by-fold
+regime table, trade counts, OKX 96d cross-check (from v2 run).
+Verdict rule: ALL of C-G1..C-G3 PASS -> track advances to OKX
+validation prereg + execution design.  ANY FAIL -> track closed,
+next = order flow (design spec, explicit user decision to build).
+
 ### FUNDING CARRY v2 -- PRE-REGISTRATION (2026-09-20, fixed BEFORE run)
 
 User challenge accepted: v1 was daily cross-sectional rotation (2.11
