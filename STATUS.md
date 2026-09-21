@@ -2638,9 +2638,57 @@ PRE-REGISTERED gates (all on PRIMARY F1+F2):
   C-G3: portfolio max drawdown <= 20%.
 Reported, not gated: F3 per-asset/portfolio Sharpe_NW, fold-by-fold
 regime table, trade counts, OKX 96d cross-check (from v2 run).
-Verdict rule: ALL of C-G1..C-G3 PASS -> track advances to OKX
-validation prereg + execution design.  ANY FAIL -> track closed,
-next = order flow (design spec, explicit user decision to build).
+### PER-ASSET SLOW CARRY v3 -- RESULT :white_check_mark: (PASS all gates, first survivor)
+
+runs/funding_carry_v3.log, runs/funding_carry_v3.json.  One bug
+fixed pre-result (same mirrored-sign class as v2 portfolio -- now
+pinned by engine/tests/test_funding_carry_v3.py, 4 tests).
+
+PRIMARY F1+F2 (2023-09..2025-08, uncontaminated, Binance 3y):
+  C-G1: 28/29 assets Sharpe_NW >= 1 (top: ETH 6.88, BTC 6.45,
+        LTC 6.45, XRP 5.82, LINK 5.22; NW factor 2.24).  PASS.
+  C-G2: portfolio Sharpe_NW 5.19 (raw 11.60), ann +8.50%.  PASS.
+  C-G3: portfolio maxDD 0.55%.  PASS -- BUT SEE CAVEAT 2.
+Fold decay (the honest picture):
+  F1 (2023-24): 29/29 assets, ann +13.5%
+  F2 (2024-25): 22/29 assets, ann +3.75%
+  F3 (2025-26, tainted window): 11/29 assets, ann +1.45%,
+      portfolio Sharpe_NW still 3.72, maxDD 0.14%.
+CAVEATS (declared):
+  1. Carry alpha is DECAYING -- +13.5% -> +3.75% -> +1.45% ann by
+     fold.  Classic crowding: funding premia are arbitraged down.
+     F3 run-rate ~1.5%/yr is close to the noise floor of the cost
+     model (maker assumption).
+  2. maxDD is a FUNDING-STREAM drawdown: the simulation models no
+     price risk (delta-neutral by construction), no basis moves,
+     no margin/liquidation.  True DD will be larger; C-G3 as
+     measured is nearly vacuous and will be re-specified in the
+     execution prereg with a real simulator.
+  3. Binance data; OKX tradability unvalidated.  F3 (11/29 >= 1)
+     still clears the user's >=10/29 bar even in the decayed regime.
+VERDICT per prereg efcb6d5: PASS -> track advances to (a) OKX 96d
+validation of per-asset levels/persistence and (b) execution design
+prereg (real sim: basis, margin, partial fills on maker legs).
+ standing rule holds: params (3d, 2bp, sign-flip exit) stay FROZEN.
+
+### ORDER FLOW -- DESIGN SPEC (no code, pending user go)
+
+Goal: test whether microstructure information predicts short-horizon
+direction beyond what OHLCV already showed it cannot.  Data is the
+hypothesis: everything before used OHLCV derivatives only.
+Sources (OKX, public): REST /market/trades + /market/agg-trades
+(history depth to be probed), WS channels trades + books5 for live
+collection; tick-by-tick L2 needs auth tier -- probe first.
+Features (first prereg candidate set, keep SMALL): aggressor-signed
+trade delta (1m/5m/15m), order-flow imbalance (top-5 book),
+trade-size distribution skew, VWAP deviation vs mid, spread state.
+Infra: WS collector -> daily parquet (trade ticks ~50GB/yr/major ->
+start with 6 majors, 3 months); backfill via REST agg-trades.
+Experiment prereg (before any run): WF 6 folds, same discipline as
+barrier v1; gate = out-of-sample direction hit rate > 52% at 15m
+horizon with taker-cost EV > 0, else close.  Heavy: 2-4 weeks.
+NOT STARTED until user explicitly green-lights infra build.
+
 
 ### FUNDING CARRY v2 -- PRE-REGISTRATION (2026-09-20, fixed BEFORE run)
 
