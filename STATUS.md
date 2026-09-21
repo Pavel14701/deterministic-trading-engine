@@ -419,6 +419,73 @@ or MFE_p75 >= 2R on taken trades), before any exit/RR design.
 AVSL family stays closed; z-score stays closed; Donchian stays
 closed.  Next: TTF v1 (prereg exists, runner missing), carry P3/P4.
 
+#### AVSL CROSS HIGH-TF -- PRE-REGISTRATION (2026-09-21, FROZEN BEFORE RUN)
+
+Hypothesis (new, not a re-param of any closed track): the prior
+AVSL price-cross tests were structurally broken at 15m -- AVSL(70,345)
+hugs price there (7.6 crosses/day vs a 3.6-day slow line = noise),
+stop 1xATR made fee_r ~0.2-0.5R, horizon 192 < slow length.  At TFs
+where the line is structural the same entry may carry gross edge.
+
+Setup (frozen):
+- Universe: BTC, AVAX, BNB, DOGE, ETH, LINK, LTC, NEAR, SOL, XRP
+  (same 10).  Data: Binance 1H klines (6-7y); 4H = local resample
+  of the same 1H.  Exactly two TFs: 1H and 4H.  No other TF.
+- Entry: close crosses AVSL(70,345) (NaN-safe path, donor mult 2.0).
+  Arm: NORMAL ONLY (long on up-cross, short on down-cross).  No
+  reverse arm, no filters, no slope alignment.
+- Stop: max(|close - line|, 2*ATR14) at the entry bar (structural
+  with a volatility floor).  TP {3,5,8}R, horizon 500 bars, MTM
+  exit, conservative within-bar (stop wins ties), entry at close of
+  the cross bar.  Fee 10bp round trip.  Overlapping trades allowed
+  (every cross, no cursor) -- per-asset EV readout, same as prior
+  AVSL scripts.  WARMUP 400 bars.
+- Segments: train = first 2/3 of each asset's bars, test = last 1/3.
+
+Gates (PASS requires ALL; verdict per TF independently, no pooling):
+- G1 consistency: net EV > 0 on >= 5/10 assets in train AND >= 5/10
+  in test, at the same TP.  3 TPs are pre-registered; a pass at one
+  TP only is reported as WEAK (needs confirm), not a go.
+- G2 gross-edge-first: pooled WR at TP=3R > 30% (break-even 25%)
+  within each segment, over trades with n >= 30 per asset.
+- G3 cost sanity: median fee_r <= 0.10R per segment.
+- Min-n: an asset with < 30 trades in a segment counts as
+  not-positive for G1 in that segment.
+
+Kill: any gate FAIL in a TF closes the AVSL-cross track for that TF;
+FAIL in both TFs closes the entry family for good (no third TF, no
+stop variants, no filters, no universe change).  A full pass goes to
+a separate confirmation prereg, not to production.
+
+#### AVSL CROSS HIGH-TF -- RESULT (2026-09-21): FAIL PER PREREG, CLOSED
+
+runs/avsl_cross_tf.log.  VERDICT per the frozen gates: 1H FAIL,
+4H FAIL -> family CLOSED for good.  Gate detail:
+
+- 1H: G2 kills it -- pooled WR3R 25.4% train / 28.6% test vs need
+  >30% (BE 25%).  Gross edge ~zero, same pattern as every prior
+  price-derived track.
+- 4H: G1 passes everywhere (train 8/10, 10/10, 9/10; test 7/10,
+  7/10, 9/10 -- incl. 10/10 net>0 at TP=5R train), G3 passes (fees
+  0.02R, the cost barrier vanishes at 4H as predicted), but G2
+  kills it: pooled WR3R 28.4% train / 30.0% test, need >30%.
+
+ANOMALY ON RECORD (not a verdict change): 4H is the FIRST
+configuration in the whole project where gross WR is statistically
+above break-even in BOTH segments -- train 28.4% vs BE 25% is
+~+3.5 sigma at n=1966, test 30.0% vs 25% is ~+3.6 sigma at n=973
+(significance overstated somewhat by overlapping-trade correlation).
+This is qualitatively different from z-score/AVSL-15m/1H, where WR
+sat exactly at break-even.  The 1.6pp miss vs the arbitrary 30%
+G2 threshold is the only reason the family closed.
+
+LIMITATIONS: per-asset EV gates only; no portfolio Sharpe_NW / DD
+gate was in this prereg; test window overlaps the 2025-26 bull
+(long+short both tested, so not pure beta, but long/short split not
+examined post-hoc).  Per the kill rule: closed.  Any revival must be
+a NEW dated prereg acknowledging this failure and justifying itself
+-- default state is CLOSED.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
