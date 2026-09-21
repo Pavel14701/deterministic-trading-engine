@@ -241,6 +241,75 @@ OP -2.1).  Motivating observation for P4 (recorded post hoc, does
 not alter the frozen P4 universe rule): the F3-positive names sit
 outside the mega-cap head of the universe.
 
+### Z-SCORE STRATEGIES -- PRE-REGISTRATION (2026-09-21) -- FROZEN
+
+Four z-score signal families on Binance 1H.  Discipline: THIS block
+is committed before the runner exists; touching any parameter after
+the first run kills the track (revival = NEW prereg).
+
+Data / universe (frozen): Binance 1H klines
+(data/binance/kl_*USDT_1h.parquet), full history .. 2026-09-21.
+Universe = the 30 carry-UNIVERSE majors; EVALUATED = those with
+cached 1H klines at freeze time = 29/30 (PEPEUSDT klines absent --
+excluded by data availability, not performance).
+
+Indicators (frozen): z-score via ta zscore_ind(window, ddof=1,
+use_talib=False); ATR(24) via ta atr_ind(use_talib=False); ADX(14)
+via ta adx_ind (HYB-1 only).
+
+Implementations (frozen rules):
+- MR-1 mean reversion, window 336: z <= -2 -> long; z >= +2 -> short;
+  exit |z| <= 0; opposite extreme flips.
+- MOM-1 z-momentum, window 168: z crosses above +1.5 -> long; crosses
+  below -1.5 -> short; exit on crossing back through 0.
+- XSEC-1 cross-sectional, window 336: every 168 bars rank the panel
+  z; long bottom 20% (most oversold), short top 20%, weights 1/n per
+  side; < 10 valid assets at rebalance -> flat until next.
+- HYB-1 regime hybrid, window 336, ADX(14): ADX < 20 -> MR rules
+  (entry +/-2, exit |z| <= 0.5); ADX > 25 -> momentum rules (entry
+  |z| crossing 1.0, exit through 0); ADX in [20, 25] -> hold.
+
+Event simulation (frozen): entry at NEXT bar open after the signal
+bar (no lookahead); one open event trade per asset -- entry events
+overlapping an open trade are skipped (cursor at exit).  SL/TP from
+ATR24 at the signal bar: MR-1 2.0/2.0; MOM-1 3.0/3.0; HYB-1 2.5/2.5.
+R = engine.sim.sim PESSIMISTIC return: the validated taker model
+(COMM 10bp/side x2 + GEN_SLIP 5bp + gap 25% ATR + x2 entry/exit slip)
+IS the frozen "taker x2 = ~0.2% RT + pessimism stack"; NO additional
+cost subtraction (double-count guard).  Max hold = engine cap 48
+bars (the sketch's 72 would require touching the validated engine --
+frozen deviation).  MOM-1 fixed TP substitutes the sketch's
+chandelier (trailing not in the validated engine -- frozen deviation).
+
+Stream basis (frozen, for G1/G2): hourly portfolio stream
+r_t = mean_j pos_{t-1,j} * ret_{t,j} - 8bp * turnover (ret = hourly
+log-return); XSEC-1 uses its rebalance weights in place of pos.
+Sharpe_NW (lags 5) annualised x sqrt(24*365).
+
+Folds (frozen): split on the common calendar grid at 2/3 of its
+range: PRIMARY = first 2/3, F3 (confirmation) = last 1/3.  Gates are
+evaluated on PRIMARY ONLY; F3 is looked at after the verdict.
+
+Gates (frozen):
+- G1: stream Sharpe_NW >= 1.0 on >= 50% of evaluated assets
+  (>= 15 of 29; the sketch's 5/10 ratio).
+- G2: portfolio stream Sharpe_NW >= 1.0.
+- G3: event-basis maxDD <= 25%: PRIMARY trades pooled, sorted by
+  entry time, equity = cumprod(1 + 0.01 * r_pess).  XSEC-1 (no
+  per-trade events): stream equity DD <= 25% (frozen substitution).
+- G4: mean r_opt > 0 on PRIMARY (gross-of-pessimism pre-condition).
+  XSEC-1: mean gross stream return (pre-cost) > 0.
+Kill: any of G1-G4 FAIL -> track closed.  No re-params, no filters
+(RSI/OB/funding), no universe/TF changes, no combinations before
+each strategy is judged alone.
+
+Reported, not gated: win rate, n trades, F1+F2 vs F3 decay,
+cross-strategy stream correlation.
+
+Expectation on record (from the sketch, not a gate): MR-1 ~20%,
+MOM-1 ~15%, XSEC-1 ~25%, HYB-1 ~20% pass probability; EV near zero
+after costs is the base case for the directional pair.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
