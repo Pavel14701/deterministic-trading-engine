@@ -98,6 +98,82 @@ fix; the era's positive headline numbers remain retired.  The dead
 pool is confirmed dead.  Panel-era infra is closed for re-runs; new
 work goes to the live tracks (carry re-validation, TTF v1, ProSP v2).
 
+### HISTORICAL RE-RUN PHASE 2 -- group B (2026-09-21) -- PRE-REGISTRATION
+
+Six remaining decision-relevant modules (DD metrics, label-dependent
+comparisons, the one methodology number).  Same frozen rules as phase
+1: rebuilt panel, current engine.sim, params AS-IS, original gates
+AS-IS.  This is an audit, not re-tuning.
+
+Scope and expectations (frozen before runs):
+
+- portfolio, robustness  -- DD metrics.  EXPECTATION: DD higher than
+  the era numbers (phantom +1R wins depressed DD).  Decision-relevant:
+  honest DD drives position sizing / leverage / risk limits.
+- ranker_only, ranking_baselines -- gate/ranker comparisons on clean
+  labels; flips possible (ranking_baselines is the likeliest flip:
+  LambdaRank trained on poisoned labels).  CAVEAT recorded here: the
+  ranking_baselines baseline loads the era artifact
+  data/mtf_model/stop_head.txt as the "current stop head" -- its PICKS
+  are evaluated against clean r_net in replay, but the model itself
+  was trained pre-fix; a comparison win/loss is still valid as
+  measured, the magnitude is era-contaminated on that arm.
+- feature_family -- DSL vs hand-built comparison on clean labels.
+- nested_cv -- the hyperparameter-selection discount; era number
+  -2.2%.  KILL criterion: if the clean-panel discount is worse than
+  -15%, all historical results are over-fitted beyond tolerance and
+  the selection methodology needs a re-audit.
+- NOT re-run (unchanged from phase 1): execution_costs (convention),
+  maker_entry (structural conclusion), regime_diag (already negative).
+
+#### HISTORICAL RE-RUN PHASE 2 -- RESULTS (6/6, 2026-09-21)
+
+Artifacts: runs/rerun_{portfolio,robustness,ranker_only,ranking_baselines,
+feature_family,nested_cv}.log + runs/{portfolio,ranker_only,
+feature_family,nested_cv,d9b_robustness}.json.
+
+1. portfolio     -- SURVIVES mechanically, honest DD now on record:
+   uncapped EV -8.3R / maxDD 9.6R; block-bootstrap tail maxDD
+   p50=8.7R p95=16.1R p99=19.9R (@1R=1% eq).  Kill-switch levers work:
+   K=4R/P=14d cuts p95 DD to 5.5R (skips 44%).
+2. robustness    -- MAGNITUDE: daily-vs-event DD bias = +0% on the
+   clean panel (era claim "~30% optimistic" does NOT reproduce --
+   era number was inflated by phantom wins).  Block-length stability
+   holds: p95 maxDD flat 15.8-16.1R across 10-60d blocks, 10d blocks
+   adequate.  Capped-out check: rejected trades same-or-better (pure
+   capacity loss, not a selection bug).
+3. ranker_only   -- SURVIVES: table vs free gate is mixed (table wins
+   A-cells, free wins C-cells), every cell negative (best -0.026R).
+   No gate mechanism creates an edge on the clean panel.
+4. ranking_baselines -- NO FLIP to positive: fresh LambdaRank beats
+   the era stop-head on clean labels (test pess -0.113 vs -0.273;
+   dd 3.8R vs 12.4R); rk+gate best cell -0.056R / dd 0.7R -- but ALL
+   arms negative.  Era-contamination caveat on the stop-head arm held
+   (see prereg): the era model is much worse than its era numbers --
+   consistent with poisoned labels having inflated IT, not the ranker.
+5. feature_family -- SURVIVES: DSL-zeroed -0.057, DSL-native -0.062,
+   spec -0.062, combo -0.038 (dd 26R vs 41-44R).  No family positive;
+   combo (DSL+hand) mildly best and halves DD.  Features do not
+   create edge; encoding choice is a DD refinement at best.
+6. nested_cv     -- **KILL CRITERION TRIGGERED**: selection-bias
+   discount -27.9% (threshold -15%; era number -2.2%).  On the clean
+   panel the -2.2% figure does NOT reproduce.  Caveat recorded: both
+   arms are deeply negative (nested -0.027 n=160 vs fixed -0.038
+   n=211), so the discount is estimated on a dead pool with small n
+   and is noise-dominated in SIGN; what reproduces is the MAGNITUDE
+   class: single-split hyperparameter selection carries order-10-30%
+   bias, not ~2%.  CONSEQUENCE (binding): every point-estimate EV from
+   a single-config run carries +/-10-30% selection uncertainty.  For
+   verdicts negative by wide margins this changes nothing; for any
+   future result near zero (e.g. carry v3 F3 +1.45%) nested selection
+   is MANDATORY before quoting a number.
+
+Phase 2 totals: 0 flips to positive, 1 kill criterion triggered
+(nested_cv discount).  Panel-era closure AMENDED: all 16 modules now
+audited; protocol designs (WF folds, embargo, admission, DD
+machinery) stand; the single-split selection bias number is the one
+era figure that was materially optimistic and is now corrected.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
