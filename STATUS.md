@@ -344,6 +344,43 @@ single-name price-derived signals do not survive the taker cost
 stack.  Attention returns to TTF v1 / ProSP v2 and the carry
 priorities (P3 OKX 96d, P4 low-cap).
 
+#### Z-SCORE POST-MORTEM: MFE/MAE ON TAKEN TRADES (2026-09-21)
+
+Diagnostic replays the frozen event path (same cursor, fills, risk
+unit) and measures maximal favorable/adverse excursion in R per
+taken trade (`experiments/zscore/mfe_mae.py`,
+`runs/zscore_mfe.json`).  Decision rule was fixed in advance:
+MFE_p75 >= 2R -> exit-RR surface (new prereg); MFE_p75 < 1.5R ->
+track closed for good, reason = "no signal", not "bad exit".
+
+PRIMARY, within the actual trade life (the exit the strategy had):
+
+- MOM-1: MFE_p75 = 1.01R, MFE_p95 = 1.50R  -> BELOW 1.5R THRESHOLD
+- MR-1:  MFE_p75 = 0.79R, MFE_p95 = 1.30R  (even weaker)
+- HYB-1: MFE_p75 = 0.89R, MFE_p95 = 1.50R
+F3 quantiles are identical to within +/-0.03R (no fold drift).
+
+VERDICT: the signal never produced movement.  75% of MOM-1 trades
+never saw +1R of favorable excursion before the trade ended; the
+median trade saw 0.43R.  No exit scheme (TP grid, trailing, RR 2:1)
+can capture movement that does not exist: a 2R TP would simply never
+fill for 3/4 of trades, and the position would sit until SL or the
+hold cap -- which is what the -0.057R net EV already priced in.
+
+Caveat recorded against the obvious misreading: over a fixed
+120-bar horizon MFE_p75 rises to ~3R, but MAE_p75 rises equally
+(~2.5R); excursions of that size are what any ATR-scaled random walk
+produces at that horizon, and the favorable/adverse asymmetry is
+~1.1x -- noise.  Large 120-bar MFE is NOT evidence of capturable
+edge, and chasing it would reopen exactly the "smart exit" path the
+kill rule forbids.
+
+FINAL: z-score track CLOSED with cause established: no post-entry
+drift on 1H majors from z-score entries.  This post-mortem also
+prior-mutes the AVSL/Donchian single-name z-family tracks absent a
+different signal source.  Next: TTF v1 run (prereg in STATUS), P4
+low-cap carry fetch_funding.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
