@@ -634,6 +634,44 @@ vol) and the risk-overlay track is CLOSED.  F3 is holdout: no
 sizing parameter may be tuned on it (all thresholds above are
 pre-fixed).
 
+#### RISK-OVERLAY RESULT (2026-09-22): S1 VOL-TARGET PASSES 5/5 -- TRACK OPEN
+
+runs/risk_overlay.log.  All four frozen configs, one pass, gates as
+preregistered:
+
+- S1 vol-target (size = clip(0.20/rv100, 0.25, 2.0), mean size
+  0.33): **PASS 5/5**.  Sharpe_NW 1.50 PRIMARY / 2.84 F3 (UP from
+  1.33/2.05 unsized -- vol-targeting improved the stream, not just
+  scaled it).  DD 22% PRIMARY / 12% F3 (both under the 25% cap;
+  F3 was 37.6% unsized).  net EV +0.17R / +0.33R (trade-level EV
+  is sizing-invariant).  G4' 9/10 and 7/10 assets positive.
+  Bootstrap CIs exclude 0 in both segments.
+- S2 ATR-regime: FAIL -- DD 57% / 28%, caps too loose (top-decile
+  ATR x0.25 not enough during 2021-22 clusters).
+- S3 concurrency cap (max 5 open): FAIL -- DD 21%/21% but it
+  DESTROYS the PRIMARY edge: Sharpe 0.22, net EV +0.02R, CI
+  includes 0, G4' 5/10.  The clustered entries the cap removes
+  carry the edge: keeping only the first 5 of each cluster leaves
+  noise.  (Consistency check: S3 sizes are all 1.0 and its numbers
+  are bit-identical to the unsized-subset baseline -- implementation
+  verified.)
+- S4 = S1+S2+S3: FAIL -- same PRIMARY collapse (Sh 0.48, EV +0.07R,
+  CI incl. 0) plus DD 14%/7% -- risk control works, edge does not
+  survive the cap.
+
+VERDICT (per frozen rule): single passer -> **S1 vol-target
+selected** (the S3>S4>S1>S2 conservative tie-break did not bind).
+The fundamental finding of the closed confirm track is confirmed
+and inverted: the 2022 drawdown was a VOLATILITY-sizing problem,
+not a correlation problem -- inverse-vol sizing alone brings the
+same trade set inside every frozen risk gate while RAISING
+Sharpe_NW to 1.50/2.84.  Concurrency caps are toxic to this signal
+and are recorded as forbidden for any successor track.
+
+Next stage per the track: live-scale prereg for S1-sized AVSL-cross
+(sizing/venue/monitoring) remains a SEPARATE new prereg; nothing in
+the frozen signal config moves.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
