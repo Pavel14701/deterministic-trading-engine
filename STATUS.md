@@ -376,10 +376,16 @@ edge, and chasing it would reopen exactly the "smart exit" path the
 kill rule forbids.
 
 FINAL: z-score track CLOSED with cause established: no post-entry
-drift on 1H majors from z-score entries.  This post-mortem also
-prior-mutes the AVSL/Donchian single-name z-family tracks absent a
-different signal source.  Next: TTF v1 run (prereg in STATUS), P4
-low-cap carry fetch_funding.
+drift on 1H majors from z-score entries.  CORRECTION (2026-09-21,
+audit): AVSL/Donchian are NOT z-family and were not "muted" by this
+post-mortem -- AVSL is an anchored-VWAP line cross and both families
+were closed independently by their own pre-registered runs long
+before (experiments/avsl/README.md: all 5 modules dead; Donchian 4H
+test 2/6, 1H/34 sweep recov 16/34 < 17; quattro G3 2/6, PF 1.05).
+The z-score kill is a third independent confirmation of the same
+theme: single-name price-derived entries on crypto majors carry no
+post-cost edge.  Next: TTF v1 run (prereg in STATUS), P4 low-cap
+carry fetch_funding.
 
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):

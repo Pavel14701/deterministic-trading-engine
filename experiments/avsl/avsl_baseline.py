@@ -8,7 +8,7 @@ side: risk undefined).  TP {3,5,8}R, horizon 192 bars, MTM exit,
 conservative within-bar (stop wins).  Segments: train folds 0-3,
 test folds 4-7 (protocol 8x56d on 916d history).
 
-Usage:  uv run python -m experiments.avsl_baseline
+Usage:  uv run python -m experiments.avsl.avsl_baseline [stand_div] [mode]
 """
 
 from __future__ import annotations
