@@ -311,3 +311,69 @@ def test_zscore_numpy_inf_input_raises() -> None:
     close = np.array([1.0, np.inf, 3.0, 4.0, 5.0, 6.0, 7.0])
     with pytest.raises(ValueError, match="Input contains NaN"):
         zscore_numpy(close, length=3, ddof=1, use_talib=False)
+
+
+@pytest.mark.statistics
+def test_zscore_monotonic_series_positive() -> None:
+    """Regression: a monotonically increasing series gives z = +1.
+
+    The docstrings previously showed -1, which is the wrong sign: at
+    each window the current price sits one sample std ABOVE the window
+    mean, so z = (x - mean) / std = +1.
+    """
+    prices = np.arange(1.0, 11.0)
+    result = zscore_numpy(
+        prices, length=3, multiplier=1.0, ddof=1, use_talib=False
+    )
+    expected = np.full(10, np.nan)
+    expected[2:] = 1.0
+    assert_allclose(result, expected, atol=1e-12, equal_nan=True)
+
+
+@pytest.mark.statistics
+def test_zscore_constant_series_nan() -> None:
+    """Constant input -> std = 0 -> 0/0 -> NaN (pinned behaviour)."""
+    prices = np.ones(30)
+    result = zscore_numpy(
+        prices, length=3, multiplier=1.0, ddof=1, use_talib=False
+    )
+    assert np.all(np.isnan(result))
+
+
+@pytest.mark.skipif(
+    not talib_available,
+    reason="TA-Lib not installed",
+)
+@pytest.mark.statistics
+def test_zscore_backends_agree_at_ddof0(
+    prices_random_walk: npt.NDArray[np.float64],
+) -> None:
+    """Cross-backend consistency: use_talib True vs False at ddof=0."""
+    a = zscore_numpy(
+        prices_random_walk, length=30, ddof=0, use_talib=True
+    )
+    b = zscore_numpy(
+        prices_random_walk, length=30, ddof=0, use_talib=False
+    )
+    assert_allclose(a, b, atol=1e-10, equal_nan=True)
+
+
+@pytest.mark.skipif(
+    not talib_available,
+    reason="TA-Lib not installed",
+)
+@pytest.mark.statistics
+def test_zscore_ddof1_honoured_on_default_backend(
+    prices_random_walk: npt.NDArray[np.float64],
+) -> None:
+    """Default call (use_talib=True, ddof=1) must return sample-std z.
+
+    Regression: TA-Lib's STDDEV has no ddof parameter, so the old
+    code silently produced population-std z-scores on the default
+    path -- different numbers than the same call with use_talib=False.
+    """
+    a = zscore_numpy(prices_random_walk, length=30, ddof=1)  # defaults
+    b = zscore_numpy(
+        prices_random_walk, length=30, ddof=1, use_talib=False
+    )
+    assert_allclose(a, b, atol=1e-12, equal_nan=True)

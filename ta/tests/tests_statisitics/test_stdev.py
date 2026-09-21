@@ -178,13 +178,85 @@ def test_stdev_ind_uses_numba(
 def test_stdev_ind_uses_talib(
     prices_random_walk: npt.NDArray[np.float64],
 ) -> None:
-    """Test stdev_ind uses TA-Lib when available and requested."""
+    """stdev_ind routes to TA-Lib only when ddof == 0."""
     close = prices_random_walk
     length = 3
 
-    result_talib = stdev_ind(close, length=length, use_talib=True)
+    result_talib = stdev_ind(close, length=length, ddof=0, use_talib=True)
     expected_talib = stdev_talib(close, length=length)
-    assert_allclose(result_talib, expected_talib, rtol=1e-6, equal_nan=True)
+    assert_allclose(
+        result_talib, expected_talib, rtol=1e-12, atol=1e-12, equal_nan=True
+    )
+
+
+@pytest.mark.skipif(
+    not talib_available,
+    reason="TA-Lib not installed",
+)
+@pytest.mark.statistics
+def test_stdev_ind_ddof1_ignores_talib(
+    prices_random_walk: npt.NDArray[np.float64],
+) -> None:
+    """ddof=1 must return Numba sample std even with use_talib=True.
+
+    Regression: TA-Lib's STDDEV has no ddof parameter (always ddof=0);
+    the old implementation silently returned population std here.
+    """
+    close = prices_random_walk
+    length = 3
+
+    result = stdev_ind(close, length=length, ddof=1, use_talib=True)
+    expected = stdev_numba(close, length=length, ddof=1)
+    assert_allclose(result, expected, rtol=1e-12, atol=1e-12, equal_nan=True)
+
+    # And it must NOT equal the TA-Lib population std.
+    talib_vals = stdev_talib(close, length=length)
+    valid = ~np.isnan(result)
+    assert not np.allclose(result[valid], talib_vals[valid], rtol=1e-3)
+
+
+@pytest.mark.skipif(
+    not talib_available,
+    reason="TA-Lib not installed",
+)
+@pytest.mark.statistics
+def test_stdev_ind_backends_agree_at_ddof0(
+    prices_random_walk: npt.NDArray[np.float64],
+) -> None:
+    """Cross-backend consistency: TA-Lib == Numba at ddof=0."""
+    a = stdev_ind(close := prices_random_walk, length=30, ddof=0,
+                  use_talib=True)
+    b = stdev_ind(close, length=30, ddof=0, use_talib=False)
+    assert_allclose(a, b, atol=1e-10, equal_nan=True)
+
+
+@pytest.mark.statistics
+def test_stdev_ind_constant_series_zero() -> None:
+    """Constant input -> std == 0.0 exactly (not NaN); z-score is NaN.
+
+    stdev of a constant window is sqrt(0) = 0; the 0/0 -> NaN happens
+    one level up, in zscore (see test_zscore_constant_series_nan).
+    """
+    close = np.ones(30)
+    for ddof in (0, 1):
+        result = stdev_ind(close, length=3, ddof=ddof, use_talib=False)
+        assert np.all(np.isnan(result[:2]))
+        assert np.all(result[2:] == 0.0)
+
+
+@pytest.mark.statistics
+def test_stdev_polars_defaults_match_multi(
+    df_random_walk: pl.DataFrame,
+) -> None:
+    """stdev_polars and stdev_polars_multi share backend defaults."""
+    series = stdev_polars(df_random_walk, close_col="close", length=30)
+    df = stdev_polars_multi(df_random_walk, columns=["close"], length=30)
+    assert_allclose(
+        series.to_numpy(),
+        df["close_stdev"].to_numpy(),
+        rtol=1e-12,
+        equal_nan=True,
+    )
 
 
 @pytest.mark.statistics

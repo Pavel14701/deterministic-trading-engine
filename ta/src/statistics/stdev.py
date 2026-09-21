@@ -8,9 +8,15 @@ Functions:
     stdev_numba: Numba-accelerated rolling standard deviation.
     stdev_talib: TA-Lib-based rolling standard deviation (ddof=0).
     stdev_ind: Universal rolling standard deviation (numpy or Polars Series).
-    stdev_polars: Add rolling standard deviation column to Polars DataFrame.
+    stdev_polars: Rolling standard deviation of a DataFrame column,
+    returned as a Polars Series.
     stdev_polars_multi: Add rolling standard deviation columns
     for multiple columns.
+
+Backend note: TA-Lib's STDDEV always uses ddof=0 (population) and has
+no ddof parameter.  :func:`stdev_ind` therefore routes to TA-Lib only
+when ``ddof == 0``; for any other ``ddof`` the Numba implementation is
+used so that results honour ``ddof`` on every backend.
 
 The core algorithm is implemented in Numba for high performance.
 """
@@ -32,7 +38,9 @@ def _stdev_numba_core_online(
 ) -> np.ndarray:
     """Online (one-pass) rolling standard deviation.
 
-    Uses running sums and sums of squares for O(1) update per element.
+    This is a naive running-sum/sum-of-squares scheme, NOT Welford's
+    algorithm; it gives O(1) updates per element at the cost of
+    possible precision loss through cancellation (see below).
     To keep IEEE 754 corner-case semantics the sums are resynchronised
     from scratch whenever a non-finite value enters the window, so a
     single NaN/inf poisons only the windows that contain it.  Note that
@@ -213,10 +221,14 @@ def stdev_ind(
     fillna : float or None, default None
         Value to fill NaN positions after offset.
     use_talib : bool, default True
-        If True and TA-Lib is available, use TA-Lib (ddof=0).
-        Otherwise, use Numba.
+        If True and TA-Lib is available, TA-Lib is used -- but ONLY when
+        ``ddof == 0``: TA-Lib's STDDEV always computes the population
+        standard deviation and has no ddof parameter.  Whenever
+        ``ddof != 0`` the Numba implementation is used instead, so the
+        returned values always honour ``ddof``.
     algorithm : {'online', 'two_pass'}, default 'online'
-        Only used when use_talib=False. See stdev_numba.
+        Only used when the Numba implementation runs (use_talib=False,
+        TA-Lib unavailable, or ddof != 0). See stdev_numba.
 
     Returns
     -------
@@ -226,10 +238,9 @@ def stdev_ind(
     """
     if isinstance(close, pl.Series):
         close = close.to_numpy()
-    if use_talib and talib_available:
+    if use_talib and talib_available and ddof == 0:
         return stdev_talib(close, length, offset, fillna)
-    else:
-        return stdev_numba(close, length, ddof, offset, fillna, algorithm)
+    return stdev_numba(close, length, ddof, offset, fillna, algorithm)
 
 
 def stdev_polars(
@@ -239,11 +250,21 @@ def stdev_polars(
     ddof: int = 1,
     offset: int = 0,
     fillna: float | None = None,
-    use_talib: bool = True,
+    use_talib: bool = False,
     algorithm: Literal["online", "two_pass"] = "online",
     output_col: str | None = None,
 ) -> pl.Series:
-    """Add rolling standard deviation column to a Polars DataFrame."""
+    """Compute the rolling standard deviation of a DataFrame column.
+
+    Returns a :class:`pl.Series` named ``output_col`` (or
+    ``f"STDEV_{length}"``).  The input DataFrame is not modified and
+    is NOT returned -- use ``df.with_columns(stdev_polars(...))`` or
+    :func:`stdev_polars_multi` to attach the column to a DataFrame.
+
+    ``use_talib`` defaults to False, matching
+    :func:`stdev_polars_multi` and the default ``ddof=1`` (which the
+    TA-Lib backend cannot compute; see :func:`stdev_ind`).
+    """
     close = df[close_col].to_numpy()
     result = stdev_ind(
         close,
