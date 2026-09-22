@@ -752,6 +752,43 @@ E4 -- SIZING ABLATION on the frozen bar stream:
   Kill: B ~ C -> vol-target timing carries no information (pure
   de-lever), record for successor tracks.
 
+#### E1 RESULT (2026-09-22): FAIL on PRIMARY -- EDGE IS MOSTLY GEOMETRY, NOT ENTRY
+
+runs/ablation_entry.log.  Sanity: generic-path arm A reproduced the
+core collector (BTC n=270=270; total 2939).  Results per frozen
+gates:
+
+- PRIMARY: A EV +0.172R (n=2117, z=+3.33) vs random-geometry mean
+  +0.135 +- 0.044R [min -0.002, max +0.291] -> A at the 81st
+  percentile; E1a margin (+0.05R) NOT met, E1b (>=95th pct) NOT met.
+  FAIL.
+- F3: A EV +0.335R vs random +0.168 +- 0.068R -> 100th percentile,
+  E1a/E1b PASS.
+- Arm C (signal delayed 100 bars): EV +0.227R PRIMARY (n=2079,
+  z=+4.40) / +0.225R F3 -- delayed entry BEATS A in PRIMARY and
+  loses in F3 (descriptive, not gated).
+
+VERDICT per frozen kill rule: **the AVSL cross entry carries little
+to no information beyond the 4H RR geometry in PRIMARY** (the
++0.037R lift over random-mean is within the random spread).  The
+dominant component is the GEOMETRY ITSELF: random 4H entries with
+the frozen tight-structural-stop + 5R-TP profile average +0.135R
+(P) / +0.168R (F3) net -- the RR profile on 4H crypto is the edge
+engine; the entry adds a real F3-segment lift (+0.335 vs +0.168,
+100th pct).  Consequences, pre-committed by the prereg:
+
+1. E3 (RR ablation) is PROMOTED to the most informative experiment:
+   the question is now which geometry component (stop floor, wide
+   TP, horizon) generates the +0.135R random-geometry baseline.
+2. The passed module keeps its PASS (diagnostic, not a kill of the
+   config); no config change is allowed without a new prereg --
+   including the tempting "C beats A in PRIMARY" observation, which
+   is exactly the kind of post-hoc arm the anti cherry-pick rule
+   freezes out.
+3. Method takeaway for new tracks: test the RR geometry with RANDOM
+   entries FIRST (cheap null baseline); an entry signal must beat
+   that null, not zero.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
