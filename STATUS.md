@@ -4385,6 +4385,75 @@ verdict, same reason.  QUATTRO FAMILY CLOSED: no parameter tweaks,
 no TF sweep, no further variants.
 
 
+#### AVSL LIVE-SCALE PREREG (2026-09-22, FROZEN BEFORE ANY LIVE CODE)
+
+Scope: SIZING / VENUE / MONITORING only.  The signal, geometry and
+S1 sizing config move NOT AT ALL: engine/passed/avsl_cross_s1.py
+is read-only for this track.  This prereg operationalizes the
+read-outs recorded at the E5/E4 verdicts and the S-decomposition
+("LIVE RISKS" block): monitoring, not filters; brake, not
+discretion.
+
+STRUCTURE (two phases, each gated):
+  Phase A  PAPER-FORWARD shadow pilot, >= 90 days AND >= 50 closed
+           trades (whichever is later).  Live 4H grid, live data,
+           frozen module recomputed on each closed 4H bar; orders
+           simulated at taker.
+  Phase B  small real capital, ONLY after Phase A PASS, same
+           monitoring; any size-up beyond Phase B is a new prereg.
+
+VENUE / COST ASSUMPTIONS (frozen):
+  universe   the frozen 10 (BTC AVAX BNB DOGE ETH LINK LTC NEAR SOL
+             XRP), USDT-M perp, taker-only entries and exits
+  fee        <= 10 bp round trip (matches the backtest assumption)
+  slippage   budget 5 bp / side
+  ABORT gate all-in realized cost > 15 bp RT over any 20
+             consecutive fills -> STOP, re-prereg with real costs
+
+PARITY (hard gate, Phase A):
+  every closed 4H bar: live signal must equal the module's
+  recomputation on the same bars (engine self-check path).
+  ANY mismatch -> immediate STOP + post-mortem before resume.
+
+MONITORING READ-OUTS (weekly snapshot to STATUS, monitoring NOT
+filters -- none of these may gate the signal config):
+  r1  rolling Sharpe (90d, daily returns of the account stream)
+  r2  ATR percentile (500-bar) + current-regime tag (low/high)
+  r3  corr(realized vol, S1 size)
+  r4  trade-count parity vs the backtest F3 rate
+  EXPECTED DECAY (prereg'd, from E5): if r2 flips to high-ATR,
+  EV is expected to decay toward the 2023-24-like ~0; that is the
+  prereg'd behavior of a regime-bound edge, NOT a malfunction and
+  NOT grounds to touch the config.
+
+DISASTER BRAKE (mechanical, prereg item -- never discretionary):
+  pause NEW entries while rolling Sharpe (90d) < 0; existing
+  positions run to their frozen exits.  Resumption requires
+  rolling Sharpe > 0 AND a dated STATUS note.  Bypassing the brake
+  for any reason = pilot FAIL.
+  K=4R/14d equity backstop stays armed but idle (bootstrap: never
+  fires, p99 = 3.2R) -- disaster-only, not a return overlay.
+
+PILOT GATES (evaluated at Phase A end):
+  g1  parity: zero mismatches over the full window
+  g2  cost: all-in RT <= 15 bp over all fills
+  g3  brake: zero bypasses, weekly snapshots without gaps
+  g4  DD <= 25% (the frozen E-d level)
+  g5  declared in advance: the pilot does NOT judge EV
+      significance -- n=50 is underpowered by design; the EV
+      read-out is descriptive.  Pseudo-confirmatory reading of a
+      50-trade EV is forbidden.
+  Phase A PASS = g1..g4 all hold.  Any fail -> STOP + post-mortem;
+  resumption is a NEW dated prereg.
+
+FORBIDDEN (carried from the closed tracks): concurrency caps
+(toxic, S3/S4), any entry/exit filter (incl. skip-high-vol --
+E5 finding requires its own prereg), parameter changes, dead-pool
+entries.  Code to be written AFTER this freeze:
+experiments/live/parity_check.py, experiments/live/pilot_tracker.py.
+
+
+
 
 
 
