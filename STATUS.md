@@ -4517,6 +4517,24 @@ one-sided volume gate (no cap), P10 RSI gate = momentum-continuation
 semantics (dead code, off), P11 mature-trend structure extremes,
 P12 tail-window truncation, P13 range-vs-body zone source.
 
+AUDIT BATCH 3 (2026-09-22, same day): headline claim "zone_source is
+dead, E8 tested a close_band, OB was never tested" -- REFUTED for
+the current code (indicators.py dispatches range/body/close_band,
+3 pinning tests; E8 and R1-R3 acceptance ran post-rework with
+zone_source="range").  TRUE historical core: before d4565c0
+(09-20 19:10, "OB honest rework") the pipeline built close +/- m*ATR
+unconditionally -- so the EARLY OB kills (15m/1h retest, D-era
+closure) are verdicts about the close_band variant, not structural
+OB.  Corroborated by the acceptance zone-width 1.56-2.09 ATR =
+(high-low) + 0.4*ATR (impossible for close_band).  Other batch-3
+items: FVG brk+1 is the FVG definition, not look-ahead (signal is
+dated at retest j >= brk+1); min_extreme_gap asymmetry = P5 by
+design; the rest are repeats (volume gate, A5 already fixed, R6,
+R7, R-5 -- empty branch IS covered by test_empty_output_schema).
+Verdicts R13-R20 in detector_audit.md.  OB track stays CLOSED for
+all eras; early close_band-era kills are citable as prior evidence
+for a close-band-variant revival only.
+
 
 
 

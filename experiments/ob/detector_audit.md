@@ -256,3 +256,89 @@ collects 35 tests (34 before).  FULL MONOREPO suite
 only runs engine+dsl per ``testpaths``): 2543 passed / 6 skipped,
 ruff and mypy clean.
 
+=====================================================================
+THIRD REVIEW BATCH (same day, 2026-09-22)
+=====================================================================
+
+Headline claim: "zone_source is DEAD -- precompute_indicators always
+builds close +/- m*ATR, so every OB test (incl. E8) tested a
+close_band, the OB concept was never tested".  The claim is FALSE
+for the current code but carries an important TRUE historical core;
+both halves are documented below.
+
+R13  "`zone_source` is never applied (killer)".  REFUTED for the
+     current code: indicators.py dispatches all three modes
+     (lines 47-57: range / body / close_band), the default in
+     config and all presets is "range", and three dedicated tests
+     pin each mode (test_zone_source_range_matches_source_bar,
+     _body_, _close_band_backcompat) plus a preset assertion
+     (cfg.zone_source == "range").  The quoted code is the OLD
+     code.  HISTORICALLY TRUE CORE: before commit d4565c0
+     (2026-09-20 19:10, "OB honest rework: structural zones") the
+     pipeline built close +/- m*ATR unconditionally and
+     zone_source did not exist in the config at all.  LEDGER
+     CONSEQUENCE (added to CONSEQUENCES below): the EARLY OB
+     kills -- OB-retest 15m/1h and the D.13/D.15-era closure track
+     (commits up to 09-20 before d4565c0) -- are verdicts about
+     "close_band + wick-touch + volume filter", NOT about
+     structural OB zones.  Everything AFTER the rework -- R1-R3
+     acceptance, the port-check, the E8 prereg (7105724) and the
+     E8 run (26759a5), all 09-22 -- ran with zone_source="range".
+     Cross-check that corroborates range zones at E8 time: the
+     acceptance measured zone width 1.56-2.09 ATR, which is
+     (high-low) + 0.4*ATR -- impossible for a close_band
+     (fixed 0.4*ATR) and exactly what range zones produce.  So:
+     "E8 tested close_band" is FALSE; "the OB concept was never
+     tested" is FALSE; "the earliest OB kills predate structural
+     zones" is TRUE.
+
+R14  "check_fvg reads bar break_idx+1 -- look-ahead".  REFUTED.
+     The 3-candle FVG is DEFINED on bars i-1, i, i+1; bar brk+1 is
+     part of the pattern, not a future peek.  The emitted signal is
+     dated at the RETEST bar j, and the retest loop starts at
+     j = brk+1, so bar brk+1 is never in the future at decision
+     time (when j == brk+1 it is the decision bar itself).  No
+     leak relative to any emitted signal.
+
+R15  "min_extreme_gap is a filter-on-a-subset (only fresh pivots
+     escape it)".  CONFIRMED as described, and it is batch-1 P5
+     verbatim: the gap filter is applied only when the next extreme
+     was already confirmed at the breakout bar.  That asymmetry is
+     the look-ahead-safe direction -- applying it on hindsight
+     (rejecting a pivot for a next extreme that did not exist yet)
+     WOULD be the leak.  Deliberate; unchanged.
+
+R16  avg_vol / liquidity_tolerance / min_reaction_size items --
+     repeats: R-1/R12 (volume-gate direction, P9 for the missing
+     cap), A5 ALREADY FIXED (relative `liquidity_tolerance *
+     high[idx]`, locked by the price-scale invariance test; the
+     quoted absolute comparison is the OLD code), and R6
+     (min_reaction_size is a fraction of price).  No new content.
+
+R17  "penetration 0.5 x zone width 0.4*ATR = 0.2 ATR overshoot" --
+     premise false (zones are range-based, not close_band; see
+     R13); the penetration allowance itself is policy P3.
+
+R18  pivot-idx collision -- repeat of R7, impossible by
+     construction, locked by a test.
+
+R19  "_empty_block_frame is latent, nobody triggers the empty
+     flow" -- repeat of R-5/R11, and the premise is false: the
+     empty branch IS exercised by test_empty_output_schema (flat
+     series -> empty frame, full schema asserted, pl.Datetime
+     columns included).
+
+R20  structure numba early-return (total_len <= 1) -- the reviewer
+     himself concludes "OK, not a bug"; noted, no action.
+
+CONSEQUENCES (amendment): split the historical OB record by detector
+era.  PRE-d4565c0 (before 2026-09-20 19:10): close_band zones --
+early 15m/1h kills and the D-era closure track are verdicts about
+the close_band variant, and any future revival of a "close band
+around pivot close" strategy may cite them as prior evidence.
+POST-d4565c0: structural (range) zones -- R1-R3 acceptance, port
+check and E8.  E8 additionally predates the 59ac42d audit fixes
+(fixed-offset breakout, look-ahead reversal median, etc.), as
+already documented above.  The OB track remains CLOSED regardless
+of era; any revival needs a new dated prereg on the current code.
+
