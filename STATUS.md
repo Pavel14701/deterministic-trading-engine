@@ -1345,6 +1345,44 @@ or an explicit portfolio need for a second track.  Until then the
 queue is: AVSL live-scale prereg -> AVSL productization -> TTF v1 /
 P4 preregs.
 
+#### OB ENGINEERING RESULT (2026-09-22, commit b6e2158): ACCEPTANCE PASS
+
+Engineering was activated by user decision the same day (overrides
+the backlog gate; documented, not hidden).  Measured by 3-round
+ablation (runs/ob_ablation{,2,3,4,5}.log): the "4h" live preset's
+block killers are the market-structure filter (x2), min_extreme_gap
+8 (x2.3) and the breakout volume condition (x2.5); prominence and
+zigzag_distance are no-ops for the online ZigZag; ADX is absent
+from the "4h" preset entirely; the reversal lever saturates under
+multiple_breakouts (0.8 -> 0.5 gives only +8%); dynamic->fixed
+lookback is the aggressive lever.  Detector logic untouched --
+presets only (experiments/ob/research_presets.py).
+
+Acceptance (runs/ob_research_check.log): R1 273-672, R2 575-1146,
+R3 793-1146 blocks/asset -- all in [200, 2000] on ALL 10 assets;
+zone width med 1.56-2.09 ATR; delay med 2-3, p90 6-9 bars; S/D
+35-56%; A6 regression exact ('1h'=131, '4h'=10); determinism OK;
+detector tests 46 passed.  R4_diagnostic (structure ON, 99-251)
+documents the filter cost and is reference-only.
+
+#### E8 PREREG -- OB-RETEST 4H (frozen 2026-09-22, BEFORE run code)
+
+Entry (frozen): OB-retest events on the 4H grid from RESEARCH
+preset **R2** (balanced, ~575-1145 blocks/asset).  R2 chosen A
+PRIORI as the workhorse (sample size vs selectivity); R1/R3 are
+SENSITIVITY references, descriptive only, never gated -- no post-hoc
+preset switching.  Side: demand-zone retest -> long, supply-zone
+retest -> short; entry bar = the detector's retest bar; WARMUP 400.
+Frame (identical to E6/E7): stop 3xATR14, TP 5R, horizon 500, fee
+10bp RT, S1-sized account stream, SPLIT_FRAC 2/3.
+Null: matched random-geometry, per-geometry, 100 draws seeds 0..99.
+Gates: E-a (EV > null + 0.05R) and E-b (>= 95th null pct) on BOTH
+segments; then E-c Sharpe >= 1.0, E-d DD <= 25%, E-f bootstrap CI > 0
+(seed 11, block 500).  Kill on E-a/E-b failure.  PASS-entry-FAIL-risk
+-> risk-overlay prereg (Donchian pattern).
+Family note: E8 is the third and final dead-pool re-test; family
+false-positive budget remains 0 until a PASS is issued.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
