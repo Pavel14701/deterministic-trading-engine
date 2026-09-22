@@ -952,6 +952,40 @@ TIMING is where the line carries information.  The engine is the
 4H wide-TP geometry; the AVSL cross at 4H is the (regime-bound,
 see E5) amplifier -- and it has no 1D counterpart.
 
+#### E4 RESULT (2026-09-22): PASS -- S1 VOL-TIMING CARRIES INFORMATION BEYOND DE-LEVER
+
+runs/ablation_sizing.log.  Sanity: arm B reproduced the frozen
+verdict bit-for-bit (Sharpe_NW 1.50/2.84, DD 22%/12%).
+
+Arms (Sharpe_NW PRIMARY / F3, DD):
+  A unsized (1.0):  +1.33 (DD 61%) / +2.05 (DD 38%)
+  B S1 (frozen):    +1.50 (DD 22%) / +2.84 (DD 12%)
+  D 0.33 const:     +1.33 (DD 27%) / +2.05 (DD 14%)
+  C permuted S1:    +1.26+-0.18   / +1.98+-0.34  (100 perms)
+
+GATE (frozen): B > mean(C) + 0.2 both segments:
+  PRIMARY: +1.50 vs +1.26 -> PASS (B-C = +0.24; required +0.20 --
+  passes by +0.04, the narrowest gate margin in the whole battery)
+  F3:      +2.84 vs +1.98 -> PASS (B-C = +0.86, wide)
+
+Findings:
+1. The vol-size LINK is informative: knowing current realized vol
+   (not just the size distribution) is worth +0.24 Sharpe on PRIMARY
+   and +0.86 on F3 over permuted sizes.  Vol-target timing is NOT
+   pure de-lever -- strongest exactly where the entry-lift lives
+   (F3 / recent regime, consistent with E5's low-ATR concentration:
+   the sizer and the entry read the same state variable).
+2. De-levering alone (D 0.33) already fixes most of the DD disaster
+   (61% -> 27%) with zero timing information; S1 buys a further
+   DD 27% -> 22% PLUS the Sharpe lift.  S1's value is roughly half
+   "smaller when volatile" (mechanical) and half "WHEN it is small"
+   (informative).
+3. Fragility note: the PRIMARY gate survives by +0.04 -- within the
+   permuted-C noise (+-0.18).  The honest statement: vol-timing
+   information on PRIMARY is NOT firmly established; on F3 it is.
+   Record for the live-scale prereg: keep S1 frozen, monitor the
+   realized-vol vs size correlation as a read-out.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
