@@ -4453,6 +4453,54 @@ entries.  Code to be written AFTER this freeze:
 experiments/live/parity_check.py, experiments/live/pilot_tracker.py.
 
 
+DETECTOR AUDIT + FIX (2026-09-22, post-E8, library quality)
+An external review claimed ~19 defects in the OB detector
+(market_structure).  All claims were verified against the code
+before any edit; full verdict table in
+experiments/ob/detector_audit.md.  CONFIRMED and FIXED:
+  A1 "dynamic lookback" units bug: price-valued median ATR used as
+     a BAR count -> disguised constant lookback_max=50; with
+     multiple_breakouts=False the breakout was checked at EXACTLY
+     pivot+50.  FIX: honest scan window [lookback_min, lookback_max),
+     first valid breakout wins; dynamic-lookback fields deprecated.
+  A2 multiple_breakouts never re-signaled (both branches took the
+     first breakout; R2's docstring was wrong).  FIX: folded into
+     A1; R2 == R1 now.
+  A3 LOOK-AHEAD: reversal threshold = k * median(ATR over the FULL
+     series).  FIX: causal warmup median
+     (reversal_warmup_bars=500).
+  A4 LOOK-AHEAD: structure filter used unconfirmed pivots (bar-index
+     filter, no confirm guard).  FIX: confirm-guarded in online mode.
+     Did NOT affect E8 (research presets run with the filter OFF).
+  A5 liquidity_tolerance absolute (no-op above ~$25).  FIX:
+     relative fraction of price.
+  A6 no zone-pierce guard between breakout and retest.  FIX: new
+     require_zone_intact=True (far-edge + penetration allowance).
+REFUTED (documented, not changed): volume-gate "weakening" claim
+(inclusion makes it STRICTER by w/(w-1)); "confirmation_window=36
+on 4h" (default 10); "zone_atr_multiplier not ATR-scaled" (it is);
+breaker list mutation (none); empty-frame dtype mismatch (none).
+POLICY flags left as-is (documented in the audit): wick-touch entry,
+close-confirmation off, breakout-by-wick, None-trend pass-through,
+min_extreme_gap causality (by design).
+
+CONSEQUENCES: all previously recorded OB numbers (acceptance
+R1-R3, ablation, port-check, E8) were measured on the OLD detector
+("fixed 50-bar delay + wick-touch retest").  E8's KILL stands as a
+verdict about the detector AS TESTED; OB track remains CLOSED; no
+closed prereg is re-run.  Any OB revival on the fixed detector =
+NEW dated prereg + fresh acceptance.  Live-preset regression
+baselines ("1h"=131, "4h"=10) are STALE; post-fix smoke ("4h"
+preset, 4H grid): BTC 64, AVAX 83, BNB 32, DOGE 30, ETH 44.
+AVSL live-scale prereg (previous section) is UNAFFECTED: the frozen
+AVSL-cross 4H S1 module does not import market_structure; engine/
+is clean.
+
+TESTS: ta suite 46+5 new regression tests (causal reversal, window
+scan, zone-intact guard, structure confirm guard, price-scale
+invariance); full suite 410 passed / 6 skipped; ruff, mypy clean.
+
+
 
 
 

@@ -9,7 +9,6 @@ from numba import boolean, float64, int64, njit  # type: ignore[attr-defined]
 from numba.typed import List
 
 from .config import OrderBlockConfig
-from .indicators import compute_lookback
 
 
 @njit(
@@ -34,7 +33,6 @@ from .indicators import compute_lookback
         float64,
         boolean,
         float64,
-        boolean,
     ),
     cache=True,
     fastmath=True,
@@ -53,14 +51,13 @@ def _generate_block_candidates_nb(
     adx,
     di_plus,
     di_minus,
-    lookback,
+    lookback_min,
     lookback_max,
     breakout_volume_threshold,
     breakout_impulse_multiplier,
     liquidity_tolerance,
     use_adx_filter,
     adx_threshold,
-    multiple_breakouts,
 ):
     # NaN (missing ADX) fails the `adx != adx` check below, so the
     # ADX filter automatically rejects bars without a valid ADX value
@@ -71,120 +68,89 @@ def _generate_block_candidates_nb(
     idx_list = List.empty_list(int64)
     break_idx_list = List.empty_list(int64)
     strength_list = List.empty_list(float64)
-    for i in range(lookback, n):
-        idx = i - lookback
-        if idx < 0:
+    # Breakout window: [idx + lookback_min, idx + lookback_max); the
+    # first valid breakout wins.  (Historically the non-windowed
+    # variant checked the SINGLE bar idx + "dynamic lookback" -- a
+    # units bug that pinned the delay at lookback_max bars for any
+    # reasonably priced asset.)
+    brk_cap = lookback_max if lookback_max > lookback_min else (
+        lookback_min + 1
+    )
+    for idx in range(n):
+        brk_start = idx + lookback_min
+        brk_stop = idx + brk_cap
+        if brk_stop > n:
+            brk_stop = n
+        if brk_start >= brk_stop:
             continue
         if peak_mask[idx]:
-            if abs(local_highs[idx] - high[idx]) >= liquidity_tolerance:
+            # Relative liquidity proximity (fraction of price); the
+            # old absolute tolerance was a no-op above ~$25 assets.
+            if abs(
+                local_highs[idx] - high[idx]
+            ) >= liquidity_tolerance * high[idx]:
                 continue
-            if multiple_breakouts:
-                max_future = min(i + lookback_max, n)
-                for brk in range(i, max_future):
-                    if low[brk] < low[idx]:
-                        ok = True
-                        if volume[brk] <= vol_mult * avg_volume[brk]:
-                            ok = False
-                        if ok and breakout_impulse_multiplier > 0:
-                            candle_range = high[brk] - low[brk]
-                            if (
-                                not np.isfinite(atr[brk])
-                                or candle_range < imp_mult * atr[brk]
-                            ):
-                                ok = False
-                        if ok and use_adx_filter:
-                            adx_v = adx[brk]
-                            if adx_v != adx_v or adx_v < adx_threshold:
-                                ok = False
-                            elif di_minus[brk] <= di_plus[brk]:
-                                ok = False
-                        if ok:
-                            move = (close[idx] - close[brk]) / max(
-                                close[idx], 1e-9
-                            )
-                            strength = max(0.0, move)
-                            block_types.append(0)  # supply
-                            idx_list.append(idx)
-                            break_idx_list.append(brk)
-                            strength_list.append(strength)
-                            break
-            else:
-                if low[i] < low[idx]:
+            for brk in range(brk_start, brk_stop):
+                if low[brk] < low[idx]:
                     ok = True
-                    if volume[i] <= vol_mult * avg_volume[i]:
+                    if volume[brk] <= vol_mult * avg_volume[brk]:
                         ok = False
                     if ok and breakout_impulse_multiplier > 0:
-                        candle_range = high[i] - low[i]
+                        candle_range = high[brk] - low[brk]
                         if (
-                            not np.isfinite(atr[i])
-                            or candle_range < imp_mult * atr[i]
+                            not np.isfinite(atr[brk])
+                            or candle_range < imp_mult * atr[brk]
                         ):
                             ok = False
                     if ok and use_adx_filter:
-                        if adx[i] != adx[i] or adx[i] < adx_threshold:
+                        adx_v = adx[brk]
+                        if adx_v != adx_v or adx_v < adx_threshold:
                             ok = False
-                        elif di_minus[i] <= di_plus[i]:
+                        elif di_minus[brk] <= di_plus[brk]:
                             ok = False
                     if ok:
-                        block_types.append(0)
+                        move = (close[idx] - close[brk]) / max(
+                            close[idx], 1e-9
+                        )
+                        strength = max(0.0, move)
+                        block_types.append(0)  # supply
                         idx_list.append(idx)
-                        break_idx_list.append(i)
-                        strength_list.append(1.0)
+                        break_idx_list.append(brk)
+                        strength_list.append(strength)
+                        break
         elif valley_mask[idx]:
-            if abs(local_lows[idx] - low[idx]) >= liquidity_tolerance:
+            if abs(
+                local_lows[idx] - low[idx]
+            ) >= liquidity_tolerance * low[idx]:
                 continue
-            if multiple_breakouts:
-                max_future = min(i + lookback_max, n)
-                for brk in range(i, max_future):
-                    if high[brk] > high[idx]:
-                        ok = True
-                        if volume[brk] <= vol_mult * avg_volume[brk]:
-                            ok = False
-                        if ok and breakout_impulse_multiplier > 0:
-                            candle_range = high[brk] - low[brk]
-                            if (
-                                not np.isfinite(atr[brk])
-                                or candle_range < imp_mult * atr[brk]
-                            ):
-                                ok = False
-                        if ok and use_adx_filter:
-                            adx_v = adx[brk]
-                            if adx_v != adx_v or adx_v < adx_threshold:
-                                ok = False
-                            elif di_plus[brk] <= di_minus[brk]:
-                                ok = False
-                        if ok:
-                            move = (close[brk] - close[idx]) / max(
-                                close[idx], 1e-9
-                            )
-                            strength = max(0.0, move)
-                            block_types.append(1)  # demand
-                            idx_list.append(idx)
-                            break_idx_list.append(brk)
-                            strength_list.append(strength)
-                            break
-            else:
-                if high[i] > high[idx]:
+            for brk in range(brk_start, brk_stop):
+                if high[brk] > high[idx]:
                     ok = True
-                    if volume[i] <= vol_mult * avg_volume[i]:
+                    if volume[brk] <= vol_mult * avg_volume[brk]:
                         ok = False
                     if ok and breakout_impulse_multiplier > 0:
-                        candle_range = high[i] - low[i]
+                        candle_range = high[brk] - low[brk]
                         if (
-                            not np.isfinite(atr[i])
-                            or candle_range < imp_mult * atr[i]
+                            not np.isfinite(atr[brk])
+                            or candle_range < imp_mult * atr[brk]
                         ):
                             ok = False
                     if ok and use_adx_filter:
-                        if adx[i] != adx[i] or adx[i] < adx_threshold:
+                        adx_v = adx[brk]
+                        if adx_v != adx_v or adx_v < adx_threshold:
                             ok = False
-                        elif di_plus[i] <= di_minus[i]:
+                        elif di_plus[brk] <= di_minus[brk]:
                             ok = False
                     if ok:
-                        block_types.append(1)
+                        move = (close[brk] - close[idx]) / max(
+                            close[idx], 1e-9
+                        )
+                        strength = max(0.0, move)
+                        block_types.append(1)  # demand
                         idx_list.append(idx)
-                        break_idx_list.append(i)
-                        strength_list.append(1.0)
+                        break_idx_list.append(brk)
+                        strength_list.append(strength)
+                        break
     return block_types, idx_list, break_idx_list, strength_list
 
 
@@ -201,7 +167,6 @@ def generate_block_candidates(
 ) -> list[dict]:
     """Build breakout candidates from confirmed pivot masks."""
     n = len(high)
-    lookback = compute_lookback(indicators, cfg)
     # Masks
     peak_mask = np.zeros(n, dtype=bool)
     valley_mask = np.zeros(n, dtype=bool)
@@ -237,14 +202,13 @@ def generate_block_candidates(
             adx,
             di_plus,
             di_minus,
-            lookback,
+            cfg.lookback_min,
             cfg.lookback_max,
             cfg.breakout_volume_threshold,
             cfg.breakout_impulse_multiplier,
             cfg.liquidity_tolerance,
             cfg.use_adx_filter,
             cfg.adx_threshold,
-            cfg.multiple_breakouts,
         )
     )
     candidates = []
