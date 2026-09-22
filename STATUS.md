@@ -1383,6 +1383,32 @@ segments; then E-c Sharpe >= 1.0, E-d DD <= 25%, E-f bootstrap CI > 0
 Family note: E8 is the third and final dead-pool re-test; family
 false-positive budget remains 0 until a PASS is issued.
 
+#### E8 RESULT (2026-09-22, runs/retest_e8.log): FAIL -- KILL
+
+Runner: experiments/avsl/retest_entry.py (kind "ob", prereg
+7105724).  8538 entries (R2 preset).  Gates:
+  PRIMARY: EV -0.034R (n=5872, NW z -1.08) vs null +0.043+-0.027
+           -> E-a FAIL, E-b 0th pct FAIL; Sh +0.08, DD 48%,
+           CI [-0.0092, +0.0124] -- ALL gates fail.
+  F3:      EV +0.084R (n=2666, NW z +1.93) vs null +0.067+-0.049
+           -> E-a/E-b FAIL (61st pct); E-c/E-d/E-f pass.
+Per the frozen rule (E-a/E-b failure) this is a KILL; the old
+dead-pool entry stays dead under the correct wide-TP geometry.
+
+Reading (descriptive): OB-retest entries are ANTI-edge on PRIMARY
+-- 0th percentile means structural-entry timing was systematically
+WORSE than random bars pre-2025 in this frame; the mild F3
+positive (+0.084, z +1.93) is the same post-2025 regime signature
+as E5 but at half the AVSL lift and without gate support.  No
+follow-up: a signal that loses to random geometry on 5872 trades
+is not a tuning candidate.
+
+Family ledger FINAL: re-tests 3/3 executed, 3 executed -> z-score
+KILL, Donchian null-confirmed/risk-closed, OB KILL; overlay 1/1
+CLOSED FINAL; 0 PASS issued -- false-positive budget unspent.
+Only confirmed track: AVSL-cross 4H S1.  The dead pool is fully
+adjudicated; no further dead-pool work is planned.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.

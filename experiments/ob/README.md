@@ -13,13 +13,18 @@ Run: `uv run python -m experiments.ob.<name> [args]`
 | `ob_holdout_assets` | ⚫ | working point does not transfer to holdout assets |
 | `ob_struct_diagnostics` | ⚫ (info) | bars/ATR, AR(1) half-life diagnostics: impulse structure too short-lived at 15m |
 
-## Research presets (BACKLOG, STATUS 2026-09-22)
+## Research presets (SHIPPED 2026-09-22, commit b6e2158)
 
 Live presets (1m..1d) are quality-first: the "4h" preset yields
 only 9-34 blocks/asset on the 4H grid -- useless for EV statistics.
-A separate family of RESEARCH presets (R1-R5, looser filters,
-200-2000 blocks/asset, detector logic untouched, repaint-free and
-determinism non-negotiable) is planned in STATUS
-("OB ENGINEERING PLAN"). Acceptance criteria are frozen there.
+SHIPPED family (research_presets.py): R1 conservative ~273-672,
+R2 balanced ~575-1146, R3 aggressive ~793-1146 blocks/asset,
+R4_diagnostic = structure-filter cost (reference-only).
+Acceptance PASSED on all 10 assets (research_preset_check.py ->
+runs/ob_research_check.log): detector logic untouched, repaint-free
+and determinism verified, live-preset regression exact ("1h"=131,
+"4h"=10).  E8 ran on R2 per prereg (STATUS, commit 7105724) ->
+FAIL/KILL (runs/retest_e8.log): OB-retest is 0th null percentile
+on PRIMARY.
 NEVER use a research preset for live trading or a live preset for
 EV research.

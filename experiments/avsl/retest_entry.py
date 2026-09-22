@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
-"""E6/E7 -- dead-pool entry re-tests under the wide-TP frame
-(prereg E6/E7/E8, STATUS 2026-09-22, frozen BEFORE this code).
+"""E6/E7/E8 -- dead-pool entry re-tests under the wide-TP frame
+(prereg E6/E7/E8, STATUS 2026-09-22; E8 prereg frozen BEFORE run
+code, commit 7105724).
 
 Entry rules are the ORIGINAL ones moved to the 4H grid:
   zscore   MOM-1: z28 = (close-SMA28)/STD28 crosses above +1.5 ->
            long, below -1.5 -> short (28 x 4H = the original 168 x 1H)
   donchian close crosses above prior 20-bar high -> long, below
            prior 20-bar low -> short; EMA200 side filter (original)
+  ob       E8: OB-retest events on 4H from the frozen RESEARCH
+           preset R2 (experiments/ob/research_presets.py); demand
+           retest -> long, supply retest -> short; entry bar = the
+           detector's retest bar.  R1/R3 are sensitivity-only and
+           are NOT runnable through this prereg gate.
 Shared frozen frame: stop 3xATR14 (E-style, no line), TP 5R,
 horizon 500, fee 10bp RT, S1-sized account stream, matched
 random-geometry null (100 draws, seeds 0..99).
@@ -14,6 +20,7 @@ random-geometry null (100 draws, seeds 0..99).
 Run:
   uv run python -m experiments.avsl.retest_entry zscore   # E6
   uv run python -m experiments.avsl.retest_entry donchian # E7
+  uv run python -m experiments.avsl.retest_entry ob       # E8
 """
 
 from __future__ import annotations
@@ -21,6 +28,7 @@ from __future__ import annotations
 import sys
 
 import numpy as np
+import polars as pl
 
 from engine.passed.avsl_cross_s1 import (
     ASSETS,
@@ -58,13 +66,40 @@ def _env(sym: str, repo) -> dict:
     atr = np.asarray(atr_ind(hp, lp, cp, 14, use_talib=False))
     b = ts // 14_400_000
     return {"hp": hp, "lp": lp, "cp": cp, "atr": atr,
+            "ts": ts, "vol": vol,
             "b": b, "g0": int(b[0]),
             "n_bars": int(b[-1]) - int(b[0]) + 1}
 
 
+def _ob_events(env: dict) -> tuple[np.ndarray, np.ndarray]:
+    """E8 (prereg 7105724): frozen R2 preset; entry = retest bar;
+    demand -> long, supply -> short.  Same-bar opposite-side
+    duplicates are kept (both fills; declared in the prereg)."""
+    from experiments.ob.research_presets import R2
+    from ta.src.custom.market_structure import identify_order_blocks
+
+    df = pl.DataFrame({
+        "date": pl.from_epoch(env["ts"], time_unit="ms"),
+        "high": env["hp"], "low": env["lp"],
+        "close": env["cp"], "volume": env["vol"],
+    })
+    blocks = identify_order_blocks(df, cfg=R2)
+    pos = {d: i for i, d in enumerate(df["date"].to_list())}
+    ev = sorted((pos[r["retest"]], r["block_type"] == "demand")
+                for r in blocks.iter_rows(named=True)
+                if r["retest"] in pos)
+    idx = np.array([e[0] for e in ev], dtype=np.int64)
+    side = np.array([e[1] for e in ev], dtype=bool)
+    return idx, side
+
+
 def _cross_idx(env: dict, kind: str) -> tuple[np.ndarray, np.ndarray]:
-    """Entry bars + side; both rules signal on CLOSE crosses."""
+    """Entry bars + side; zscore/donchian signal on CLOSE crosses."""
     cp = env["cp"]
+    if kind == "ob":
+        idx, side = _ob_events(env)
+        keep = idx >= WARMUP
+        return idx[keep], side[keep]
     if kind == "zscore":
         roll = np.full(len(cp), np.nan)
         for i in range(Z_WIN, len(cp)):
