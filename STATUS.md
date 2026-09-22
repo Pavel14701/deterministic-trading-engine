@@ -855,6 +855,19 @@ Method takeaway for all successor tracks: the null is not one
 number -- every geometry has its own null, and "signal vs null"
 must be computed per geometry.
 
+#### E5 AMENDMENT (2026-09-22, BEFORE THE RUN -- extends prereg 68953e0)
+
+E5 stays DESCRIPTIVE (no gates).  Read-out extended BEFORE the run:
+alongside the frozen A-trade slices (ATR pct top-20 vs bottom-20;
+SMA50-slope up/down/range; year buckets <=2020 / 2021 / 2022 /
+2023-24 / >=2025), the SAME slices are computed on the matched
+random-geometry null (E1 procedure, 100 draws, seeds 0..99) so each
+slice reports: A EV, null EV+-sd, and entry-lift = A - null.
+Frozen slice definitions: ATR percentile = pct-rank of ATR14 within
+the last 500 4H bars at entry (inclusive); SMA50 trend state =
+up if sma50[t] - sma50[t-6] > +0.001*cp[t], down if < -0.001*cp[t],
+else range; year from the entry bar's 4H bucket timestamp (UTC).
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
