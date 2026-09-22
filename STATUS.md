@@ -1233,6 +1233,47 @@ individually confirmed (portfolio construction = a later prereg).
 Runner: `experiments/avsl/donchian_overlay.py`, single invocation,
 log `runs/donchian_overlay.log` (numbers duplicated into STATUS).
 
+#### DONCHIAN OVERLAY RESULT (2026-09-22): NO CONFIG PASSES -> TRACK CLOSED FINAL
+
+runs/donchian_overlay.log.  Sanity: S1 reproduced E7 bit-for-bit
+(Sh 1.42/1.53, DD 29%/38%, EV +0.22/+0.18, CI identical).
+
+  S1  P: Sh+1.42 DD29% EV+0.22 pos8 CI>0 (DD FAIL)
+      F: Sh+1.53 DD38% EV+0.18 pos9 CI>0 (DD FAIL)
+  S2  P: Sh+1.50 DD20% EV+0.22 pos8 CI>0  ALL PASS
+      F: Sh+1.50 DD30% EV+0.18 pos9 CI>0 (DD FAIL -- 5pp short)
+  S3  cap taken 156/9530 (exposure 3.0 saturates instantly);
+      P: Sh+1.41 DD3% EV+0.89; F: Sh+0.63 EV-0.02 pos5 -> FAIL
+  S4  same shape (159 taken); F: Sh+0.60 EV-0.08 -> FAIL
+  S5  P: Sh+1.55 DD19% EV+0.22 ALL PASS
+      F: Sh+1.18 DD31% EV+0.18 (DD FAIL)
+
+VERDICT per prereg: **no config passes on both segments -> the
+Donchian-4H track is CLOSED FINAL.**  The entry itself stays
+recorded as null-confirmed (E7); what is closed is the track.
+
+Three new facts for the method map:
+1. **Cap toxicity REPLICATES on Donchian** (S3/S4: F3 Sharpe 0.6,
+   EV <= 0).  The AVSL S3 lesson was not entry-specific: on both
+   entries the clusters CARRY the holdout edge, and capping
+   amputates it.  This is now a general law of the method, measured
+   on two independent entries.
+2. **Donchian DD is not sizing-fixable within the frozen family:**
+   S2/S5 fix PRIMARY (DD 19-20%) but F3 sticks at 30-31%.  The
+   holdout drawdown comes from clustered trend entries in the 2025+
+   regime that the vol-target cannot see (their realized vol at
+   entry is LOW -- consistent with E5's low-ATR lift concentration:
+   the same state variable that carries the entry lift defeats the
+   sizer).  Signal and risk are coupled through one variable.
+3. The method's boundary is now measured: **entry lift transfers
+   across entries (AVSL, Donchian), but risk-compatibility does
+   NOT.**  A null-confirmed entry is necessary, not sufficient; the
+   second gate is whether its DD is controllable by sizing alone.
+
+Family ledger: re-tests 2/3 executed (E8 postponed), overlay 1
+executed; confirmed tracks: AVSL-cross 4H S1 only.  No false-
+positive budget spent (0 PASS issued in the family).
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
