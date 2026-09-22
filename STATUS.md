@@ -921,6 +921,37 @@ Live-scale implication recorded: for the S1-sized AVSL-cross live
 prereg, add a "current regime = low-ATR" monitoring read-out (not a
 filter) and pre-register expected decay if regime flips.
 
+#### E2 RESULT (2026-09-22): PASS -- THE EDGE IS 4H-SPECIFIC
+
+runs/ablation_tf.log.  Sanity: 4H arm reproduced E1 exactly
+(+0.172/+0.335, n=2939, null +0.135+-0.044/+0.168+-0.068, MATCH).
+
+Same frozen pipeline at 1D (deterministic 1H->1D resample; identical
+params, horizon 500 bars OF THE RESPECTIVE TF):
+  1D arm A:  PRIMARY -0.018R (n=166, z=-0.11)
+             F3      +0.013R (n=138, z=+0.07)   -- dead
+  1D null:   +0.134+-0.133 / -0.071+-0.154
+             (A at 11th pct PRIMARY -- the cross entry is WORSE
+             than matched random entries at 1D in-sample)
+
+GATE (frozen): 4H > 1D + 0.05R both segments:
+  PRIMARY: +0.172 vs -0.018 -> PASS
+  F3:      +0.335 vs +0.013 -> PASS
+Verdict per prereg: **PASS -- the edge is 4H-specific.**  Not
+"TF-scale drift capture": at 1D both the geometry signal and the
+entry lift vanish.
+
+Caveats recorded: 1D n is small (166/138) and the 1D null sd is
+large (+-0.13/+-0.15) -- the 1D point estimates are noisy, though
+the direction is unambiguous and the gate passed with a wide margin
+(+0.19R / +0.32R vs required +0.05R).
+
+Combined with E3 arm E (3xATR stop works -> the AVSL line is not
+magic for STOPS), E2 sharpens the picture: the 4H grid + cross
+TIMING is where the line carries information.  The engine is the
+4H wide-TP geometry; the AVSL cross at 4H is the (regime-bound,
+see E5) amplifier -- and it has no 1D counterpart.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
