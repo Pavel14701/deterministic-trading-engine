@@ -685,6 +685,73 @@ EV +0.17/+0.33R, CIs identical to runs/risk_overlay.log) ->
 FROZEN GATES: PASS 5/5.  The frozen numbers are now a regression
 contract: any change to the module that moves them voids the PASS.
 
+#### EDGE-DECOMPOSITION PREREGISTRATION (2026-09-22, FROZEN BEFORE RUNS)
+
+Goal: decompose the confirmed edge (NW-z +3.31/+3.85) into
+components -- entry, TF, RR geometry, stop floor, sizing -- to learn
+WHAT works, not just that "AVSL 4H S1 works".  Five ablation
+experiments, ONE component changed at a time, baseline = the frozen
+engine/passed/avsl_cross_s1.py config (untouchable).
+
+META-RULES (binding):
+- These are DIAGNOSTIC ablations of a PASSED module.  No outcome
+  can un-pass it: its verdict was about the assembled config.
+- If any ablation arm beats the frozen config, that observation
+  does NOT change the frozen config; using it requires a NEW dated
+  prereg (anti cherry-pick).
+- Gates frozen before each run; order E1 -> E3 -> E5 -> E2 -> E4;
+  no new arms may be added after a run.
+
+E1 -- ENTRY vs RANDOM vs LAGGED (runs first; answers "is there a
+signal at all"):
+  Arm A: AVSL cross entries, frozen geometry (baseline, 2939 trades).
+  Arm B: random-uniform entries, SAME per-asset entry count and SAME
+         per-asset long/short ratio as A, drawn from all eligible
+         bars [WARMUP, n-2], geometry at the sampled bar, frozen
+         seeds 0..99 -> a NULL DISTRIBUTION, not a single draw.
+  Arm C: AVSL cross signal delayed DELAY=100 bars (geometry computed
+         at the delayed entry bar).
+  Gates (PRIMARY and F3 separately):
+  - E1a: A net EV > mean(B) + 0.05R
+  - E1b: percentile of A net EV within the B distribution >= 95
+  Kill (interpretation): E1a fails on either segment -> the AVSL
+  entry carries no information beyond the 4H RR geometry; the edge
+  is geometry/sizing, and remaining experiments are re-interpreted
+  as geometry decomposition.  Arm C reported, not gated: it locates
+  the information horizon of the signal.
+
+E3 -- RR ABLATION:  arms = {stop floor on/off} x {wide TP/narrow TP}:
+  A: frozen.  B: stop = 1xATR14 (floor off), TP {3,5,8}R.
+  C: frozen stop, TP {1R, 1.5R}.  D: frozen stop, TP = reverse cross
+  (trailing).  Gates: A > B + 0.05R and A > C + 0.10R on PRIMARY and
+  F3 (net EV, fees make narrow stops structurally expensive -- that
+  cost is part of the answer).  D reported vs A.  Kill: B ~ A -> the
+  wide-stop floor is not critical; C ~ A -> the RR asymmetry is not
+  critical and the edge is entry-side.
+
+E5 -- REGIME SLICES (DESCRIPTIVE, no pass/fail): A-trades split by
+  ATR percentile (top-20 vs bottom-20), SMA50-slope trend state,
+  calendar year buckets (2020/2021/2022-bear/2023-24/2025-26).
+  Frozen read-out: per-slice n, net EV, NW-z; verdict vocabulary:
+  "universal" (all slices > 0.05R) / "vol-concentrated" / "trend-
+  concentrated" / "beta-like" (edge only in long-bull slices).
+  Multiple slices = descriptive, explicitly NOT gated.
+
+E2 -- TF ABLATION: 1D resample added; 1H and 15m already failed at
+  screen (WR3R ~ break-even, runs/avsl_cross_tf.log) and are
+  re-quoted, not re-run.  Gate: 4H net EV > 1D net EV + 0.05R on
+  PRIMARY and F3.  Kill: 1D ~ 4H -> the edge is not 4H-specific.
+
+E4 -- SIZING ABLATION on the frozen bar stream:
+  A: unsized (1.0).  B: S1 vol-target (frozen).  C: PERMUTED S1
+  sizes (shuffle B's sizes across A's trade order, seeds 0..99 --
+  breaks the vol-size link, keeps the marginal distribution).
+  D: constant 0.33.  Metrics: Sharpe_NW, DD (account stream);
+  EV/trade is sizing-invariant and not a gate here.
+  Gate: B Sharpe_NW > mean(C) + 0.2 on PRIMARY and F3.
+  Kill: B ~ C -> vol-target timing carries no information (pure
+  de-lever), record for successor tracks.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
