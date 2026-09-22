@@ -1274,6 +1274,31 @@ Family ledger: re-tests 2/3 executed (E8 postponed), overlay 1
 executed; confirmed tracks: AVSL-cross 4H S1 only.  No false-
 positive budget spent (0 PASS issued in the family).
 
+#### E8 PORT-CHECK RESULT (2026-09-22): FAIL -- E8 STAYS POSTPONED
+
+runs/port_check_4h.log.  Diagnostic per the E8 gate (detector must
+be 4H-usable before any run).  The detector RUNS on 4H OHLCV with
+the "4h" preset and its geometry is sane:
+  zone width med 1.35-2.16 ATR14 (inside the [1, 3] target),
+  retest delays median 1-4 bars, 100% within 36 bars,
+  supply/demand split balanced.
+But block counts are 9-34 per asset over the full ~7y 4H history
+(BTC: 10) -- two to three orders of magnitude below what an EV
+comparison needs (the user-set criterion "not ~10" is exactly
+violated).  Reference sanity: BTC 1H + "1h" preset gives 131 blocks
+on 6x more bars -- the 4h preset is far stricter than the archived
+working combo (its market-structure filter + complete-window
+requirement dominate at this bar size).
+
+Consequence per the frozen rule: **E8 stays POSTPONED; the OB
+detector rework under 4H is a separate engineering task with its
+own frozen acceptance criteria** (proposal, not yet a prereg: a
+reworked preset must yield ~200-2000 blocks per asset on the 4H
+grid, zone width med in [1, 3] ATR, delays <= 36 bars, and the
+detector itself must remain repaint-free) -- only then can an E8
+prereg be written.  Tuning preset parameters ad hoc to make E8
+runnable is exactly what the port-check gate exists to prevent.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
