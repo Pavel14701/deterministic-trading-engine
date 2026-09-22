@@ -1166,6 +1166,73 @@ E8 stays postponed, not approximated.
 FAMILY MULTIPICITY LEDGER: 2 of 3 re-tests executed, 0 PASS, 0 WEAK
 consumed -- no false-positive budget spent.
 
+#### DONCHIAN-4H RISK-OVERLAY PREREG (2026-09-22, FROZEN BEFORE CODE)
+
+Predecessor: E7 (commit 3f73442) -- the Donchian(20)+EMA200 entry
+beats its matched random-geometry null on BOTH segments (100th /
+98th pctile, CI > 0); only the risk gates fail (DD 29%/38% under
+S1).  Signal confirmed, risk unsolved -> a risk-only overlay track,
+the exact AVSL risk-overlay pattern (b6005ca -> e6b4b4d).
+
+FROZEN SIGNAL (identical to E7 -- the numbers above were measured
+on this geometry and it is NOT changed here):
+  entry     Donchian(20) close-cross breakout, 4H, EMA200 side
+            filter (long only above, short only below)
+  stop      3 x ATR14 at the entry bar (E-style, no line)
+  exit      TP 5R primary, MTM at horizon 500 4H bars, stop-first
+  fee       10 bp round trip; overlapping trades allowed
+  universe  BTC AVAX BNB DOGE ETH LINK LTC NEAR SOL XRP
+  split     PRIMARY = first 2/3 of the global 4H grid, F3 = rest
+DEVIATION NOTE (recorded deliberately): the initiating message
+specified "stop = max(Donchian(10), 2xATR)" -- that is the OLD
+track's geometry, on which the E7 lift was NOT measured.  Re-freez-
+ing the stop to the old value would silently swap the signal under
+the verified numbers.  The overlay therefore runs on the E7
+geometry above; the old geometry may only be tested as ANOTHER new
+prereg.
+
+SIZING HYPOTHESES (frozen before code; per-trade sizes applied to
+the E7 trade set, engine accrual semantics):
+  S1  baseline vol-target: clip(0.20 / rv100, 0.25, 2.0)
+      (= the engine S1 series; sanity: must reproduce E7's
+      Sharpe 1.42/1.53, DD 29%/38%, EV +0.221/+0.185 bit-for-bit)
+  S2  aggressive vol-target: clip(0.15 / rv100, 0.15, 1.5)
+      (rationale: Donchian clusters 3.2x denser than AVSL cross;
+      harder de-lever)
+  S3  S1 + concurrency cap: max 5 concurrent open trades AND max
+      total open exposure 3.0 size units; an entry that would
+      breach a cap is SKIPPED (size 0, excluded from stream, EV and
+      asset counts).  DONCHIAN-ONLY HYPOTHESIS: on AVSL the cap was
+      measured toxic (Sharpe 0.22, EV +0.02R -- clustered entries
+      carry that edge); on Donchian the clusters are trend-late
+      entries and the question is OPEN.  A result either way is a
+      new fact and goes to STATUS.
+  S4  S2 + the same cap
+  S5  S2 x regime halving: size x 0.5 when ATR14 percentile
+      (500-bar inclusive window at entry) > 80; never a full skip
+      (the AVSL S2 lesson: percentile scaling alone leaves DD loose;
+      here it is stacked on S2, not used alone)
+
+GATES (per config, on BOTH segments, taken trades):
+  G1'  Sharpe_NW(sized accrual stream) >= 1.0
+  G2'  portfolio DD <= 25%
+  G3'  net EV >= 0.10R
+  G4'  >= 7/10 assets with positive mean net EV
+  G5'  block bootstrap CI (block 500, seed 11) excludes 0
+SELECTION (risk-first, frozen): among configs passing ALL gates on
+both segments, select the one with the lowest PRIMARY DD
+(tie-break: lower F3 DD, then lower mean gross size).  One config
+passing = that config.  None passing = track CLOSED FINAL (the
+Donchian entry itself stays recorded as null-confirmed; only the
+track is closed).
+KILL / BOUNDARIES: entry, stop, TP, horizon, universe, split are
+frozen; no S-variant may be added after the first run; F3 is never
+tuned on; no combination with AVSL before both tracks are
+individually confirmed (portfolio construction = a later prereg).
+
+Runner: `experiments/avsl/donchian_overlay.py`, single invocation,
+log `runs/donchian_overlay.log` (numbers duplicated into STATUS).
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
