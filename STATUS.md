@@ -789,6 +789,20 @@ engine; the entry adds a real F3-segment lift (+0.335 vs +0.168,
    entries FIRST (cheap null baseline); an entry signal must beat
    that null, not zero.
 
+#### E3 AMENDMENT (2026-09-22, BEFORE THE RUN -- extends prereg 68953e0)
+
+- Arm E added (still before any E3 results): stop = 3xATR14 (floor
+  off, wider vol stop), TP 5R -- tests stop WIDTH on the other side
+  of the frozen 2x.
+- Arm C clarified: evaluated at BOTH TP 1R and TP 1.5R (gates apply
+  to each).
+- Additional read-out (descriptive, frozen procedure): EVERY arm is
+  also run on the SAME 100 random-entry draws as E1 (per-asset
+  count and side ratio matched, seeds 0..99) -> per-arm random-
+  geometry EV.  This decomposes the +0.135R/+0.168R null itself.
+  The frozen A>B / A>C gates remain on the AVSL entries; random
+  baselines are reported, not gated.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
