@@ -868,6 +868,59 @@ the last 500 4H bars at entry (inclusive); SMA50 trend state =
 up if sma50[t] - sma50[t-6] > +0.001*cp[t], down if < -0.001*cp[t],
 else range; year from the entry bar's 4H bucket timestamp (UTC).
 
+#### E5 RESULT (2026-09-22, DESCRIPTIVE): EDGE IS NOT UNIVERSAL -- LOW-VOL + 2025+ CONCENTRATED
+
+runs/ablation_regime.log.  Arm A frozen geometry, 2939 trades;
+matched-null slices (100 draws).  Format: A EV (z) vs null+-sd,
+lift = A - null.
+
+PRIMARY (in-sample, global-null +0.135):
+  atr_hi  n=421:  +0.056 (+0.5) vs +0.195+-0.081 -> lift -0.139
+  atr_lo  n=485:  +0.258 (+2.3) vs +0.210+-0.090 -> lift +0.048
+  up      n=937:  +0.142 (+1.9) vs +0.147 -> lift ~ 0
+  down    n=1030: +0.149 (+2.0) vs +0.119 -> lift +0.030
+  range   n=150:  +0.511 (+2.3) vs +0.159 -> lift +0.352 (small n)
+  years: 2022 +0.074 lift; 2023-24 +0.075; 2021 -0.064; >=2025
+  +0.484 (n=38, noisy)
+
+F3 (holdout, global-null +0.168):
+  atr_hi  n=132:  +0.189 (+1.0) vs +0.122 -> lift +0.067
+  atr_lo  n=208:  +0.722 (+3.8) vs +0.220 -> **lift +0.502**
+  up      n=309:  +0.396 (+2.5) vs +0.206 -> lift +0.190
+  down    n=418:  +0.242 (+1.0) vs +0.132 -> lift +0.110
+  range   n=95:   +0.546 (+2.0) vs +0.165 -> lift +0.380 (small n)
+  2023-24 n=157:  +0.007 (+0.0) vs +0.211 -> lift -0.204  **DEAD**
+  >=2025  n=665:  +0.412 (+1.9) vs +0.161 -> lift +0.251
+  (<2021, 2021, 2022: no holdout trades by construction)
+
+Verdict per frozen vocabulary: **NOT universal.  Vol-concentrated
+(LOW vol) + time-concentrated (2025+).**
+
+Findings:
+1. The F3 entry-lift (+0.335 EV overall) is carried almost entirely
+   by the >=2025 slice (+0.412 EV, lift +0.251, n=665 of 822 F3
+   trades).  The 2023-24 slice is FLAT on holdout (+0.007 EV, lift
+   negative).  The "holdout confirmation" is really a
+   "current-regime confirmation" -- a robustness caveat that must be
+   stated in the live-scale prereg (regime may decay like 2023-24
+   did).
+2. Entry-lift on F3 concentrates in LOW ATR: +0.502 lift (atr_lo)
+   vs +0.067 (atr_hi).  On PRIMARY the sign flips (atr_hi lift
+   -0.139).  A "skip high-vol entries" filter is a candidate -- but
+   per the meta-rules it requires a NEW dated prereg; nothing is
+   filtered in the frozen module.
+3. Trend state: lift present in BOTH up (+0.190) and down (+0.110)
+   on F3 -> the entry is not a simple trend-follower; range lift
+   (+0.380) is suggestive but n is small.  No trend filter
+   justified by this data.
+4. Method note: slice nulls vary a lot (e.g. >=2025 PRIMARY null
+   +0.079+-0.222, range +-0.18-0.24) -- per-slice n is small, all
+   slice comparisons are directional evidence only.
+
+Live-scale implication recorded: for the S1-sized AVSL-cross live
+prereg, add a "current regime = low-ATR" monitoring read-out (not a
+filter) and pre-register expected decay if regime flips.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
