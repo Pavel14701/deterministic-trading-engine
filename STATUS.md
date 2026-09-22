@@ -1109,6 +1109,63 @@ Fixed before code: runner `experiments/avsl/retest_entry.py`,
 one invocation per entry, logs `runs/retest_{e6,e7,e8}.log`.  No
 new arms, no gate changes, no params after the first run of each.
 
+#### E6 RESULT (2026-09-22): FAIL -- z-LIFT IS REGIME-BOUND WITHOUT HOLDOUT SUPPORT
+
+runs/retest_e6.log.  z-score MOM cross +-1.5 sigma (z28, 4H),
+wide-TP frame, 10370 entries.
+
+  PRIMARY: EV +0.155R (n=7410, z +3.0) vs null +0.061+-0.025
+           -> E-a PASS, E-b 100th pct PASS; Sh(S1) +2.04, DD 24%,
+           CI>0 -- in-sample everything passes.
+  F3:      EV +0.077R (n=2960, z +1.9) vs null +0.085+-0.038
+           -> E-a FAIL, E-b 41st pct FAIL; Sh +0.92, DD 31%,
+           CI covers 0.
+Verdict per prereg: **FAIL (kill).**  The z-entry does carry entry
+information over the wide-TP null IN-SAMPLE (100th pct -- notable:
+the old 1H kill at narrow TP was even right about the mechanism,
+but the wide-TP null confirms a real PRIMARY effect), yet it has NO
+holdout support -- the same 2023-24-dead pattern as E5, without the
+>=2025 rescue.  Not a candidate; the old kill verdict stands under
+the new frame.
+
+#### E7 RESULT (2026-09-22): ENTRY INFORMATION IS REAL ON BOTH SEGMENTS; RISK GATES FAIL (DD)
+
+runs/retest_e7.log.  Donchian(20) breakout + EMA200 side filter
+(4H), wide-TP frame, 9530 entries.
+
+  PRIMARY: EV +0.221R (n=6614, z +1.9) vs null +0.096+-0.028
+           -> E-a PASS, E-b 100th pct PASS; Sh(S1) +1.42,
+           DD 29% (E-d FAIL), CI>0.
+  F3:      EV +0.185R (n=2916, z +4.4) vs null +0.096+-0.042
+           -> E-a PASS, E-b 98th pct PASS; Sh(S1) +1.53,
+           DD 38% (E-d FAIL), CI>0.
+Verdict per prereg: **overall FAIL (not PASS: E-d DD>25% both
+segments), and per the kill rule this is NOT a kill** -- the kill
+criterion is an E-a/E-b failure, and both PASS on BOTH segments.
+
+This is the AVSL-history pattern in reverse: a second entry (after
+AVSL) that beats its matched random-geometry null on the holdout at
+the 98th percentile.  What fails is risk, not signal: DD 29%/38%
+despite S1 sizing (the Donchian entry is 3.2x denser than AVSL
+cross and clusters in trends, where sizes stay high).
+
+Recorded successor path (each a NEW prereg, nothing done now):
+a sizing/risk-only overlay track for Donchian-4H wide-TP, exactly
+mirroring the AVSL risk-overlay track (S1..Sn sweep, risk-first
+gates).  If an overlay passes 5/5, the project gets its second
+confirmed track and the first out-of-sample replication of the
+METHOD (entry x wide-TP geometry x vol-target sizing).
+
+#### E8 STATUS (2026-09-22): POSTPONED per prereg
+
+The OB block detector port to 4H requires a 1:1 taken-trade
+reproduction check against the original 15m detector on a common
+subsample before any run (prereg condition).  Not yet performed;
+E8 stays postponed, not approximated.
+
+FAMILY MULTIPICITY LEDGER: 2 of 3 re-tests executed, 0 PASS, 0 WEAK
+consumed -- no false-positive budget spent.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
