@@ -1299,6 +1299,52 @@ detector itself must remain repaint-free) -- only then can an E8
 prereg be written.  Tuning preset parameters ad hoc to make E8
 runnable is exactly what the port-check gate exists to prevent.
 
+#### OB ENGINEERING PLAN (2026-09-22): BACKLOG, ACTIVATION-CONDITIONAL
+
+Problem: the "4h" live preset yields 9-34 blocks/asset on the 4H
+grid -- live-grade sparsity, useless for EV statistics.  Decision:
+build RESEARCH presets as a separate artifact (live preset for
+trading, research preset for statistics -- different products,
+NEVER mixed), rather than tune anything "so E8 can run".
+
+Diagnosis first (which filter kills the blocks -- measured, not
+guessed): the "4h" preset stacks use_market_structure_filter=True,
+require_complete_window=True, strength_age_penalty=True,
+zigzag_distance=8, min_extreme_gap=8, reversal_atr_multiple=2.5
+(ATR-calibrated reversal; there is no fixed online_reversal_pct in
+this pipeline).  Ablate one filter at a time on BTC+ETH 4H and
+record blocks/asset per ablation.
+
+Research-preset candidates (detector logic UNTOUCHED, presets only;
+repaint-free online ZigZag, look-ahead guards and determinism are
+non-negotiable):
+  R1 conservative   ~200-500 blocks/asset
+  R2 balanced       ~500-1000
+  R3 aggressive     ~1000-2000
+  R4 no-ADX         (is the trend filter even doing anything?)
+  R5 no-structure   (same question for the structure filter)
+Likely levers: require_complete_window=False,
+use_market_structure_filter=False (or min extremess relaxed),
+zigzag_distance 6-7, min_extreme_gap 6-7; zone geometry, retest
+logic and strength computation stay as-is.
+
+ACCEPTANCE (frozen; all must hold on ALL 10 assets):
+  200-2000 blocks/asset over the ~7y 4H grid; zone width med in
+  [1, 3] ATR14; retest delay med <= 10 bars, p90 <= 36 bars; S/D
+  each side 30-70%; repaint-free test still passes; byte-identical
+  output on rerun; "1h" preset regression unchanged (131 blocks,
+  BTC 1H) and "4h" preset regression unchanged (10 blocks, BTC 4H)
+  -- research presets are additions only.
+
+Then, and only then: E8 prereg (frozen entry = OB-retest 4H on the
+selected research preset, wide-TP frame, gates as E6/E7) -> run.
+Budget: ~9h engineering + ~1.5d E8.
+
+PRIORITY: BACKLOG.  Activation triggers: TTF v1 AND P4 both FAIL,
+or an explicit portfolio need for a second track.  Until then the
+queue is: AVSL live-scale prereg -> AVSL productization -> TTF v1 /
+P4 preregs.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
