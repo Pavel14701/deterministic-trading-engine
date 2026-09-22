@@ -986,6 +986,129 @@ Findings:
    Record for the live-scale prereg: keep S1 frozen, monitor the
    realized-vol vs size correlation as a read-out.
 
+#### DECOMPOSITION COMPLETE (2026-09-22): THE METHOD, EXPLICIT
+
+With E1/E2/E3/E4/E5 all run per their frozen preregs, the project
+has its first complete causal map of an edge.  Recorded here as the
+standing METHOD for every future directional track:
+
+EDGE MAP (AVSL-cross 4H + S1):
+  engine    4H grid + wide-TP asymmetry        (E2, E3)
+  amplifier AVSL cross, 4H only                (E1, E2)
+  regime    low-vol + 2025+                    (E5)
+  sizing    de-lever + vol-timing              (E4, marginal on PRIMARY)
+
+Five facts, each pre-registered and verified:
+1. TP asymmetry is the engine.  Narrow TP = zero everywhere, even
+   on random entries; wide TP yields a +0.135R random-entry null.
+2. The 4H grid is critical.  The identical pipeline at 1D is dead,
+   and the cross entry sits at the 11th percentile of its own 1D
+   null (worse than random).
+3. The entry is an amplifier, not the source.  Random geometry
+   already earns +0.135R; the AVSL cross adds +0.037R (PRIMARY) /
+   +0.167R (F3) over its matched null.
+4. The edge is regime-bound.  2023-24 is dead on the holdout
+   (+0.007R); >=2025 carries it (+0.412R, n=665/822).  The F3 PASS
+   is a current-regime PASS, not a robustness PASS.
+5. Sizing = mechanical de-lever + vol-timing.  Const 0.33 already
+   takes DD 61% -> 27%; the vol-size LINK adds +0.24/+0.86 Sharpe
+   (PRIMARY margin only +0.04 over the gate -- not firmly
+   established there).
+
+NEW STANDARDS (binding for all successor tracks):
+- Null per-geometry: a signal must beat a MATCHED random-geometry
+  null (same count, same side ratio, same geometry, 100 draws,
+  seeds 0..99): EV > null_mean + 0.05R AND >= 95th pctile.
+- Wide TP is mandatory: any test at 1R/1.5R TP is void by
+  construction (E3 C1/C15).
+- The 4H grid is the default arena; other TFs need their own null
+  and their own justification (E2).
+- Old "dead pool" verdicts (z-score, Donchian, OB) were issued at
+  narrow-TP geometries and are therefore UNRELIABLE.  Re-tests with
+  the wide-TP frame are legitimate NEW preregs, explicitly NOT
+  "revivals" of the old tracks.
+
+RE-TEST QUEUE (prereg'd separately before each run): E6 z-score MOM
+cross +-1.5 sigma (4H, window 28 = the original 168x1H), E7
+Donchian(20) breakout + EMA(200) side filter (4H), E8 OB-retest
+(block detector ported to 4H, params unchanged).  Common frame:
+stop 3xATR (E-style, no line), TP 5R primary (3R/8R descriptive),
+horizon 500, S1 sizing, full battery + per-geometry null gate.
+Multiplicity note: three tests, family-level false-positive
+expectation ~15% at the 95th-pct gate -- a single marginal PASS
+will be labelled WEAK, not confirmed, until independently
+replicated (e.g. delayed-entry or sub-period split).
+
+LIVE RISKS (must appear as read-outs in any live-scale prereg):
+regime collapse (a 2023-24-like stretch -> EV ~ 0) and vol-regime
+flip (ATR hi/lo sign flipped between segments).  Monitoring, not
+filters: rolling Sharpe (90d), ATR percentile (500-bar),
+corr(realized vol, size).  Disaster brake (pause if rolling
+Sharpe < 0 over 90d) is a prereg item, not a discretionary act.
+
+The frozen AVSL 4H S1 module KEEPS its PASS.  E1..E5 are
+diagnostics of WHY it passes, recorded so successors test the
+theory, not the instance.
+
+#### E6/E7/E8 PREREG (2026-09-22, FROZEN BEFORE ANY CODE/RUN)
+
+Re-tests of three "dead pool" entries under the wide-TP frame.
+NOT revivals: the old kills were issued at narrow-TP geometries,
+which E3 showed are void by construction.  Each is its own
+prereg/run; all three are frozen NOW (before E6 code exists) so the
+family-level multiplicity is fixed in advance: 3 tests at the
+95th-pct gate -> ~15% false-positive expectation; a single marginal
+PASS is labelled WEAK (not confirmed) until replicated (delayed-
+entry or sub-period split, itself a new prereg).
+
+COMMON FRAME (frozen, identical for all three):
+  grid      4H deterministic resample of the same 1H source
+  geometry  stop = 3 x ATR14 (E-style, no line), TP = 5R primary,
+            horizon 500 4H bars, stop-first, taker fee 10bp round
+            trip, overlapping trades allowed; TP 3R/8R descriptive
+  universe  BTC AVAX BNB DOGE ETH LINK LTC NEAR SOL XRP
+  segments  PRIMARY = first 2/3 of the global 4H grid, F3 = rest
+  sizing    S1 (frozen engine series) for the account stream;
+            EV/trade and the null are UNSIZED (sizing-invariant)
+  null      matched random-geometry draws, 100 seeds 0..99 (same
+            per-asset count and long/short ratio as the entries)
+  gates (ALL must hold on BOTH segments):
+    E-a  entry EV > null mean + 0.05R
+    E-b  entry EV >= 95th pctile of the null distribution
+    E-c  Sharpe_NW(sized stream) >= 1.0
+    E-d  portfolio DD <= 25%
+    E-f  block bootstrap CI (block 500, seed 11) excludes 0
+  verdict   PASS = all gates both segments; WEAK = E-a/E-b pass on
+            both but the family multiplicity caveat applies; FAIL =
+            any of E-a/E-b fails on either segment (kill; no re-params)
+
+E6 -- z-score MOM re-test.  Entry (the original MOM-1 rule, moved
+  from 1H to the 4H grid, window scaled 168 x 1H = 28 x 4H):
+  z28 = (close - SMA28) / STD28 (ddof=1); LONG when z28 crosses
+  above +1.5 (prev <= 1.5, cur > 1.5); SHORT when z28 crosses below
+  -1.5.  Entry at the close of the cross bar.  Exit = frame (the
+  original z-cross-0 exit is NOT used -- replacing the exit is the
+  point of the re-test).  Eligible bars >= WARMUP 400.
+
+E7 -- Donchian re-test.  Entry (original breakout rule): LONG when
+  close crosses above the prior 20-bar high (hh20 over bars t-20..t-1),
+  SHORT when close crosses below the prior 20-bar low; side filter
+  kept from the original: long only if close > EMA200, short only if
+  close < EMA200 (both on 4H closes).  Exit = frame (the original
+  Donchian(10) exit is NOT used).
+
+E8 -- OB-retest re-test.  Entry: the original block detector
+  (supply/demand zones) ported to 4H with parameters unchanged;
+  LONG at a demand-block retest bar, SHORT at a supply-block retest
+  bar, within the original delay window.  Exit = frame.  (Detector
+  port is implementation work, not a parameter change; if the port
+  cannot reproduce the original 15m detector's taken-trade counts
+  1:1 on a common subsample, E8 is postponed, not approximated.)
+
+Fixed before code: runner `experiments/avsl/retest_entry.py`,
+one invocation per entry, logs `runs/retest_{e6,e7,e8}.log`.  No
+new arms, no gate changes, no params after the first run of each.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.

@@ -19,3 +19,25 @@ Run: `uv run python -m experiments.avsl.<name> [args]`
 | `ablation_regime` (E5) | 🟡 descriptive — **edge НЕ универсален: low-vol + 2025+** | Срезы A-trades vs matched-null. **F3 entry-lift почти целиком из ≥2025** (+0.412 EV, lift +0.251, n=665 из 822), а 2023-24 на holdout **мёртв** (+0.007, lift −0.204) → «holdout-подтверждение» = «подтверждение текущим режимом», caveat для live-прега. **Low-ATR концентрация на F3: lift +0.502** (atr_lo, z 3.8) vs +0.067 (atr_hi); на PRIMARY знак обратный. Тренд: lift есть и в up (+0.19) и в down (+0.11) → не тренд-фолловер; фильтр не оправдан. Кандидат-фильтр «skip high-vol» = только новый прег. Evidence: `runs/ablation_regime.log` |
 | `ablation_tf` (E2) | ✅ PASS — **эдж 4H-специфичен** | Та же frozen-система на 1D: **−0.018/+0.013** (n=166/138, z≈0) — мёртв; 1D-null +0.134±0.133/−0.071±0.154, entry на **11-м перцентиле** 1D-null на PRIMARY (cross-entry хуже random на 1D). Гейт 4H > 1D + 0.05R: PASS (+0.19R/+0.32R запаса). Не «TF-скейл drift capture» — движок именно 4H. Sanity: 4H воспроизвёл E1 бит-в-бит (MATCH). Caveat: 1D n мал, null ±0.13–0.15. Evidence: `runs/ablation_tf.log` |
 | `ablation_sizing` (E4) | ✅ PASS — **vol-timing несёт информацию, не только de-lever** | A unsized: Sharpe 1.33/2.05, **DD 61%/38%**; B S1: **1.50/2.84, DD 22%/12%** (sanity бит-в-бит с frozen verdict); D 0.33: 1.33/2.05, DD 27%/14%; C permuted: 1.26±0.18 / 1.98±0.34. Гейт B > C + 0.2: PASS, но на PRIMARY **впритык** (B−C = +0.24 при требовании +0.20, шум C ±0.18) → vol-timing-информация на PRIMARY не установлена твёрдо, на F3 — да (+0.86). S1 оставляем frozen; в live-прег — read-out corr(realized vol, size). Evidence: `runs/ablation_sizing.log` |
+
+## Теория метода (E1–E5, 2026-09-22) — карта эджа
+
+```
+Движок:    4H grid + wide-TP asymmetry   (E2, E3)
+Амплиф.:   AVSL cross, только 4H         (E1, E2)
+Режим:     low-vol + 2025+               (E5)
+Sizing:    de-lever + vol-timing         (E4, на PRIMARY погранично)
+```
+
+**Стандарты (binding для всех будущих треков):**
+- **Null per-geometry**: сигнал обязан бить matched random-geometry
+  null (тот же count, side ratio, geometry; 100 draws, seeds 0..99):
+  EV > null + 0.05R **и** ≥ 95-й перцентиль.
+- **Wide TP обязателен**: тест на 1R/1.5R TP пуст по построению (E3).
+- **4H grid — арена по умолчанию**; другой TF требует своего null (E2).
+- Старые kill'ы (z-score, Donchian, OB) выданы при узких TP —
+  **ненадёжны**; re-test при wide-TP = новый прег, не «revival».
+
+**Риски для live (read-outs, не фильтры):** режимный развал
+(2023-24-like), vol-разворот; rolling Sharpe 90d, ATR percentile,
+corr(vol, size); disaster-brake — через прег.

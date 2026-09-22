@@ -71,6 +71,15 @@ prereg; each cost a full run):
 - **ATR-percentile regime scaling alone** (×0.5/×0.25 top deciles):
   leaves DD at 57%/28% — far too loose.
 
+**Decomposition (E1–E5, 2026-09-22 — diagnostic, config untouched):**
+движок = 4H grid + wide-TP asymmetry; AVSL cross — усилитель
+(+0.037R/+0.167R над matched null), только 4H (1D мёртв); режим =
+low-vol + 2025+ (2023-24 на holdout мёртв); S1 = de-lever +
+vol-timing (на PRIMARY погранично). Полный текст: STATUS,
+«DECOMPOSITION COMPLETE». Любое изменение, вдохновлённое этой
+картой (trailing, 3×ATR, режимные фильтры) = новый датированный
+прег и закрытие этого модуля.
+
 **Known limitations / honesty notes:**
 
 - PRIMARY DD sits 3pp under the cap — PASS, but not headroom.

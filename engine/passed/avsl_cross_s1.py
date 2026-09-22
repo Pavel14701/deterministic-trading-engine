@@ -37,6 +37,21 @@ FORBIDDEN for any successor (measured, recorded in STATUS):
   - concurrency caps: S3/S4 destroyed the PRIMARY edge (Sharpe 0.22,
     EV +0.02R) -- clustered entries CARRY the edge;
   - ATR-percentile regime scaling alone: S2 left DD at 57% / 28%.
+
+DECOMPOSITION (E1..E5, 2026-09-22 -- diagnostic, does not alter the
+frozen config; full text: STATUS, "DECOMPOSITION COMPLETE"):
+  engine     4H grid + wide-TP asymmetry (narrow TP = 0 everywhere;
+             geometry alone earns +0.135R on random entries)
+  amplifier  the AVSL cross, 4H ONLY (+0.037R/+0.167R over its
+             matched null; the identical pipeline at 1D is dead and
+             the entry sits at the 11th pct of its 1D null)
+  regime     low-vol + 2025+ (2023-24 dead on holdout; low-ATR lift
+             +0.502 vs +0.067 hi on F3) -- regime monitoring is a
+             mandatory live-scale read-out
+  sizing     de-lever (const 0.33 fixes most of DD) + vol-timing
+             (informative on F3 +0.86 Sharpe; marginal on PRIMARY)
+Any change inspired by this map (trailing exits, 3xATR stop, regime
+filters) requires a NEW dated prereg and closes THIS module.
 """
 
 from __future__ import annotations
