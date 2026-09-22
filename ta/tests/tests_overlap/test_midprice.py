@@ -407,6 +407,29 @@ def test_midprice_with_nan(prices_with_nan) -> None:
     )
 
 
+@pytest.mark.overlap
+def test_midprice_nan_first_in_window() -> None:
+    """Regression: NaN used to be silently skipped by min/max.
+
+    `x < nan` is always False, so the old core never selected NaN as
+    window min/max and returned numeric midprices for windows that
+    contain NaN -- unlike TA-Lib, which reports NaN.  This pins both
+    the NaN-at-window-start case (the init guard) and mid-window.
+    """
+    # NaN at the window edge (would poison the init of mn/mx).
+    high = np.array([np.nan, 2.0, 3.0, 4.0, 5.0])
+    low = high - 1.0
+    result = midprice_numba(high, low, length=3)
+    expected = np.array([np.nan, np.nan, np.nan, 2.5, 3.5])
+    assert np.array_equal(result, expected, equal_nan=True)
+
+    # NaN in the middle of every window -> all NaN.
+    high = np.array([1.0, 2.0, np.nan, 4.0, 5.0])
+    low = high - 1.0
+    result = midprice_numba(high, low, length=3)
+    assert np.all(np.isnan(result))
+
+
 @pytest.mark.skipif(not talib_available, reason="TA-Lib not installed")
 @pytest.mark.overlap
 def test_midprice_with_inf(prices_with_inf) -> None:

@@ -37,10 +37,16 @@ class OrderBlockConfig:
     zigzag_rel_height: float = 0.5
     zigzag_plateau_size: int | None = None
 
-    # Online ZigZag (repaint-free)
-    use_online_extremes: bool = False
+    # Online ZigZag (repaint-free).  Default ON: the offline scipy
+    # ZigZag repaints pivots with hindsight (look-ahead leak); opt out
+    # explicitly (use_online_extremes=False) only for legacy comparisons.
+    use_online_extremes: bool = True
     online_reversal: float | None = None
     online_reversal_pct: float | None = None
+    #: Reversal threshold as a multiple of the median ATR; wins over
+    #: ``online_reversal``/``online_reversal_pct`` when set (keeps the
+    #: reversal/ATR ratio constant across timeframes and vol regimes).
+    reversal_atr_multiple: float | None = None
     min_extreme_gap: int = 0
     require_complete_window: bool = False
 
@@ -80,9 +86,9 @@ class OrderBlockConfig:
     breaker_require_displacement: bool = False
     breaker_check_mitigated: bool = False
 
-    # Orderflow shift filter
+    # Orderflow shift filter (causal: past window only; requires the
+    # online ZigZag so pivots can be confirm-guarded)
     check_orderflow_shift: bool = False
-    shift_lookforward: int = 10
     shift_require_extremes: bool = True
 
     # Zone entry mode
@@ -111,7 +117,13 @@ class OrderBlockConfig:
 
     # Zone sizing
     atr_period: int = 14
-    zone_atr_multiplier: float = 1.0
+    #: Zone basis: the source pivot bar's range ``[low, high]`` (classic
+    #: order block), its body ``[min(open, close), max(open, close)]``,
+    #: or the legacy volatility band ``close +/- m * ATR``.
+    zone_source: Literal["range", "body", "close_band"] = "range"
+    #: Extension of the zone beyond the source bar, in ATR multiples
+    #: (ignored width for ``close_band``, where it is the half-width).
+    zone_atr_multiplier: float = 0.0
 
     # Volume & liquidity
     volume_window: int = 20
@@ -165,6 +177,23 @@ class OrderBlockConfig:
             raise ValueError(
                 "online_reversal_pct must be in (0, 1); "
                 f"got {self.online_reversal_pct}"
+            )
+        if self.reversal_atr_multiple is not None and (
+            self.reversal_atr_multiple <= 0
+        ):
+            raise ValueError(
+                "reversal_atr_multiple must be positive; "
+                f"got {self.reversal_atr_multiple}"
+            )
+        if self.zone_source not in ("range", "body", "close_band"):
+            raise ValueError(
+                "zone_source must be 'range', 'body' or 'close_band'; "
+                f"got {self.zone_source!r}"
+            )
+        if self.zone_atr_multiplier < 0:
+            raise ValueError(
+                "zone_atr_multiplier must be >= 0; "
+                f"got {self.zone_atr_multiplier}"
             )
 
     @property

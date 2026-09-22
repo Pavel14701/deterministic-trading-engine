@@ -15,7 +15,7 @@ crypto cluster):
                  r_pess (optimistic bound).
 Realized equity is event-based (R credited at exit) -> DD not flattered
 by daily aggregation.  The policy comparison experiment lives in
-``engine.experiments.admission_policies``.
+``experiments.admission_policies``.
 """
 
 from __future__ import annotations

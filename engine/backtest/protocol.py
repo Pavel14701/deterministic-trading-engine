@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 import polars as pl
 
+from engine.ensemble.combine import EnsembleConfig, EnsembleRanker
 from engine.features.mtf import resample_ohlcv
 from engine.metrics.trade import DAY_MS
 from engine.model.ranker import (
@@ -43,7 +44,7 @@ from engine.sim.engine import pess, sim
 from engine.sim.state_machine import run_state_machine
 
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(__file__).resolve().parent.parent.parent
 
 N_FOLDS = 8
 FOLD_DAYS = 56
@@ -294,6 +295,25 @@ def train_ranker(
     )
     model.fit(fs[in_tr], rel[order][in_tr], group=groups, callbacks=[])
     return np.asarray(model.predict(fs))
+
+
+def train_ensemble_ranker(
+    x: np.ndarray,
+    y: np.ndarray,
+    row: np.ndarray,
+    ts: np.ndarray,
+    train_ix: np.ndarray,
+    config: "EnsembleConfig",
+) -> np.ndarray:
+    """Fit the ensemble on past-only rows, score every row.
+
+    Ensemble twin of :func:`train_ranker`: same contract (past-only
+    ``train_ix``, scores for ALL rows in input order), so the replay
+    and every experiment grid switch between the two by config alone.
+    """
+    ens = EnsembleRanker(config)
+    ens.fit(x[train_ix], y[train_ix], row[train_ix], ts=ts[train_ix])
+    return ens.predict(x)
 
 
 def replay(

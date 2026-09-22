@@ -16,8 +16,40 @@ from .types import OrderBlock
 from .validation import validate_block_candidates
 
 
+def effective_online_reversal(
+    cfg: OrderBlockConfig,
+    atr: np.ndarray,
+) -> float:
+    """Resolve the online ZigZag reversal threshold.
+
+    Precedence:
+
+    1. ``reversal_atr_multiple * median(ATR)`` - ATR-calibrated, keeps
+       the reversal/ATR ratio constant across timeframes and volatility
+       regimes;
+    2. static ``online_reversal`` (or the min-prominence fallback).
+
+    """
+    if cfg.reversal_atr_multiple is not None:
+        finite_atr = atr[np.isfinite(atr)]
+        if finite_atr.size == 0:
+            raise ValueError(
+                "reversal_atr_multiple requires a valid (positive, "
+                "finite-median) ATR series"
+            )
+        median_atr = float(np.median(finite_atr))
+        if not np.isfinite(median_atr) or median_atr <= 0:
+            raise ValueError(
+                "reversal_atr_multiple requires a valid (positive, "
+                "finite-median) ATR series"
+            )
+        return cfg.reversal_atr_multiple * median_atr
+    return cfg.effective_online_reversal
+
+
 def identify_order_blocks(
     df: pl.DataFrame,
+    open_col: str = "open",
     high_col: str = "high",
     low_col: str = "low",
     close_col: str = "close",
@@ -40,17 +72,29 @@ def identify_order_blocks(
     low = df[low_col].to_numpy().astype(np.float64)
     close = df[close_col].to_numpy().astype(np.float64)
     volume = df[volume_col].to_numpy().astype(np.float64)
+    open_ = (
+        df[open_col].to_numpy().astype(np.float64)
+        if open_col in df.columns
+        else close
+    )
     # python datetimes (not np.datetime64) so blocks can be assembled
     # into a Polars frame without object-cast issues
     dates = df[date_col].to_list()
 
     pivot_confirm: dict[int, int] | None = None
     pivot_next_extreme: dict[int, int] | None = None
+    pivot_next_extreme_confirm: dict[int, int | None] | None = None
+    indicators = precompute_indicators(
+        open_,
+        high,
+        low,
+        close,
+        volume,
+        cfg,
+    )
     if cfg.use_online_extremes:
-        zz = OnlineZigZag(
-            cfg.effective_online_reversal,
-            cfg.online_reversal_pct,
-        )
+        reversal = effective_online_reversal(cfg, indicators["atr"])
+        zz = OnlineZigZag(reversal, cfg.online_reversal_pct)
         pivots = zz.update_series(high, low)
         peak_indices, valley_indices, _confirm, nxt = confirmed_pivot_arrays(
             pivots,
@@ -58,6 +102,15 @@ def identify_order_blocks(
         pivot_confirm = {p.idx: p.confirm_idx for p in pivots}
         pivot_next_extreme = {
             p.idx: int(n) for p, n in zip(pivots, nxt, strict=False)
+        }
+        # Confirm bar of each pivot's next extreme: the causal gap
+        # filter may only reject a candidate whose next extreme was
+        # already final at the breakout bar.
+        pivot_next_extreme_confirm = {
+            p.idx: (
+                pivots[k + 1].confirm_idx if k + 1 < len(pivots) else None
+            )
+            for k, p in enumerate(pivots)
         }
     else:
         peak_indices, valley_indices = zigzag_peaks_valleys(
@@ -71,7 +124,6 @@ def identify_order_blocks(
             rel_height=cfg.zigzag_rel_height,
             plateau_size=cfg.zigzag_plateau_size,
         )
-    indicators = precompute_indicators(high, low, close, volume, cfg)
     candidates = generate_block_candidates(
         high,
         low,
@@ -97,6 +149,7 @@ def identify_order_blocks(
         [],
         pivot_confirm=pivot_confirm,
         pivot_next_extreme=pivot_next_extreme,
+        pivot_next_extreme_confirm=pivot_next_extreme_confirm,
     )
     if cfg.cluster_blocks and confirmed:
         confirmed = cluster_order_blocks(

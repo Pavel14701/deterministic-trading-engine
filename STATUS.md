@@ -3,6 +3,1596 @@
 Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done · ⬜ not started ·
 ⬜=spec only. Full per-task detail: `legacy/dev_docs/tz/TZ-00-roadmap.md` (archived).
 
+## 2026-09-21 — data feasibility audit + TTF v1 / ProSP v2 preregs + OI accumulation
+
+LAYOUT: `engine/experiments/` moved to the top-level `experiments/`
+package (user directive: scripts laid out in `experiments/`).  Imports
+`engine.experiments.*` -> `experiments.*` everywhere (incl.
+engine/tests/test_funding_carry_v3.py); ruff per-file-ignores and the
+mypy override retargeted; CI lint/type steps now cover `experiments`;
+run commands are `python -m experiments.<name>`.  The catalog moved to
+`experiments/README.md`.  STATUS.md history above keeps the old paths
+on purpose (evidence trail of its time).
+
+LAYOUT-2 (same day): `experiments/` re-grouped into track packages -
+`loaders/` (3), `carry/` (4: funding_carry x3 + barrier_prob),
+`avsl/` (5), `ob/` (8), `panel/` (18, champion-stack + diagnostics);
+each has its own README, `experiments/README.md` is now the index.
+Run commands: `python -m experiments.<track>.<name>`.  REPO is now
+defined once in `experiments/__init__.py` and imported everywhere
+(`from experiments import REPO`) so module paths stay
+depth-independent.  Import smoke: all 37 modules OK.
+
+### HISTORICAL RE-RUN PROGRAM (2026-09-21) -- PRE-REGISTRATION
+
+D.13g fix invalidated the 16 panel-era modules (experiments/panel/).
+This is an AUDIT of their verdicts on the rebuilt panel -- not
+re-tuning.  Frozen before any run:
+
+- Rebuilt panel: data/mtf_dataset/*_1h.parquet (built 2026-09-20,
+  post-D.13g builder); raw 1m: data/okx/raw_*_1m.parquet.
+- Simulator: current engine.sim (gap-check + wrong-side guard); pess
+  labels computed at load time by the fixed code.
+- Module params: AS-IS, unchanged.  Module gates: as in the original
+  pre-registrations, unchanged.
+- wf_trades.parquet / wf_picks.parquet regenerated 2026-09-21 21:48
+  (walk_forward_ab re-run: B wins 4/8, both arms negative -- champion
+  head stays retired).
+
+Scope, priority order (group A only -- modules whose NUMBERS feed
+decisions): matrix_2x2 -> admission_policies -> ablation(+ablation_diag)
+-> joint_rank -> adaptive_tp -> cost_cap.  Already done: walk_forward_ab
+(above), ensemble_ab (whole grid negative, "dead pool" -- STATUS above).
+
+NOT re-run (group B/C -- procedures or structural conclusions, numbers
+not decision-bearing): nested_cv, portfolio, robustness,
+execution_costs, maker_entry (adverse-selection conclusion is
+panel-independent), ranker_only, ranking_baselines, feature_family,
+regime_diag (already negative).
+
+Outcome classes per module: SURVIVES (verdict unchanged) / FLIPS
+(PASS<->FAIL -- important, not a bug) / MAGNITUDE (verdict same,
+numbers moved).  KILL criterion for the whole protocol: >=6 of 8
+flips -> the original panel distorted results so deeply that the
+protocol designs themselves are suspect -> full re-audit before any
+further panel work.
+
+#### HISTORICAL RE-RUN -- RESULTS (all 8 group-A modules, 2026-09-21)
+
+Flips: 0/8.  KILL criterion NOT triggered -- WF folds, embargo and
+admission semantics stand.  All artifacts: runs/rerun_*.log,
+runs/{ablation,admission_policies,cost_cap}.json, runs/d8b/.
+
+1. walk_forward_ab  -- MAGNITUDE: B wins 4/8 (was 6/8), both arms
+   negative (A pess -0.047 / B -0.038).  Champion head stays retired.
+2. ensemble_ab      -- SURVIVES: whole grid negative, "dead pool";
+   LightGBM-only stays.
+3. matrix_2x2       -- SURVIVES w/ magnitude shift: TRF still adds
+   nothing (D-B CI [-0.445, +0.002] -- upper bound at zero; was
+   [-0.507, -0.188]).  A -0.006 / B +0.083 (n=35, ns) / C -0.150 /
+   D -0.134.  B-A CI [-0.189, +0.385] -- multi-asset LGBM edge is not
+   significant.  Nothing positive anywhere.
+4. admission_policies -- MAGNITUDE (level): REPLACE-low vs FCFS
+   EV-gain CI [+0.9R, -0.5R] (+12% .. -6%) -- was "+28%".  Mechanism
+   direction holds in point estimate (REPLACE-low -6.5R > FCFS -7.3R,
+   fewer dd), but NOT significant; all arms negative.
+5. ablation(+diag)  -- SURVIVES, strengthened: OB contribution
+   A-B = +0.021R, AVSL A-C = +0.043R, detector-free stack D -0.063R
+   explains 90% of A.  Placebo panels beat the real-detector panel in
+   8/8 folds (Bs*/Ds* - A per fold +0.3..+1.4R) -- real detectors are
+   noise-or-worse, not merely neutral.  Low-cost half of test rows:
+   EV ~0; high-cost half: -0.19..-0.28R.
+6. joint_rank       -- SURVIVES: ungated test pess -0.091 (n=50);
+   gated test pess -0.609 (n=3).  Joint stop-x-TP ranking stays
+   rejected.
+7. adaptive_tp      -- SURVIVES (vacuously): rebuilt panel yields
+   almost no candidates for this analysis (n<=2 per cell, val n=0).
+   No adaptive-TP edge; the old "same EV, half DD" claim is not
+   reproducible on the clean panel either way.
+8. cost_cap         -- SURVIVES: caps cut DD (A 24.1R -> C|cap=0.15
+   14.8R) while EV stays negative (-0.111 -> -0.043) -- cap is a DD
+   lever, not free EV, exactly as pre-registered.
+
+Bottom line: the panel-era NEGATIVE verdicts all survive the D.13g
+fix; the era's positive headline numbers remain retired.  The dead
+pool is confirmed dead.  Panel-era infra is closed for re-runs; new
+work goes to the live tracks (carry re-validation, TTF v1, ProSP v2).
+
+### HISTORICAL RE-RUN PHASE 2 -- group B (2026-09-21) -- PRE-REGISTRATION
+
+Six remaining decision-relevant modules (DD metrics, label-dependent
+comparisons, the one methodology number).  Same frozen rules as phase
+1: rebuilt panel, current engine.sim, params AS-IS, original gates
+AS-IS.  This is an audit, not re-tuning.
+
+Scope and expectations (frozen before runs):
+
+- portfolio, robustness  -- DD metrics.  EXPECTATION: DD higher than
+  the era numbers (phantom +1R wins depressed DD).  Decision-relevant:
+  honest DD drives position sizing / leverage / risk limits.
+- ranker_only, ranking_baselines -- gate/ranker comparisons on clean
+  labels; flips possible (ranking_baselines is the likeliest flip:
+  LambdaRank trained on poisoned labels).  CAVEAT recorded here: the
+  ranking_baselines baseline loads the era artifact
+  data/mtf_model/stop_head.txt as the "current stop head" -- its PICKS
+  are evaluated against clean r_net in replay, but the model itself
+  was trained pre-fix; a comparison win/loss is still valid as
+  measured, the magnitude is era-contaminated on that arm.
+- feature_family -- DSL vs hand-built comparison on clean labels.
+- nested_cv -- the hyperparameter-selection discount; era number
+  -2.2%.  KILL criterion: if the clean-panel discount is worse than
+  -15%, all historical results are over-fitted beyond tolerance and
+  the selection methodology needs a re-audit.
+- NOT re-run (unchanged from phase 1): execution_costs (convention),
+  maker_entry (structural conclusion), regime_diag (already negative).
+
+#### HISTORICAL RE-RUN PHASE 2 -- RESULTS (6/6, 2026-09-21)
+
+Artifacts: runs/rerun_{portfolio,robustness,ranker_only,ranking_baselines,
+feature_family,nested_cv}.log + runs/{portfolio,ranker_only,
+feature_family,nested_cv,d9b_robustness}.json.
+
+1. portfolio     -- SURVIVES mechanically, honest DD now on record:
+   uncapped EV -8.3R / maxDD 9.6R; block-bootstrap tail maxDD
+   p50=8.7R p95=16.1R p99=19.9R (@1R=1% eq).  Kill-switch levers work:
+   K=4R/P=14d cuts p95 DD to 5.5R (skips 44%).
+2. robustness    -- MAGNITUDE: daily-vs-event DD bias = +0% on the
+   clean panel (era claim "~30% optimistic" does NOT reproduce --
+   era number was inflated by phantom wins).  Block-length stability
+   holds: p95 maxDD flat 15.8-16.1R across 10-60d blocks, 10d blocks
+   adequate.  Capped-out check: rejected trades same-or-better (pure
+   capacity loss, not a selection bug).
+3. ranker_only   -- SURVIVES: table vs free gate is mixed (table wins
+   A-cells, free wins C-cells), every cell negative (best -0.026R).
+   No gate mechanism creates an edge on the clean panel.
+4. ranking_baselines -- NO FLIP to positive: fresh LambdaRank beats
+   the era stop-head on clean labels (test pess -0.113 vs -0.273;
+   dd 3.8R vs 12.4R); rk+gate best cell -0.056R / dd 0.7R -- but ALL
+   arms negative.  Era-contamination caveat on the stop-head arm held
+   (see prereg): the era model is much worse than its era numbers --
+   consistent with poisoned labels having inflated IT, not the ranker.
+5. feature_family -- SURVIVES: DSL-zeroed -0.057, DSL-native -0.062,
+   spec -0.062, combo -0.038 (dd 26R vs 41-44R).  No family positive;
+   combo (DSL+hand) mildly best and halves DD.  Features do not
+   create edge; encoding choice is a DD refinement at best.
+6. nested_cv     -- **KILL CRITERION TRIGGERED**: selection-bias
+   discount -27.9% (threshold -15%; era number -2.2%).  On the clean
+   panel the -2.2% figure does NOT reproduce.  Caveat recorded: both
+   arms are deeply negative (nested -0.027 n=160 vs fixed -0.038
+   n=211), so the discount is estimated on a dead pool with small n
+   and is noise-dominated in SIGN; what reproduces is the MAGNITUDE
+   class: single-split hyperparameter selection carries order-10-30%
+   bias, not ~2%.  CONSEQUENCE (binding): every point-estimate EV from
+   a single-config run carries +/-10-30% selection uncertainty.  For
+   verdicts negative by wide margins this changes nothing; for any
+   future result near zero (e.g. carry v3 F3 +1.45%) nested selection
+   is MANDATORY before quoting a number.
+
+Phase 2 totals: 0 flips to positive, 1 kill criterion triggered
+(nested_cv discount).  Panel-era closure AMENDED: all 16 modules now
+audited; protocol designs (WF folds, embargo, admission, DD
+machinery) stand; the single-split selection bias number is the one
+era figure that was materially optimistic and is now corrected.
+
+### NEAR-ZERO QUOTING + NEW TRACKS (2026-09-21) -- PRE-REGISTRATIONS
+
+Follow-up to the nested_cv kill: three priorities, pre-registered
+before any run.
+
+#### P2 -- carry v3 F3 honest quoting (bootstrap CI)
+
+Params were FROZEN ex ante (prereg efcbd5), no hyperparameter
+selection ever happened -- so single-selection bias does not apply.
+The near-zero risk for F3 (+1.45% ann) is SAMPLING NOISE.  Frozen
+procedure: moving-block bootstrap on the F3 portfolio daily
+stream, block=30d, B=10,000, seed=7; report 95% CI on ann% for
+F1/F2/F3 and per-asset F3 CIs.  Rule: F3 is quotable as edge only if
+the CI excludes 0 AND excludes the risk-free benchmark; otherwise
+F3 stays "window closing, not quotable".  Params/streams AS-IS.
+
+#### P3 -- OKX 96d tradability re-validation (STAGED, not run)
+
+Goal: can the frozen v3 rules be traded on OKX at all (fee structure,
+funding sign-flip cadence, per-asset coverage over the last ~94d the
+OKX API serves)?  Data: engine/infra okx_fetch.fetch_funding_history
+(~94d cap, verified).  Design prereg (fee assumptions, gate) must be
+written BEFORE the fetch.  Status: staged, do not run until the
+design prereg is committed.
+
+#### P4 -- low-cap carry (NEW hypothesis, no era contamination)
+
+Hypothesis: funding-carry crowding is concentrated in large-cap
+perps; low-cap perps carry higher uncrowded funding with similar
+flip dynamics, so the v3 rule set retains positive net carry there
+even in the F3 regime.  Pre-registered from scratch (no selection):
+
+- Universe (rule-based, frozen at first pull): Binance USDT-M perps
+  NOT in the current 29-asset UNIVERSE, listing age >= 180d at pull
+  date, median daily quote volume over the pull window >= $5M,
+  top 30 by that volume.  No manual adds/drops, ever.
+- Params: v3 rules AS-IS (DEAD_ZONE, MAKER_RT, trailing signal,
+  hold-until-flip).  No tuning.  No seed variations.
+- Evaluation: same fold logic anchored at pull date -- PRIMARY =
+  full available history pooled; confirmation = trailing 12 months.
+  Gate (frozen): portfolio Sharpe_NW >= 1.0 on PRIMARY and >= 0.7 on
+  the trailing 12m, portfolio maxDD <= 15%, >= 60% of universe
+  assets with Sharpe_NW >= 0 and active >= 60d.  Block-bootstrap CI
+  (P2 procedure) on PRIMARY and trailing-12m ann% must exclude 0.
+- Kill: if PRIMARY gate fails, track closed, no re-universe, no
+  re-params (revival = NEW prereg, new universe snapshot date).
+
+#### P2 -- RESULTS (2026-09-21)
+
+Moving-block bootstrap (30d, B=10k, seed=7) on the frozen v3 portfolio
+stream:
+
+- F1 (2023-09..2024-08): ann +13.54%, CI95 [+8.19, +22.51] -- quotable
+- F2 (2024-09..2025-08): ann +3.75%, CI95 [+0.92, +7.62] -- quotable
+- F3 (2025-09..2026-09): ann +1.45%, CI95 [+0.52, +2.22] --
+  excludes 0 (statistically positive) but the UPPER bound is below
+  the risk-free rate (~4-5%).  Per the frozen rule (must exclude 0
+  AND the risk-free benchmark) F3 is NOT quotable as tradable edge:
+  the "window closing" verdict is confirmed with an honest interval.
+
+F3 per-asset CIs: 3 of 29 assets quotably positive -- APT +14.2
+[+2.0, +31.4], FIL +8.7 [+4.1, +15.8], WIF +5.7 [+1.5, +11.6]; the
+rest of the universe spans deeply negative (ETC -2.7, ARB -2.2,
+OP -2.1).  Motivating observation for P4 (recorded post hoc, does
+not alter the frozen P4 universe rule): the F3-positive names sit
+outside the mega-cap head of the universe.
+
+### Z-SCORE STRATEGIES -- PRE-REGISTRATION (2026-09-21) -- FROZEN
+
+Four z-score signal families on Binance 1H.  Discipline: THIS block
+is committed before the runner exists; touching any parameter after
+the first run kills the track (revival = NEW prereg).
+
+Data / universe (frozen): Binance 1H klines
+(data/binance/kl_*USDT_1h.parquet), full history .. 2026-09-21.
+Universe = the 30 carry-UNIVERSE majors; EVALUATED = those with
+cached 1H klines at freeze time = 29/30 (PEPEUSDT klines absent --
+excluded by data availability, not performance).
+
+Indicators (frozen): z-score via ta zscore_ind(window, ddof=1,
+use_talib=False); ATR(24) via ta atr_ind(use_talib=False); ADX(14)
+via ta adx_ind (HYB-1 only).
+
+Implementations (frozen rules):
+- MR-1 mean reversion, window 336: z <= -2 -> long; z >= +2 -> short;
+  exit |z| <= 0; opposite extreme flips.
+- MOM-1 z-momentum, window 168: z crosses above +1.5 -> long; crosses
+  below -1.5 -> short; exit on crossing back through 0.
+- XSEC-1 cross-sectional, window 336: every 168 bars rank the panel
+  z; long bottom 20% (most oversold), short top 20%, weights 1/n per
+  side; < 10 valid assets at rebalance -> flat until next.
+- HYB-1 regime hybrid, window 336, ADX(14): ADX < 20 -> MR rules
+  (entry +/-2, exit |z| <= 0.5); ADX > 25 -> momentum rules (entry
+  |z| crossing 1.0, exit through 0); ADX in [20, 25] -> hold.
+
+Event simulation (frozen): entry at NEXT bar open after the signal
+bar (no lookahead); one open event trade per asset -- entry events
+overlapping an open trade are skipped (cursor at exit).  SL/TP from
+ATR24 at the signal bar: MR-1 2.0/2.0; MOM-1 3.0/3.0; HYB-1 2.5/2.5.
+R = engine.sim.sim PESSIMISTIC return: the validated taker model
+(COMM 10bp/side x2 + GEN_SLIP 5bp + gap 25% ATR + x2 entry/exit slip)
+IS the frozen "taker x2 = ~0.2% RT + pessimism stack"; NO additional
+cost subtraction (double-count guard).  Max hold = engine cap 48
+bars (the sketch's 72 would require touching the validated engine --
+frozen deviation).  MOM-1 fixed TP substitutes the sketch's
+chandelier (trailing not in the validated engine -- frozen deviation).
+
+Stream basis (frozen, for G1/G2): hourly portfolio stream
+r_t = mean_j pos_{t-1,j} * ret_{t,j} - 8bp * turnover (ret = hourly
+log-return); XSEC-1 uses its rebalance weights in place of pos.
+Sharpe_NW (lags 5) annualised x sqrt(24*365).
+
+Folds (frozen): split on the common calendar grid at 2/3 of its
+range: PRIMARY = first 2/3, F3 (confirmation) = last 1/3.  Gates are
+evaluated on PRIMARY ONLY; F3 is looked at after the verdict.
+
+Gates (frozen):
+- G1: stream Sharpe_NW >= 1.0 on >= 50% of evaluated assets
+  (>= 15 of 29; the sketch's 5/10 ratio).
+- G2: portfolio stream Sharpe_NW >= 1.0.
+- G3: event-basis maxDD <= 25%: PRIMARY trades pooled, sorted by
+  entry time, equity = cumprod(1 + 0.01 * r_pess).  XSEC-1 (no
+  per-trade events): stream equity DD <= 25% (frozen substitution).
+- G4: mean r_opt > 0 on PRIMARY (gross-of-pessimism pre-condition).
+  XSEC-1: mean gross stream return (pre-cost) > 0.
+Kill: any of G1-G4 FAIL -> track closed.  No re-params, no filters
+(RSI/OB/funding), no universe/TF changes, no combinations before
+each strategy is judged alone.
+
+Reported, not gated: win rate, n trades, F1+F2 vs F3 decay,
+cross-strategy stream correlation.
+
+Expectation on record (from the sketch, not a gate): MR-1 ~20%,
+MOM-1 ~15%, XSEC-1 ~25%, HYB-1 ~20% pass probability; EV near zero
+after costs is the base case for the directional pair.
+
+#### Z-SCORE TRACK -- RESULTS (2026-09-21): KILL, ALL FOUR FAIL
+
+Single run, no tuning, per the frozen prereg (commit d25cad9).
+29/30 assets, grid 61001 bars, PRIMARY = first 2/3 .. 2024-05-27,
+F3 = last 1/3.  Gates evaluated on PRIMARY only; F3 shown after.
+
+- MR-1:  n=2307  WR 46.1%  ev_net -0.312R  eventDD 99.9%
+         G1 0/29  G2 -2.05  F3 -2.17              -> FAIL (all of G1-G4)
+- MOM-1: n=5584  WR 53.0%  ev_net -0.057R  eventDD 98.2%
+         G1 2/29  G2 -1.04  F3 -3.83              -> FAIL (G4 gross
+         +0.012R was the only near-pass; net of the pessimism stack
+         it is negative)
+- XSEC-1: G1 1/29  G2 -1.56  streamDD 0.4% (only gate passed)
+         G4 gross mean -1e-5 (strictly non-positive)  F3 -2.52
+                                                          -> FAIL
+- HYB-1: n=6650  WR 50.1%  ev_net -0.153R  eventDD 100%
+         G1 0/29  G2 -2.59  F3 -5.35              -> FAIL (worst;
+         the regime filter added nothing over its components)
+
+KILL CRITERION TRIGGERED on every strategy: the z-score track is
+CLOSED on crypto 1H majors.  No re-params, no filters, no universe
+expansion; revival only via a NEW prereg with a genuinely different
+hypothesis class.  Cross-strategy PRIMARY stream correlations
+(reported): MR-1 x MOM-1 -0.75, HYB-1 anti-correlated with both
+(-0.85 / +0.76 -- it is just their regime sandwich), XSEC-1
+orthogonal (+0.10 / -0.03) -- the "different class" bet did not help:
+even orthogonal XSEC-1 has zero gross edge after ranking noise.
+
+Conclusion per the track plan: z-score as a signal is dead on
+crypto 1H majors, consistent with the panel-era finding that
+single-name price-derived signals do not survive the taker cost
+stack.  Attention returns to TTF v1 / ProSP v2 and the carry
+priorities (P3 OKX 96d, P4 low-cap).
+
+#### Z-SCORE POST-MORTEM: MFE/MAE ON TAKEN TRADES (2026-09-21)
+
+Diagnostic replays the frozen event path (same cursor, fills, risk
+unit) and measures maximal favorable/adverse excursion in R per
+taken trade (`experiments/zscore/mfe_mae.py`,
+`runs/zscore_mfe.json`).  Decision rule was fixed in advance:
+MFE_p75 >= 2R -> exit-RR surface (new prereg); MFE_p75 < 1.5R ->
+track closed for good, reason = "no signal", not "bad exit".
+
+PRIMARY, within the actual trade life (the exit the strategy had):
+
+- MOM-1: MFE_p75 = 1.01R, MFE_p95 = 1.50R  -> BELOW 1.5R THRESHOLD
+- MR-1:  MFE_p75 = 0.79R, MFE_p95 = 1.30R  (even weaker)
+- HYB-1: MFE_p75 = 0.89R, MFE_p95 = 1.50R
+F3 quantiles are identical to within +/-0.03R (no fold drift).
+
+VERDICT: the signal never produced movement.  75% of MOM-1 trades
+never saw +1R of favorable excursion before the trade ended; the
+median trade saw 0.43R.  No exit scheme (TP grid, trailing, RR 2:1)
+can capture movement that does not exist: a 2R TP would simply never
+fill for 3/4 of trades, and the position would sit until SL or the
+hold cap -- which is what the -0.057R net EV already priced in.
+
+Caveat recorded against the obvious misreading: over a fixed
+120-bar horizon MFE_p75 rises to ~3R, but MAE_p75 rises equally
+(~2.5R); excursions of that size are what any ATR-scaled random walk
+produces at that horizon, and the favorable/adverse asymmetry is
+~1.1x -- noise.  Large 120-bar MFE is NOT evidence of capturable
+edge, and chasing it would reopen exactly the "smart exit" path the
+kill rule forbids.
+
+FINAL: z-score track CLOSED with cause established: no post-entry
+drift on 1H majors from z-score entries.  CORRECTION (2026-09-21,
+audit): AVSL/Donchian are NOT z-family and were not "muted" by this
+post-mortem -- AVSL is an anchored-VWAP line cross and both families
+were closed independently by their own pre-registered runs long
+before (experiments/avsl/README.md: all 5 modules dead; Donchian 4H
+test 2/6, 1H/34 sweep recov 16/34 < 17; quattro G3 2/6, PF 1.05).
+The z-score kill is a third independent confirmation of the same
+theme: single-name price-derived entries on crypto majors carry no
+post-cost edge.  Next: TTF v1 run (prereg in STATUS), P4 low-cap
+carry fetch_funding.
+
+#### AVSL PRICE-CROSS "RR-PROFILE" AUDIT (2026-09-21): ILLUSION, 0/10
+
+Hypothesis checked (from the existing avsl_price_cross_atr.log, no
+new run): does a trend-following RR profile (tight stop = 1xATR(14),
+wide TP 3/5/8R, horizon 192) rescue the AVSL price-cross entry, the
+way it was hoped it might rescue z-score and Donchian?
+
+Answer: no, and the reason is structural.
+
+1. CONSISTENCY 0/10: across all 10 assets x 2 arms x 3 TPs, not one
+   cell has net > 0 on BOTH train and test.  The single train-plus
+   (AVAX, 8R, net +0.119, n=1634) flips to -0.334 on test.  The
+   pre-fixed decision rule ("0-3/10 -> beta, close") fires at zero.
+2. WR SITS AT BREAK-EVEN AT EVERY RR: 25.5% at TP=3R (BE 25%),
+   ~17% at 5R (BE 16.7%), ~12% at 8R (BE 11.1%).  A tight-stop /
+   wide-TP profile does not create edge, it rescales zero: WR at
+   break-even for 3 different RRs is direct evidence of no
+   conditional post-entry drift.  Same conclusion as the z-score
+   MFE post-mortem (MFE_p75 = 1.01R), measured independently.
+3. MULTIPLE TESTING: 120 cells; best cell ~1.6 sigma vs expected
+   max ~2.6 sigma -- not significant even before correction.
+4. COSTS: 10bp round trip over a 1xATR(14) 15m stop is 0.15-0.5R --
+   would eat any plausible gross; gross is not there anyway.
+
+CONSEQUENCE FOR THE "RR-INSIGHT": the RR profile changes the SHAPE
+of the P&L distribution, not its mean.  Re-running dead entries with
+different stop/TP geometry is not a new hypothesis class.  Any
+future directional prereg must show gross edge first (WR > break-even
+or MFE_p75 >= 2R on taken trades), before any exit/RR design.
+AVSL family stays closed; z-score stays closed; Donchian stays
+closed.  Next: TTF v1 (prereg exists, runner missing), carry P3/P4.
+
+#### AVSL CROSS HIGH-TF -- PRE-REGISTRATION (2026-09-21, FROZEN BEFORE RUN)
+
+Hypothesis (new, not a re-param of any closed track): the prior
+AVSL price-cross tests were structurally broken at 15m -- AVSL(70,345)
+hugs price there (7.6 crosses/day vs a 3.6-day slow line = noise),
+stop 1xATR made fee_r ~0.2-0.5R, horizon 192 < slow length.  At TFs
+where the line is structural the same entry may carry gross edge.
+
+Setup (frozen):
+- Universe: BTC, AVAX, BNB, DOGE, ETH, LINK, LTC, NEAR, SOL, XRP
+  (same 10).  Data: Binance 1H klines (6-7y); 4H = local resample
+  of the same 1H.  Exactly two TFs: 1H and 4H.  No other TF.
+- Entry: close crosses AVSL(70,345) (NaN-safe path, donor mult 2.0).
+  Arm: NORMAL ONLY (long on up-cross, short on down-cross).  No
+  reverse arm, no filters, no slope alignment.
+- Stop: max(|close - line|, 2*ATR14) at the entry bar (structural
+  with a volatility floor).  TP {3,5,8}R, horizon 500 bars, MTM
+  exit, conservative within-bar (stop wins ties), entry at close of
+  the cross bar.  Fee 10bp round trip.  Overlapping trades allowed
+  (every cross, no cursor) -- per-asset EV readout, same as prior
+  AVSL scripts.  WARMUP 400 bars.
+- Segments: train = first 2/3 of each asset's bars, test = last 1/3.
+
+Gates (PASS requires ALL; verdict per TF independently, no pooling):
+- G1 consistency: net EV > 0 on >= 5/10 assets in train AND >= 5/10
+  in test, at the same TP.  3 TPs are pre-registered; a pass at one
+  TP only is reported as WEAK (needs confirm), not a go.
+- G2 gross-edge-first: pooled WR at TP=3R > 30% (break-even 25%)
+  within each segment, over trades with n >= 30 per asset.
+- G3 cost sanity: median fee_r <= 0.10R per segment.
+- Min-n: an asset with < 30 trades in a segment counts as
+  not-positive for G1 in that segment.
+
+Kill: any gate FAIL in a TF closes the AVSL-cross track for that TF;
+FAIL in both TFs closes the entry family for good (no third TF, no
+stop variants, no filters, no universe change).  A full pass goes to
+a separate confirmation prereg, not to production.
+
+#### AVSL CROSS HIGH-TF -- RESULT (2026-09-21): FAIL PER PREREG, CLOSED
+
+runs/avsl_cross_tf.log.  VERDICT per the frozen gates: 1H FAIL,
+4H FAIL -> family CLOSED for good.  Gate detail:
+
+- 1H: G2 kills it -- pooled WR3R 25.4% train / 28.6% test vs need
+  >30% (BE 25%).  Gross edge ~zero, same pattern as every prior
+  price-derived track.
+- 4H: G1 passes everywhere (train 8/10, 10/10, 9/10; test 7/10,
+  7/10, 9/10 -- incl. 10/10 net>0 at TP=5R train), G3 passes (fees
+  0.02R, the cost barrier vanishes at 4H as predicted), but G2
+  kills it: pooled WR3R 28.4% train / 30.0% test, need >30%.
+
+ANOMALY ON RECORD (not a verdict change): 4H is the FIRST
+configuration in the whole project where gross WR is statistically
+above break-even in BOTH segments -- train 28.4% vs BE 25% is
+~+3.5 sigma at n=1966, test 30.0% vs 25% is ~+3.6 sigma at n=973
+(significance overstated somewhat by overlapping-trade correlation).
+This is qualitatively different from z-score/AVSL-15m/1H, where WR
+sat exactly at break-even.  The 1.6pp miss vs the arbitrary 30%
+G2 threshold is the only reason the family closed.
+
+LIMITATIONS: per-asset EV gates only; no portfolio Sharpe_NW / DD
+gate was in this prereg; test window overlaps the 2025-26 bull
+(long+short both tested, so not pure beta, but long/short split not
+examined post-hoc).  Per the kill rule: closed.  Any revival must be
+a NEW dated prereg acknowledging this failure and justifying itself
+-- default state is CLOSED.
+
+#### AVSL-CROSS 4H -- CONFIRMATION PRE-REGISTRATION (2026-09-21, FROZEN BEFORE RUN)
+
+Status: the screening prereg above FAILED its own gates (G2) and the
+family was closed.  This is a NEW dated prereg that re-evaluates the
+SAME frozen 4H configuration with the full gate battery the screen
+lacked.  Justified only by the recorded anomaly (gross WR ~3.5 sigma
+above break-even in both segments, G1 consistency to 10/10); not a
+reopening of the old track and not a parameter search.
+
+CONFIG (frozen, identical to the screen -- not one parameter moves):
+AVSL(70,345) NaN-safe, 4H (Binance 1H resample), normal arm only,
+stop = max(|close-line|, 2*ATR14), TP {3,5,8}R, HORIZON 500 bars,
+MTM exit, conservative within-bar, entry at close of cross bar, fee
+10bp round trip, overlapping trades allowed, universe = the same 10
+assets.  PRIMARY TP = 5R (pre-declared: the screen's only 10/10
+cell); 3R/8R recorded, not gated.
+
+GATES (PASS requires ALL; PRIMARY = first 2/3 of the common 4H
+calendar, F3 = last 1/3):
+- G1 Sharpe_NW >= 1.0 on the portfolio 4H-bar stream (per-unit-risk
+  R attributed to the exit bar, summed across assets), NW lags = 500
+  (= HORIZON), annualised x sqrt(6*365), on PRIMARY and on F3.
+- G2 Event-basis max DD <= 25%: chronological pooled trade sequence
+  (entry order), equity = prod(1 + 0.01 * net_R), on PRIMARY.
+- G3 Long/short split: BOTH sides net EV > 0 on PRIMARY (TP=5R).
+- G4 F3 integrity: pooled net EV > 0 on F3 AND positive in >= 2 of
+  its 3 equal sub-windows (stability guard).
+- G5 Block bootstrap: per-asset 95% CI of net EV (TP=5R, PRIMARY +
+  F3 pooled, B=2000, circular blocks of 25 trades) excludes 0 in
+  >= 6/10 assets; AND pooled-per-segment CI excludes 0 in both.
+- G6 NW-adjusted significance (the headline test): pooled net EV
+  z-score with n_eff = n / (1 + 2*sum rho_1..rho_500) of the
+  time-ordered trade sequence, >= 2.0 in BOTH PRIMARY and F3.
+  (Naive 3.5 sigma is expected to shrink; the prereg question is
+  whether it stays above 2.)
+
+Kill: any FAIL -> AVSL-cross entry family closed FINALLY (no further
+preregs, no parameter changes, no universe changes -- final).
+
+#### CONFIRM ADDENDUM: G1'/G2'/G5' OVERLAP-CORRECTED RECOMPUTE (2026-09-21, FROZEN BEFORE RECOMPUTE)
+
+Audit of the confirm implementation found the overlap handled
+wrongly in three gates (G2 applied trades sequentially by entry =
+non-overlapping assumption; G1 Sharpe on an exit-spike stream; G5
+bootstrap block 25 trades << HORIZON 500).  G3/G4/G6 are overlap-
+unaffected (G6 already NW-adjusts the trade sequence with lags 500
+and PASSED: z 3.31 PRIMARY / 3.85 F3; those stand).
+
+Corrected definitions (frozen before recomputation):
+- Per-bar portfolio R stream: every open trade accrues its net R
+  linearly over its hold buckets (e0..e1 inclusive); bar stream =
+  sum of accruals of all open trades.  Account return per bar =
+  1% x bar stream (1% risk per trade slot, concurrent).
+- G1' Sharpe_NW >= 1.0 on the accrual stream (not the spike
+  stream), NW lags 500, ann x sqrt(6*365), PRIMARY and F3.
+- G2' event DD <= 25%: equity = cumprod(1 + 0.01 * stream[bar]),
+  PRIMARY only.
+- G5' block bootstrap on the bar stream (block = 500 buckets =
+  HORIZON, circular, B=1000): 95% CI of the MEAN BAR R excludes 0
+  in PRIMARY and in F3.  Per-asset streams: the >=6/10 criterion
+  from the original prereg is DROPPED as invalid (per-asset
+  standalone significance was never the hypothesis -- the entry is
+  traded as one 10-asset portfolio; per-asset counts are recorded
+  as diagnostics only).
+
+Verdict rule: the family verdict = G1' G2' G5' (corrected) on top of
+the already-passed G3/G4/G6.  Any FAIL -> closed FINAL, same kill as
+the main confirm prereg.  No other gate is touched.
+
+#### AVSL-CROSS 4H CONFIRM -- FINAL VERDICT (2026-09-21): CLOSED FINAL, G2' FAIL
+
+runs/avsl_cross_confirm.log + runs/avsl_cross_confirm2.log.
+The headline question -- "is the 3.5 sigma real after NW
+correction?" -- answered YES:
+
+- G6 PASSED: NW-adjusted z of pooled net EV (lags 500) = +3.31
+  PRIMARY / +3.85 F3 (threshold 2.0).  The edge is NOT overlap
+  inflation.
+- G1'/G1 PASSED: portfolio Sharpe_NW 1.33 PRIMARY / 2.05 F3 on the
+  accrual stream (1.24/1.67 on the spike stream -- same verdict).
+- G3 PASSED: both sides net-positive on PRIMARY (long +0.265R,
+  short +0.078R -- not beta).
+- G4 PASSED: F3 pooled +0.335R, all 3/3 sub-windows positive.
+- G5' PASSED: block bootstrap (block = HORIZON 500) CI of mean bar
+  R excludes 0 in both segments ([+0.0066,+0.0646] /
+  [+0.0247,+0.0820]).
+- G2' FAILED: portfolio DD (1% risk per trade slot, concurrent,
+  mean concurrency 10.9, max 43) = 61.0% PRIMARY (cap 25%), F3
+  37.6%.  Verified genuine: trough 2022-07, recovered 2023-01;
+  the old sequential construction gave 66.2% -- two independent
+  constructions agree, the drawdown is real bear-market
+  clustering, not an overlap artifact.
+
+FAMILY CLOSED FINAL per the frozen kill rule.  What dies is the
+CONFIGURATION as a tradable strategy at 1%-per-slot sizing: the
+signal is statistically real (first in project history), the risk
+profile is not survivable at the frozen sizing.  What is on record
+for any future re-design (which would be a NEW hypothesis --
+sizing/risk-overlay changes are explicitly NOT covered by this
+prereg and its kill): a 10-asset AVSL(70,345) 4H cross portfolio
+with net EV +0.17R/trade (PRIMARY) / +0.34R (F3), Sharpe_NW 1.3-2.1,
+zero per-asset standalone significance (edge exists only in
+portfolio aggregation), and bear-year DDs of 30-60% at 1%-slot
+risk.  Until such a prereg exists: AVSL family = CLOSED.
+
+#### RISK-OVERLAY TRACK -- PRE-REGISTRATION (2026-09-22, FROZEN BEFORE RUN)
+
+Predecessor: AVSL-cross 4H confirmation (1e0e859) -- CLOSED FINAL by
+G2 (DD).  Justification for this NEW track: the signal itself passed
+5/6 gates including NW significance; it was killed by position
+SIZING, which is a separate layer.  The entry family stays CLOSED;
+this track tests sizing rules only, as a new hypothesis.
+
+FROZEN SIGNAL CONFIG (not one parameter moves; any change closes the
+track): AVSL(70,345) 4H cross, normal arm, stop =
+max(|close-line|, 2*ATR14), TP {3,5,8}R with PRIMARY=5R, HORIZON
+500, fee 10bp, universe = the same 10 assets, Binance 1H -> 4H
+resample, PRIMARY = first 2/3, F3 = last 1/3.
+
+SIZING HYPOTHESES (all four run in ONE pass; S1-S4 frozen, no new
+ones may be added after the run):
+- S1 vol-target: size = clip(target_vol / realized_vol, 0.25, 2.0),
+  target 20% ann., realized = std(log rets, last 100 4H bars) x
+  sqrt(6*365), measured at entry.
+- S2 regime: p = ATR14 percentile within last 500 bars at entry;
+  size x1.0 (p<=80), x0.5 (80<p<=90), x0.25 (p>90).
+- S3 concurrency cap: entry skipped if >=5 trades already open or
+  total open exposure >= 3x base size (baseline saw max 43 open).
+- S4 = S1 + S2 + S3 combined.
+
+GATES per config (PASS = ALL; kill: any FAIL closes THIS track):
+- G1' Sharpe_NW >= 1.0 on the sized accrual stream, PRIMARY and F3
+  (lags 500, ann x sqrt(6*365)).
+- G2' portfolio DD <= 25% on PRIMARY and F3 (equity =
+  cumprod(1 + 0.01 x sized bar stream)).
+- G3' net EV >= 0.10R per trade on PRIMARY and F3.
+- G4' >= 7/10 assets with positive net EV on PRIMARY and F3.
+- G5' block bootstrap (block 500, B 1000) CI of mean bar R excludes
+  0 on PRIMARY and F3.
+
+VERDICT RULE (risk-first, not EV-first): if >=1 config passes all
+five gates, the selected config is the MOST CONSERVATIVE passer
+(preferred order S3 > S4 > S1 > S2), never the most profitable.  If
+0 configs pass: the risk profile is fundamental (correlation, not
+vol) and the risk-overlay track is CLOSED.  F3 is holdout: no
+sizing parameter may be tuned on it (all thresholds above are
+pre-fixed).
+
+#### RISK-OVERLAY RESULT (2026-09-22): S1 VOL-TARGET PASSES 5/5 -- TRACK OPEN
+
+runs/risk_overlay.log.  All four frozen configs, one pass, gates as
+preregistered:
+
+- S1 vol-target (size = clip(0.20/rv100, 0.25, 2.0), mean size
+  0.33): **PASS 5/5**.  Sharpe_NW 1.50 PRIMARY / 2.84 F3 (UP from
+  1.33/2.05 unsized -- vol-targeting improved the stream, not just
+  scaled it).  DD 22% PRIMARY / 12% F3 (both under the 25% cap;
+  F3 was 37.6% unsized).  net EV +0.17R / +0.33R (trade-level EV
+  is sizing-invariant).  G4' 9/10 and 7/10 assets positive.
+  Bootstrap CIs exclude 0 in both segments.
+- S2 ATR-regime: FAIL -- DD 57% / 28%, caps too loose (top-decile
+  ATR x0.25 not enough during 2021-22 clusters).
+- S3 concurrency cap (max 5 open): FAIL -- DD 21%/21% but it
+  DESTROYS the PRIMARY edge: Sharpe 0.22, net EV +0.02R, CI
+  includes 0, G4' 5/10.  The clustered entries the cap removes
+  carry the edge: keeping only the first 5 of each cluster leaves
+  noise.  (Consistency check: S3 sizes are all 1.0 and its numbers
+  are bit-identical to the unsized-subset baseline -- implementation
+  verified.)
+- S4 = S1+S2+S3: FAIL -- same PRIMARY collapse (Sh 0.48, EV +0.07R,
+  CI incl. 0) plus DD 14%/7% -- risk control works, edge does not
+  survive the cap.
+
+VERDICT (per frozen rule): single passer -> **S1 vol-target
+selected** (the S3>S4>S1>S2 conservative tie-break did not bind).
+The fundamental finding of the closed confirm track is confirmed
+and inverted: the 2022 drawdown was a VOLATILITY-sizing problem,
+not a correlation problem -- inverse-vol sizing alone brings the
+same trade set inside every frozen risk gate while RAISING
+Sharpe_NW to 1.50/2.84.  Concurrency caps are toxic to this signal
+and are recorded as forbidden for any successor track.
+
+Next stage per the track: live-scale prereg for S1-sized AVSL-cross
+(sizing/venue/monitoring) remains a SEPARATE new prereg; nothing in
+the frozen signal config moves.
+
+#### PROMOTION (2026-09-22): S1-sized AVSL-cross -> engine/passed/
+
+The configuration is planted into the core as
+`engine/passed/avsl_cross_s1.py` (self-contained, no experiments/
+imports; signal vendored via `ta` directly) with full docs in
+`engine/passed/README.md` and pure-function unit tests in
+`engine/tests/test_passed_avsl_cross_s1.py`.  Self-check
+`uv run python -m engine.passed.avsl_cross_s1` reproduces the
+frozen verdict numbers bit-for-bit (Sharpe 1.50/2.84, DD 22%/12%,
+EV +0.17/+0.33R, CIs identical to runs/risk_overlay.log) ->
+FROZEN GATES: PASS 5/5.  The frozen numbers are now a regression
+contract: any change to the module that moves them voids the PASS.
+
+#### EDGE-DECOMPOSITION PREREGISTRATION (2026-09-22, FROZEN BEFORE RUNS)
+
+Goal: decompose the confirmed edge (NW-z +3.31/+3.85) into
+components -- entry, TF, RR geometry, stop floor, sizing -- to learn
+WHAT works, not just that "AVSL 4H S1 works".  Five ablation
+experiments, ONE component changed at a time, baseline = the frozen
+engine/passed/avsl_cross_s1.py config (untouchable).
+
+META-RULES (binding):
+- These are DIAGNOSTIC ablations of a PASSED module.  No outcome
+  can un-pass it: its verdict was about the assembled config.
+- If any ablation arm beats the frozen config, that observation
+  does NOT change the frozen config; using it requires a NEW dated
+  prereg (anti cherry-pick).
+- Gates frozen before each run; order E1 -> E3 -> E5 -> E2 -> E4;
+  no new arms may be added after a run.
+
+E1 -- ENTRY vs RANDOM vs LAGGED (runs first; answers "is there a
+signal at all"):
+  Arm A: AVSL cross entries, frozen geometry (baseline, 2939 trades).
+  Arm B: random-uniform entries, SAME per-asset entry count and SAME
+         per-asset long/short ratio as A, drawn from all eligible
+         bars [WARMUP, n-2], geometry at the sampled bar, frozen
+         seeds 0..99 -> a NULL DISTRIBUTION, not a single draw.
+  Arm C: AVSL cross signal delayed DELAY=100 bars (geometry computed
+         at the delayed entry bar).
+  Gates (PRIMARY and F3 separately):
+  - E1a: A net EV > mean(B) + 0.05R
+  - E1b: percentile of A net EV within the B distribution >= 95
+  Kill (interpretation): E1a fails on either segment -> the AVSL
+  entry carries no information beyond the 4H RR geometry; the edge
+  is geometry/sizing, and remaining experiments are re-interpreted
+  as geometry decomposition.  Arm C reported, not gated: it locates
+  the information horizon of the signal.
+
+E3 -- RR ABLATION:  arms = {stop floor on/off} x {wide TP/narrow TP}:
+  A: frozen.  B: stop = 1xATR14 (floor off), TP {3,5,8}R.
+  C: frozen stop, TP {1R, 1.5R}.  D: frozen stop, TP = reverse cross
+  (trailing).  Gates: A > B + 0.05R and A > C + 0.10R on PRIMARY and
+  F3 (net EV, fees make narrow stops structurally expensive -- that
+  cost is part of the answer).  D reported vs A.  Kill: B ~ A -> the
+  wide-stop floor is not critical; C ~ A -> the RR asymmetry is not
+  critical and the edge is entry-side.
+
+E5 -- REGIME SLICES (DESCRIPTIVE, no pass/fail): A-trades split by
+  ATR percentile (top-20 vs bottom-20), SMA50-slope trend state,
+  calendar year buckets (2020/2021/2022-bear/2023-24/2025-26).
+  Frozen read-out: per-slice n, net EV, NW-z; verdict vocabulary:
+  "universal" (all slices > 0.05R) / "vol-concentrated" / "trend-
+  concentrated" / "beta-like" (edge only in long-bull slices).
+  Multiple slices = descriptive, explicitly NOT gated.
+
+E2 -- TF ABLATION: 1D resample added; 1H and 15m already failed at
+  screen (WR3R ~ break-even, runs/avsl_cross_tf.log) and are
+  re-quoted, not re-run.  Gate: 4H net EV > 1D net EV + 0.05R on
+  PRIMARY and F3.  Kill: 1D ~ 4H -> the edge is not 4H-specific.
+
+E4 -- SIZING ABLATION on the frozen bar stream:
+  A: unsized (1.0).  B: S1 vol-target (frozen).  C: PERMUTED S1
+  sizes (shuffle B's sizes across A's trade order, seeds 0..99 --
+  breaks the vol-size link, keeps the marginal distribution).
+  D: constant 0.33.  Metrics: Sharpe_NW, DD (account stream);
+  EV/trade is sizing-invariant and not a gate here.
+  Gate: B Sharpe_NW > mean(C) + 0.2 on PRIMARY and F3.
+  Kill: B ~ C -> vol-target timing carries no information (pure
+  de-lever), record for successor tracks.
+
+#### E1 RESULT (2026-09-22): FAIL on PRIMARY -- EDGE IS MOSTLY GEOMETRY, NOT ENTRY
+
+runs/ablation_entry.log.  Sanity: generic-path arm A reproduced the
+core collector (BTC n=270=270; total 2939).  Results per frozen
+gates:
+
+- PRIMARY: A EV +0.172R (n=2117, z=+3.33) vs random-geometry mean
+  +0.135 +- 0.044R [min -0.002, max +0.291] -> A at the 81st
+  percentile; E1a margin (+0.05R) NOT met, E1b (>=95th pct) NOT met.
+  FAIL.
+- F3: A EV +0.335R vs random +0.168 +- 0.068R -> 100th percentile,
+  E1a/E1b PASS.
+- Arm C (signal delayed 100 bars): EV +0.227R PRIMARY (n=2079,
+  z=+4.40) / +0.225R F3 -- delayed entry BEATS A in PRIMARY and
+  loses in F3 (descriptive, not gated).
+
+VERDICT per frozen kill rule: **the AVSL cross entry carries little
+to no information beyond the 4H RR geometry in PRIMARY** (the
++0.037R lift over random-mean is within the random spread).  The
+dominant component is the GEOMETRY ITSELF: random 4H entries with
+the frozen tight-structural-stop + 5R-TP profile average +0.135R
+(P) / +0.168R (F3) net -- the RR profile on 4H crypto is the edge
+engine; the entry adds a real F3-segment lift (+0.335 vs +0.168,
+100th pct).  Consequences, pre-committed by the prereg:
+
+1. E3 (RR ablation) is PROMOTED to the most informative experiment:
+   the question is now which geometry component (stop floor, wide
+   TP, horizon) generates the +0.135R random-geometry baseline.
+2. The passed module keeps its PASS (diagnostic, not a kill of the
+   config); no config change is allowed without a new prereg --
+   including the tempting "C beats A in PRIMARY" observation, which
+   is exactly the kind of post-hoc arm the anti cherry-pick rule
+   freezes out.
+3. Method takeaway for new tracks: test the RR geometry with RANDOM
+   entries FIRST (cheap null baseline); an entry signal must beat
+   that null, not zero.
+
+#### E3 AMENDMENT (2026-09-22, BEFORE THE RUN -- extends prereg 68953e0)
+
+- Arm E added (still before any E3 results): stop = 3xATR14 (floor
+  off, wider vol stop), TP 5R -- tests stop WIDTH on the other side
+  of the frozen 2x.
+- Arm C clarified: evaluated at BOTH TP 1R and TP 1.5R (gates apply
+  to each).
+- Additional read-out (descriptive, frozen procedure): EVERY arm is
+  also run on the SAME 100 random-entry draws as E1 (per-asset
+  count and side ratio matched, seeds 0..99) -> per-arm random-
+  geometry EV.  This decomposes the +0.135R/+0.168R null itself.
+  The frozen A>B / A>C gates remain on the AVSL entries; random
+  baselines are reported, not gated.
+
+#### E3 RESULT (2026-09-22): NARROW TP KILLS EVERYTHING; STOP FLOOR CRITICAL ONLY ON PRIMARY
+
+runs/ablation_rr.log (+ runs/ablation_rr_d.log appended for arm D,
+omitted from the first pass by implementation error, rerun with the
+identical frozen procedure).  Sanity: arm A reproduced E1 numbers
+(+0.172/+0.335, MATCH).
+
+Arms on AVSL entries (EV PRIMARY / F3, z):
+  A  frozen (max(|c-line|,2xATR), 5R)   +0.172 / +0.335   3.33/1.70
+  B  1xATR (floor off), 5R              +0.037 / +0.293   0.73/3.36
+  C1 frozen stop, TP 1R                 -0.020 / +0.011  -0.90/0.30
+  C15 frozen stop, TP 1.5R              +0.022 / +0.020   0.82/0.47
+  D  frozen stop, reverse-cross exit    +0.447 / +0.422   3.28/2.99
+  E  3xATR (floor off), 5R              +0.175 / +0.456   3.21/1.90
+
+Random-geometry nulls (100 draws, mean+-sd):
+  A  +0.135+-0.044 / +0.168+-0.068   (published E1, reused)
+  B  -0.013+-0.060 / -0.011+-0.073
+  C1 -0.010+-0.022 / -0.012+-0.033
+  C15 -0.001+-0.027 / +0.008+-0.039
+  D  +0.415+-0.124 / +0.145+-0.069
+  E  +0.054+-0.046 / +0.064+-0.067
+
+GATES (frozen): A>B+0.05 and A>C+0.10 both segments.
+  A vs B: PASS on PRIMARY, FAIL on F3 (0.335 vs 0.293+0.05).
+  A vs C1, A vs C15: PASS everywhere, by an order of magnitude.
+Verdict per prereg: **stop floor is critical on PRIMARY only; the
+WIDE TP is the absolute requirement -- narrow TP (1R/1.5R) reduces
+both segments to ~zero for BOTH the signal and the null.**
+
+Findings, in strength order:
+1. TP asymmetry is the engine.  5R TP with any wide-ish stop is the
+   only configuration with a nonzero null.  Narrow TP = no edge
+   anywhere, even random.  Drift capture, not entry timing.
+2. "Not too tight" is what matters for stops, not the line.  B
+   (1xATR) collapses PRIMARY to +0.037 (null ~0) -- but on F3 B is
+   fine (+0.293).  E (3xATR) matches A on PRIMARY and BEATS it on
+   F3 (+0.456).  The frozen 2x/line-floor is not magic; the
+   constraint is "wide enough to survive 4H noise".
+3. D (reverse-cross trailing) beats the frozen config in BOTH
+   segments (+0.447/+0.422 vs +0.172/+0.335), and its PRIMARY
+   number is ~all null (+0.415 of +0.447).  Per the anti
+   cherry-pick rule this does NOT change the passed module; a
+   trailing variant requires a NEW prereg.
+4. Entry lift over the matched null (F3): A +0.167, E +0.392, D
+   +0.277 -- the AVSL entry's information shows up on the holdout
+   across geometries, strongest with the wide stops.
+
+Method takeaway for all successor tracks: the null is not one
+number -- every geometry has its own null, and "signal vs null"
+must be computed per geometry.
+
+#### E5 AMENDMENT (2026-09-22, BEFORE THE RUN -- extends prereg 68953e0)
+
+E5 stays DESCRIPTIVE (no gates).  Read-out extended BEFORE the run:
+alongside the frozen A-trade slices (ATR pct top-20 vs bottom-20;
+SMA50-slope up/down/range; year buckets <=2020 / 2021 / 2022 /
+2023-24 / >=2025), the SAME slices are computed on the matched
+random-geometry null (E1 procedure, 100 draws, seeds 0..99) so each
+slice reports: A EV, null EV+-sd, and entry-lift = A - null.
+Frozen slice definitions: ATR percentile = pct-rank of ATR14 within
+the last 500 4H bars at entry (inclusive); SMA50 trend state =
+up if sma50[t] - sma50[t-6] > +0.001*cp[t], down if < -0.001*cp[t],
+else range; year from the entry bar's 4H bucket timestamp (UTC).
+
+#### E5 RESULT (2026-09-22, DESCRIPTIVE): EDGE IS NOT UNIVERSAL -- LOW-VOL + 2025+ CONCENTRATED
+
+runs/ablation_regime.log.  Arm A frozen geometry, 2939 trades;
+matched-null slices (100 draws).  Format: A EV (z) vs null+-sd,
+lift = A - null.
+
+PRIMARY (in-sample, global-null +0.135):
+  atr_hi  n=421:  +0.056 (+0.5) vs +0.195+-0.081 -> lift -0.139
+  atr_lo  n=485:  +0.258 (+2.3) vs +0.210+-0.090 -> lift +0.048
+  up      n=937:  +0.142 (+1.9) vs +0.147 -> lift ~ 0
+  down    n=1030: +0.149 (+2.0) vs +0.119 -> lift +0.030
+  range   n=150:  +0.511 (+2.3) vs +0.159 -> lift +0.352 (small n)
+  years: 2022 +0.074 lift; 2023-24 +0.075; 2021 -0.064; >=2025
+  +0.484 (n=38, noisy)
+
+F3 (holdout, global-null +0.168):
+  atr_hi  n=132:  +0.189 (+1.0) vs +0.122 -> lift +0.067
+  atr_lo  n=208:  +0.722 (+3.8) vs +0.220 -> **lift +0.502**
+  up      n=309:  +0.396 (+2.5) vs +0.206 -> lift +0.190
+  down    n=418:  +0.242 (+1.0) vs +0.132 -> lift +0.110
+  range   n=95:   +0.546 (+2.0) vs +0.165 -> lift +0.380 (small n)
+  2023-24 n=157:  +0.007 (+0.0) vs +0.211 -> lift -0.204  **DEAD**
+  >=2025  n=665:  +0.412 (+1.9) vs +0.161 -> lift +0.251
+  (<2021, 2021, 2022: no holdout trades by construction)
+
+Verdict per frozen vocabulary: **NOT universal.  Vol-concentrated
+(LOW vol) + time-concentrated (2025+).**
+
+Findings:
+1. The F3 entry-lift (+0.335 EV overall) is carried almost entirely
+   by the >=2025 slice (+0.412 EV, lift +0.251, n=665 of 822 F3
+   trades).  The 2023-24 slice is FLAT on holdout (+0.007 EV, lift
+   negative).  The "holdout confirmation" is really a
+   "current-regime confirmation" -- a robustness caveat that must be
+   stated in the live-scale prereg (regime may decay like 2023-24
+   did).
+2. Entry-lift on F3 concentrates in LOW ATR: +0.502 lift (atr_lo)
+   vs +0.067 (atr_hi).  On PRIMARY the sign flips (atr_hi lift
+   -0.139).  A "skip high-vol entries" filter is a candidate -- but
+   per the meta-rules it requires a NEW dated prereg; nothing is
+   filtered in the frozen module.
+3. Trend state: lift present in BOTH up (+0.190) and down (+0.110)
+   on F3 -> the entry is not a simple trend-follower; range lift
+   (+0.380) is suggestive but n is small.  No trend filter
+   justified by this data.
+4. Method note: slice nulls vary a lot (e.g. >=2025 PRIMARY null
+   +0.079+-0.222, range +-0.18-0.24) -- per-slice n is small, all
+   slice comparisons are directional evidence only.
+
+Live-scale implication recorded: for the S1-sized AVSL-cross live
+prereg, add a "current regime = low-ATR" monitoring read-out (not a
+filter) and pre-register expected decay if regime flips.
+
+#### E2 RESULT (2026-09-22): PASS -- THE EDGE IS 4H-SPECIFIC
+
+runs/ablation_tf.log.  Sanity: 4H arm reproduced E1 exactly
+(+0.172/+0.335, n=2939, null +0.135+-0.044/+0.168+-0.068, MATCH).
+
+Same frozen pipeline at 1D (deterministic 1H->1D resample; identical
+params, horizon 500 bars OF THE RESPECTIVE TF):
+  1D arm A:  PRIMARY -0.018R (n=166, z=-0.11)
+             F3      +0.013R (n=138, z=+0.07)   -- dead
+  1D null:   +0.134+-0.133 / -0.071+-0.154
+             (A at 11th pct PRIMARY -- the cross entry is WORSE
+             than matched random entries at 1D in-sample)
+
+GATE (frozen): 4H > 1D + 0.05R both segments:
+  PRIMARY: +0.172 vs -0.018 -> PASS
+  F3:      +0.335 vs +0.013 -> PASS
+Verdict per prereg: **PASS -- the edge is 4H-specific.**  Not
+"TF-scale drift capture": at 1D both the geometry signal and the
+entry lift vanish.
+
+Caveats recorded: 1D n is small (166/138) and the 1D null sd is
+large (+-0.13/+-0.15) -- the 1D point estimates are noisy, though
+the direction is unambiguous and the gate passed with a wide margin
+(+0.19R / +0.32R vs required +0.05R).
+
+Combined with E3 arm E (3xATR stop works -> the AVSL line is not
+magic for STOPS), E2 sharpens the picture: the 4H grid + cross
+TIMING is where the line carries information.  The engine is the
+4H wide-TP geometry; the AVSL cross at 4H is the (regime-bound,
+see E5) amplifier -- and it has no 1D counterpart.
+
+#### E4 RESULT (2026-09-22): PASS -- S1 VOL-TIMING CARRIES INFORMATION BEYOND DE-LEVER
+
+runs/ablation_sizing.log.  Sanity: arm B reproduced the frozen
+verdict bit-for-bit (Sharpe_NW 1.50/2.84, DD 22%/12%).
+
+Arms (Sharpe_NW PRIMARY / F3, DD):
+  A unsized (1.0):  +1.33 (DD 61%) / +2.05 (DD 38%)
+  B S1 (frozen):    +1.50 (DD 22%) / +2.84 (DD 12%)
+  D 0.33 const:     +1.33 (DD 27%) / +2.05 (DD 14%)
+  C permuted S1:    +1.26+-0.18   / +1.98+-0.34  (100 perms)
+
+GATE (frozen): B > mean(C) + 0.2 both segments:
+  PRIMARY: +1.50 vs +1.26 -> PASS (B-C = +0.24; required +0.20 --
+  passes by +0.04, the narrowest gate margin in the whole battery)
+  F3:      +2.84 vs +1.98 -> PASS (B-C = +0.86, wide)
+
+Findings:
+1. The vol-size LINK is informative: knowing current realized vol
+   (not just the size distribution) is worth +0.24 Sharpe on PRIMARY
+   and +0.86 on F3 over permuted sizes.  Vol-target timing is NOT
+   pure de-lever -- strongest exactly where the entry-lift lives
+   (F3 / recent regime, consistent with E5's low-ATR concentration:
+   the sizer and the entry read the same state variable).
+2. De-levering alone (D 0.33) already fixes most of the DD disaster
+   (61% -> 27%) with zero timing information; S1 buys a further
+   DD 27% -> 22% PLUS the Sharpe lift.  S1's value is roughly half
+   "smaller when volatile" (mechanical) and half "WHEN it is small"
+   (informative).
+3. Fragility note: the PRIMARY gate survives by +0.04 -- within the
+   permuted-C noise (+-0.18).  The honest statement: vol-timing
+   information on PRIMARY is NOT firmly established; on F3 it is.
+   Record for the live-scale prereg: keep S1 frozen, monitor the
+   realized-vol vs size correlation as a read-out.
+
+#### DECOMPOSITION COMPLETE (2026-09-22): THE METHOD, EXPLICIT
+
+With E1/E2/E3/E4/E5 all run per their frozen preregs, the project
+has its first complete causal map of an edge.  Recorded here as the
+standing METHOD for every future directional track:
+
+EDGE MAP (AVSL-cross 4H + S1):
+  engine    4H grid + wide-TP asymmetry        (E2, E3)
+  amplifier AVSL cross, 4H only                (E1, E2)
+  regime    low-vol + 2025+                    (E5)
+  sizing    de-lever + vol-timing              (E4, marginal on PRIMARY)
+
+Five facts, each pre-registered and verified:
+1. TP asymmetry is the engine.  Narrow TP = zero everywhere, even
+   on random entries; wide TP yields a +0.135R random-entry null.
+2. The 4H grid is critical.  The identical pipeline at 1D is dead,
+   and the cross entry sits at the 11th percentile of its own 1D
+   null (worse than random).
+3. The entry is an amplifier, not the source.  Random geometry
+   already earns +0.135R; the AVSL cross adds +0.037R (PRIMARY) /
+   +0.167R (F3) over its matched null.
+4. The edge is regime-bound.  2023-24 is dead on the holdout
+   (+0.007R); >=2025 carries it (+0.412R, n=665/822).  The F3 PASS
+   is a current-regime PASS, not a robustness PASS.
+5. Sizing = mechanical de-lever + vol-timing.  Const 0.33 already
+   takes DD 61% -> 27%; the vol-size LINK adds +0.24/+0.86 Sharpe
+   (PRIMARY margin only +0.04 over the gate -- not firmly
+   established there).
+
+NEW STANDARDS (binding for all successor tracks):
+- Null per-geometry: a signal must beat a MATCHED random-geometry
+  null (same count, same side ratio, same geometry, 100 draws,
+  seeds 0..99): EV > null_mean + 0.05R AND >= 95th pctile.
+- Wide TP is mandatory: any test at 1R/1.5R TP is void by
+  construction (E3 C1/C15).
+- The 4H grid is the default arena; other TFs need their own null
+  and their own justification (E2).
+- Old "dead pool" verdicts (z-score, Donchian, OB) were issued at
+  narrow-TP geometries and are therefore UNRELIABLE.  Re-tests with
+  the wide-TP frame are legitimate NEW preregs, explicitly NOT
+  "revivals" of the old tracks.
+
+RE-TEST QUEUE (prereg'd separately before each run): E6 z-score MOM
+cross +-1.5 sigma (4H, window 28 = the original 168x1H), E7
+Donchian(20) breakout + EMA(200) side filter (4H), E8 OB-retest
+(block detector ported to 4H, params unchanged).  Common frame:
+stop 3xATR (E-style, no line), TP 5R primary (3R/8R descriptive),
+horizon 500, S1 sizing, full battery + per-geometry null gate.
+Multiplicity note: three tests, family-level false-positive
+expectation ~15% at the 95th-pct gate -- a single marginal PASS
+will be labelled WEAK, not confirmed, until independently
+replicated (e.g. delayed-entry or sub-period split).
+
+LIVE RISKS (must appear as read-outs in any live-scale prereg):
+regime collapse (a 2023-24-like stretch -> EV ~ 0) and vol-regime
+flip (ATR hi/lo sign flipped between segments).  Monitoring, not
+filters: rolling Sharpe (90d), ATR percentile (500-bar),
+corr(realized vol, size).  Disaster brake (pause if rolling
+Sharpe < 0 over 90d) is a prereg item, not a discretionary act.
+
+The frozen AVSL 4H S1 module KEEPS its PASS.  E1..E5 are
+diagnostics of WHY it passes, recorded so successors test the
+theory, not the instance.
+
+#### E6/E7/E8 PREREG (2026-09-22, FROZEN BEFORE ANY CODE/RUN)
+
+Re-tests of three "dead pool" entries under the wide-TP frame.
+NOT revivals: the old kills were issued at narrow-TP geometries,
+which E3 showed are void by construction.  Each is its own
+prereg/run; all three are frozen NOW (before E6 code exists) so the
+family-level multiplicity is fixed in advance: 3 tests at the
+95th-pct gate -> ~15% false-positive expectation; a single marginal
+PASS is labelled WEAK (not confirmed) until replicated (delayed-
+entry or sub-period split, itself a new prereg).
+
+COMMON FRAME (frozen, identical for all three):
+  grid      4H deterministic resample of the same 1H source
+  geometry  stop = 3 x ATR14 (E-style, no line), TP = 5R primary,
+            horizon 500 4H bars, stop-first, taker fee 10bp round
+            trip, overlapping trades allowed; TP 3R/8R descriptive
+  universe  BTC AVAX BNB DOGE ETH LINK LTC NEAR SOL XRP
+  segments  PRIMARY = first 2/3 of the global 4H grid, F3 = rest
+  sizing    S1 (frozen engine series) for the account stream;
+            EV/trade and the null are UNSIZED (sizing-invariant)
+  null      matched random-geometry draws, 100 seeds 0..99 (same
+            per-asset count and long/short ratio as the entries)
+  gates (ALL must hold on BOTH segments):
+    E-a  entry EV > null mean + 0.05R
+    E-b  entry EV >= 95th pctile of the null distribution
+    E-c  Sharpe_NW(sized stream) >= 1.0
+    E-d  portfolio DD <= 25%
+    E-f  block bootstrap CI (block 500, seed 11) excludes 0
+  verdict   PASS = all gates both segments; WEAK = E-a/E-b pass on
+            both but the family multiplicity caveat applies; FAIL =
+            any of E-a/E-b fails on either segment (kill; no re-params)
+
+E6 -- z-score MOM re-test.  Entry (the original MOM-1 rule, moved
+  from 1H to the 4H grid, window scaled 168 x 1H = 28 x 4H):
+  z28 = (close - SMA28) / STD28 (ddof=1); LONG when z28 crosses
+  above +1.5 (prev <= 1.5, cur > 1.5); SHORT when z28 crosses below
+  -1.5.  Entry at the close of the cross bar.  Exit = frame (the
+  original z-cross-0 exit is NOT used -- replacing the exit is the
+  point of the re-test).  Eligible bars >= WARMUP 400.
+
+E7 -- Donchian re-test.  Entry (original breakout rule): LONG when
+  close crosses above the prior 20-bar high (hh20 over bars t-20..t-1),
+  SHORT when close crosses below the prior 20-bar low; side filter
+  kept from the original: long only if close > EMA200, short only if
+  close < EMA200 (both on 4H closes).  Exit = frame (the original
+  Donchian(10) exit is NOT used).
+
+E8 -- OB-retest re-test.  Entry: the original block detector
+  (supply/demand zones) ported to 4H with parameters unchanged;
+  LONG at a demand-block retest bar, SHORT at a supply-block retest
+  bar, within the original delay window.  Exit = frame.  (Detector
+  port is implementation work, not a parameter change; if the port
+  cannot reproduce the original 15m detector's taken-trade counts
+  1:1 on a common subsample, E8 is postponed, not approximated.)
+
+Fixed before code: runner `experiments/avsl/retest_entry.py`,
+one invocation per entry, logs `runs/retest_{e6,e7,e8}.log`.  No
+new arms, no gate changes, no params after the first run of each.
+
+#### E6 RESULT (2026-09-22): FAIL -- z-LIFT IS REGIME-BOUND WITHOUT HOLDOUT SUPPORT
+
+runs/retest_e6.log.  z-score MOM cross +-1.5 sigma (z28, 4H),
+wide-TP frame, 10370 entries.
+
+  PRIMARY: EV +0.155R (n=7410, z +3.0) vs null +0.061+-0.025
+           -> E-a PASS, E-b 100th pct PASS; Sh(S1) +2.04, DD 24%,
+           CI>0 -- in-sample everything passes.
+  F3:      EV +0.077R (n=2960, z +1.9) vs null +0.085+-0.038
+           -> E-a FAIL, E-b 41st pct FAIL; Sh +0.92, DD 31%,
+           CI covers 0.
+Verdict per prereg: **FAIL (kill).**  The z-entry does carry entry
+information over the wide-TP null IN-SAMPLE (100th pct -- notable:
+the old 1H kill at narrow TP was even right about the mechanism,
+but the wide-TP null confirms a real PRIMARY effect), yet it has NO
+holdout support -- the same 2023-24-dead pattern as E5, without the
+>=2025 rescue.  Not a candidate; the old kill verdict stands under
+the new frame.
+
+#### E7 RESULT (2026-09-22): ENTRY INFORMATION IS REAL ON BOTH SEGMENTS; RISK GATES FAIL (DD)
+
+runs/retest_e7.log.  Donchian(20) breakout + EMA200 side filter
+(4H), wide-TP frame, 9530 entries.
+
+  PRIMARY: EV +0.221R (n=6614, z +1.9) vs null +0.096+-0.028
+           -> E-a PASS, E-b 100th pct PASS; Sh(S1) +1.42,
+           DD 29% (E-d FAIL), CI>0.
+  F3:      EV +0.185R (n=2916, z +4.4) vs null +0.096+-0.042
+           -> E-a PASS, E-b 98th pct PASS; Sh(S1) +1.53,
+           DD 38% (E-d FAIL), CI>0.
+Verdict per prereg: **overall FAIL (not PASS: E-d DD>25% both
+segments), and per the kill rule this is NOT a kill** -- the kill
+criterion is an E-a/E-b failure, and both PASS on BOTH segments.
+
+This is the AVSL-history pattern in reverse: a second entry (after
+AVSL) that beats its matched random-geometry null on the holdout at
+the 98th percentile.  What fails is risk, not signal: DD 29%/38%
+despite S1 sizing (the Donchian entry is 3.2x denser than AVSL
+cross and clusters in trends, where sizes stay high).
+
+Recorded successor path (each a NEW prereg, nothing done now):
+a sizing/risk-only overlay track for Donchian-4H wide-TP, exactly
+mirroring the AVSL risk-overlay track (S1..Sn sweep, risk-first
+gates).  If an overlay passes 5/5, the project gets its second
+confirmed track and the first out-of-sample replication of the
+METHOD (entry x wide-TP geometry x vol-target sizing).
+
+#### E8 STATUS (2026-09-22): POSTPONED per prereg
+
+The OB block detector port to 4H requires a 1:1 taken-trade
+reproduction check against the original 15m detector on a common
+subsample before any run (prereg condition).  Not yet performed;
+E8 stays postponed, not approximated.
+
+FAMILY MULTIPICITY LEDGER: 2 of 3 re-tests executed, 0 PASS, 0 WEAK
+consumed -- no false-positive budget spent.
+
+#### DONCHIAN-4H RISK-OVERLAY PREREG (2026-09-22, FROZEN BEFORE CODE)
+
+Predecessor: E7 (commit 3f73442) -- the Donchian(20)+EMA200 entry
+beats its matched random-geometry null on BOTH segments (100th /
+98th pctile, CI > 0); only the risk gates fail (DD 29%/38% under
+S1).  Signal confirmed, risk unsolved -> a risk-only overlay track,
+the exact AVSL risk-overlay pattern (b6005ca -> e6b4b4d).
+
+FROZEN SIGNAL (identical to E7 -- the numbers above were measured
+on this geometry and it is NOT changed here):
+  entry     Donchian(20) close-cross breakout, 4H, EMA200 side
+            filter (long only above, short only below)
+  stop      3 x ATR14 at the entry bar (E-style, no line)
+  exit      TP 5R primary, MTM at horizon 500 4H bars, stop-first
+  fee       10 bp round trip; overlapping trades allowed
+  universe  BTC AVAX BNB DOGE ETH LINK LTC NEAR SOL XRP
+  split     PRIMARY = first 2/3 of the global 4H grid, F3 = rest
+DEVIATION NOTE (recorded deliberately): the initiating message
+specified "stop = max(Donchian(10), 2xATR)" -- that is the OLD
+track's geometry, on which the E7 lift was NOT measured.  Re-freez-
+ing the stop to the old value would silently swap the signal under
+the verified numbers.  The overlay therefore runs on the E7
+geometry above; the old geometry may only be tested as ANOTHER new
+prereg.
+
+SIZING HYPOTHESES (frozen before code; per-trade sizes applied to
+the E7 trade set, engine accrual semantics):
+  S1  baseline vol-target: clip(0.20 / rv100, 0.25, 2.0)
+      (= the engine S1 series; sanity: must reproduce E7's
+      Sharpe 1.42/1.53, DD 29%/38%, EV +0.221/+0.185 bit-for-bit)
+  S2  aggressive vol-target: clip(0.15 / rv100, 0.15, 1.5)
+      (rationale: Donchian clusters 3.2x denser than AVSL cross;
+      harder de-lever)
+  S3  S1 + concurrency cap: max 5 concurrent open trades AND max
+      total open exposure 3.0 size units; an entry that would
+      breach a cap is SKIPPED (size 0, excluded from stream, EV and
+      asset counts).  DONCHIAN-ONLY HYPOTHESIS: on AVSL the cap was
+      measured toxic (Sharpe 0.22, EV +0.02R -- clustered entries
+      carry that edge); on Donchian the clusters are trend-late
+      entries and the question is OPEN.  A result either way is a
+      new fact and goes to STATUS.
+  S4  S2 + the same cap
+  S5  S2 x regime halving: size x 0.5 when ATR14 percentile
+      (500-bar inclusive window at entry) > 80; never a full skip
+      (the AVSL S2 lesson: percentile scaling alone leaves DD loose;
+      here it is stacked on S2, not used alone)
+
+GATES (per config, on BOTH segments, taken trades):
+  G1'  Sharpe_NW(sized accrual stream) >= 1.0
+  G2'  portfolio DD <= 25%
+  G3'  net EV >= 0.10R
+  G4'  >= 7/10 assets with positive mean net EV
+  G5'  block bootstrap CI (block 500, seed 11) excludes 0
+SELECTION (risk-first, frozen): among configs passing ALL gates on
+both segments, select the one with the lowest PRIMARY DD
+(tie-break: lower F3 DD, then lower mean gross size).  One config
+passing = that config.  None passing = track CLOSED FINAL (the
+Donchian entry itself stays recorded as null-confirmed; only the
+track is closed).
+KILL / BOUNDARIES: entry, stop, TP, horizon, universe, split are
+frozen; no S-variant may be added after the first run; F3 is never
+tuned on; no combination with AVSL before both tracks are
+individually confirmed (portfolio construction = a later prereg).
+
+Runner: `experiments/avsl/donchian_overlay.py`, single invocation,
+log `runs/donchian_overlay.log` (numbers duplicated into STATUS).
+
+#### DONCHIAN OVERLAY RESULT (2026-09-22): NO CONFIG PASSES -> TRACK CLOSED FINAL
+
+runs/donchian_overlay.log.  Sanity: S1 reproduced E7 bit-for-bit
+(Sh 1.42/1.53, DD 29%/38%, EV +0.22/+0.18, CI identical).
+
+  S1  P: Sh+1.42 DD29% EV+0.22 pos8 CI>0 (DD FAIL)
+      F: Sh+1.53 DD38% EV+0.18 pos9 CI>0 (DD FAIL)
+  S2  P: Sh+1.50 DD20% EV+0.22 pos8 CI>0  ALL PASS
+      F: Sh+1.50 DD30% EV+0.18 pos9 CI>0 (DD FAIL -- 5pp short)
+  S3  cap taken 156/9530 (exposure 3.0 saturates instantly);
+      P: Sh+1.41 DD3% EV+0.89; F: Sh+0.63 EV-0.02 pos5 -> FAIL
+  S4  same shape (159 taken); F: Sh+0.60 EV-0.08 -> FAIL
+  S5  P: Sh+1.55 DD19% EV+0.22 ALL PASS
+      F: Sh+1.18 DD31% EV+0.18 (DD FAIL)
+
+VERDICT per prereg: **no config passes on both segments -> the
+Donchian-4H track is CLOSED FINAL.**  The entry itself stays
+recorded as null-confirmed (E7); what is closed is the track.
+
+Three new facts for the method map:
+1. **Cap toxicity REPLICATES on Donchian** (S3/S4: F3 Sharpe 0.6,
+   EV <= 0).  The AVSL S3 lesson was not entry-specific: on both
+   entries the clusters CARRY the holdout edge, and capping
+   amputates it.  This is now a general law of the method, measured
+   on two independent entries.
+2. **Donchian DD is not sizing-fixable within the frozen family:**
+   S2/S5 fix PRIMARY (DD 19-20%) but F3 sticks at 30-31%.  The
+   holdout drawdown comes from clustered trend entries in the 2025+
+   regime that the vol-target cannot see (their realized vol at
+   entry is LOW -- consistent with E5's low-ATR lift concentration:
+   the same state variable that carries the entry lift defeats the
+   sizer).  Signal and risk are coupled through one variable.
+3. The method's boundary is now measured: **entry lift transfers
+   across entries (AVSL, Donchian), but risk-compatibility does
+   NOT.**  A null-confirmed entry is necessary, not sufficient; the
+   second gate is whether its DD is controllable by sizing alone.
+
+Family ledger: re-tests 2/3 executed (E8 postponed), overlay 1
+executed; confirmed tracks: AVSL-cross 4H S1 only.  No false-
+positive budget spent (0 PASS issued in the family).
+
+#### E8 PORT-CHECK RESULT (2026-09-22): FAIL -- E8 STAYS POSTPONED
+
+runs/port_check_4h.log.  Diagnostic per the E8 gate (detector must
+be 4H-usable before any run).  The detector RUNS on 4H OHLCV with
+the "4h" preset and its geometry is sane:
+  zone width med 1.35-2.16 ATR14 (inside the [1, 3] target),
+  retest delays median 1-4 bars, 100% within 36 bars,
+  supply/demand split balanced.
+But block counts are 9-34 per asset over the full ~7y 4H history
+(BTC: 10) -- two to three orders of magnitude below what an EV
+comparison needs (the user-set criterion "not ~10" is exactly
+violated).  Reference sanity: BTC 1H + "1h" preset gives 131 blocks
+on 6x more bars -- the 4h preset is far stricter than the archived
+working combo (its market-structure filter + complete-window
+requirement dominate at this bar size).
+
+Consequence per the frozen rule: **E8 stays POSTPONED; the OB
+detector rework under 4H is a separate engineering task with its
+own frozen acceptance criteria** (proposal, not yet a prereg: a
+reworked preset must yield ~200-2000 blocks per asset on the 4H
+grid, zone width med in [1, 3] ATR, delays <= 36 bars, and the
+detector itself must remain repaint-free) -- only then can an E8
+prereg be written.  Tuning preset parameters ad hoc to make E8
+runnable is exactly what the port-check gate exists to prevent.
+
+#### OB ENGINEERING PLAN (2026-09-22): BACKLOG, ACTIVATION-CONDITIONAL
+
+Problem: the "4h" live preset yields 9-34 blocks/asset on the 4H
+grid -- live-grade sparsity, useless for EV statistics.  Decision:
+build RESEARCH presets as a separate artifact (live preset for
+trading, research preset for statistics -- different products,
+NEVER mixed), rather than tune anything "so E8 can run".
+
+Diagnosis first (which filter kills the blocks -- measured, not
+guessed): the "4h" preset stacks use_market_structure_filter=True,
+require_complete_window=True, strength_age_penalty=True,
+zigzag_distance=8, min_extreme_gap=8, reversal_atr_multiple=2.5
+(ATR-calibrated reversal; there is no fixed online_reversal_pct in
+this pipeline).  Ablate one filter at a time on BTC+ETH 4H and
+record blocks/asset per ablation.
+
+Research-preset candidates (detector logic UNTOUCHED, presets only;
+repaint-free online ZigZag, look-ahead guards and determinism are
+non-negotiable):
+  R1 conservative   ~200-500 blocks/asset
+  R2 balanced       ~500-1000
+  R3 aggressive     ~1000-2000
+  R4 no-ADX         (is the trend filter even doing anything?)
+  R5 no-structure   (same question for the structure filter)
+Likely levers: require_complete_window=False,
+use_market_structure_filter=False (or min extremess relaxed),
+zigzag_distance 6-7, min_extreme_gap 6-7; zone geometry, retest
+logic and strength computation stay as-is.
+
+ACCEPTANCE (frozen; all must hold on ALL 10 assets):
+  200-2000 blocks/asset over the ~7y 4H grid; zone width med in
+  [1, 3] ATR14; retest delay med <= 10 bars, p90 <= 36 bars; S/D
+  each side 30-70%; repaint-free test still passes; byte-identical
+  output on rerun; "1h" preset regression unchanged (131 blocks,
+  BTC 1H) and "4h" preset regression unchanged (10 blocks, BTC 4H)
+  -- research presets are additions only.
+
+Then, and only then: E8 prereg (frozen entry = OB-retest 4H on the
+selected research preset, wide-TP frame, gates as E6/E7) -> run.
+Budget: ~9h engineering + ~1.5d E8.
+
+PRIORITY: BACKLOG.  Activation triggers: TTF v1 AND P4 both FAIL,
+or an explicit portfolio need for a second track.  Until then the
+queue is: AVSL live-scale prereg -> AVSL productization -> TTF v1 /
+P4 preregs.
+
+#### OB ENGINEERING RESULT (2026-09-22, commit b6e2158): ACCEPTANCE PASS
+
+Engineering was activated by user decision the same day (overrides
+the backlog gate; documented, not hidden).  Measured by 3-round
+ablation (runs/ob_ablation{,2,3,4,5}.log): the "4h" live preset's
+block killers are the market-structure filter (x2), min_extreme_gap
+8 (x2.3) and the breakout volume condition (x2.5); prominence and
+zigzag_distance are no-ops for the online ZigZag; ADX is absent
+from the "4h" preset entirely; the reversal lever saturates under
+multiple_breakouts (0.8 -> 0.5 gives only +8%); dynamic->fixed
+lookback is the aggressive lever.  Detector logic untouched --
+presets only (experiments/ob/research_presets.py).
+
+Acceptance (runs/ob_research_check.log): R1 273-672, R2 575-1146,
+R3 793-1146 blocks/asset -- all in [200, 2000] on ALL 10 assets;
+zone width med 1.56-2.09 ATR; delay med 2-3, p90 6-9 bars; S/D
+35-56%; A6 regression exact ('1h'=131, '4h'=10); determinism OK;
+detector tests 46 passed.  R4_diagnostic (structure ON, 99-251)
+documents the filter cost and is reference-only.
+
+#### E8 PREREG -- OB-RETEST 4H (frozen 2026-09-22, BEFORE run code)
+
+Entry (frozen): OB-retest events on the 4H grid from RESEARCH
+preset **R2** (balanced, ~575-1145 blocks/asset).  R2 chosen A
+PRIORI as the workhorse (sample size vs selectivity); R1/R3 are
+SENSITIVITY references, descriptive only, never gated -- no post-hoc
+preset switching.  Side: demand-zone retest -> long, supply-zone
+retest -> short; entry bar = the detector's retest bar; WARMUP 400.
+Frame (identical to E6/E7): stop 3xATR14, TP 5R, horizon 500, fee
+10bp RT, S1-sized account stream, SPLIT_FRAC 2/3.
+Null: matched random-geometry, per-geometry, 100 draws seeds 0..99.
+Gates: E-a (EV > null + 0.05R) and E-b (>= 95th null pct) on BOTH
+segments; then E-c Sharpe >= 1.0, E-d DD <= 25%, E-f bootstrap CI > 0
+(seed 11, block 500).  Kill on E-a/E-b failure.  PASS-entry-FAIL-risk
+-> risk-overlay prereg (Donchian pattern).
+Family note: E8 is the third and final dead-pool re-test; family
+false-positive budget remains 0 until a PASS is issued.
+
+#### E8 RESULT (2026-09-22, runs/retest_e8.log): FAIL -- KILL
+
+Runner: experiments/avsl/retest_entry.py (kind "ob", prereg
+7105724).  8538 entries (R2 preset).  Gates:
+  PRIMARY: EV -0.034R (n=5872, NW z -1.08) vs null +0.043+-0.027
+           -> E-a FAIL, E-b 0th pct FAIL; Sh +0.08, DD 48%,
+           CI [-0.0092, +0.0124] -- ALL gates fail.
+  F3:      EV +0.084R (n=2666, NW z +1.93) vs null +0.067+-0.049
+           -> E-a/E-b FAIL (61st pct); E-c/E-d/E-f pass.
+Per the frozen rule (E-a/E-b failure) this is a KILL; the old
+dead-pool entry stays dead under the correct wide-TP geometry.
+
+Reading (descriptive): OB-retest entries are ANTI-edge on PRIMARY
+-- 0th percentile means structural-entry timing was systematically
+WORSE than random bars pre-2025 in this frame; the mild F3
+positive (+0.084, z +1.93) is the same post-2025 regime signature
+as E5 but at half the AVSL lift and without gate support.  No
+follow-up: a signal that loses to random geometry on 5872 trades
+is not a tuning candidate.
+
+Family ledger FINAL: re-tests 3/3 executed, 3 executed -> z-score
+KILL, Donchian null-confirmed/risk-closed, OB KILL; overlay 1/1
+CLOSED FINAL; 0 PASS issued -- false-positive budget unspent.
+Only confirmed track: AVSL-cross 4H S1.  The dead pool is fully
+adjudicated; no further dead-pool work is planned.
+
+User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
+1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
+three-track plan, amended by a live data audit before any prereg.
+
+### TON -> GRAM (same day, data note)
+
+Binance USDT-M rebranded TON: TONUSDT is now SETTLING, GRAMUSDT is a
+NEW contract (history from 2026-07-02 -- not a continuous rename).
+The TON-era klines (22 421 bars, 2024-03..2026-07) stay cached as
+kl_TONUSDT_1h.parquet; oi_TONUSDT was empty (the OI endpoint refuses
+settling symbols) and was removed.  load_binance maps
+TON-USDT -> GRAMUSDT (SYMBOL_ALIASES) for all new collection:
+kl_GRAMUSDT (1954 bars, 0 gaps) + oi_GRAMUSDT (744 rows, 31d) are in.
+Universe for the frozen preregs is untouched -- TON-USDT is the OKX
+inst name; only the Binance collection side is aliased.  Note: the
+GRAM funding history starts 2026-07-02, so any future funding-carry
+re-run on live Binance funding has ~2.7 months of depth for GRAM.
+
+Layout bug fixed here: 18 moved modules (avsl_*, ensemble_ab,
+funding_carry*, load_*, ob_*) computed REPO as three levels of
+.parent -- correct at engine/experiments/ depth, one level too deep
+after the move (stray projects/data/).  All now use .parent.parent.
+
+### DATA FEASIBILITY (verified live 2026-09-21, decisive for the plan)
+
+| source | real depth | verdict |
+|---|---|---|
+| OKX OI history (rubik open-interest-history) | ~8.3h (100 x 5m; `bar` ignored; pagination does not deepen: 500 rows within 0.35d) | backtest impossible |
+| Binance OI (fapi openInterestHist) | hard cap ~30d (endTime 40d back -> HTTP 400, reproduced) | non-gated screen only |
+| OKX long/short account ratio | 2d | useless |
+| Binance topLongShortPositionRatio | ~21d (30d cap) | useless |
+| Binance klines taker buy volume (field 9) | full history, oldest 1H bar 2019-09-08 | BACKTESTABLE |
+| Binance funding 3y | cached (data/funding_binance) | carry v3 PASS |
+
+Decision (user-approved): the OI-Price Divergence track AS WRITTEN
+(gated walk-forward Sharpe on OKX OI 5m) is NOT registrable -- the
+panel does not exist (8h vs the repo standard ~449d; the funding
+track with 97d was already rejected as thin).  Amended: the
+positioning signal is tested via taker-flow (taker buy volume from
+Binance klines, 6y depth) = TTF v1 below; OI accumulation starts
+now (infra, zero-regret); ProSP runs as barrier v2 with funding +
+taker-flow features.  LGBM, not XGBoost (repo standard, declared).
+
+### Infra added (no gates)
+
+- `engine/infra/marketdata/binance_fetch.py`: `fetch_klines`
+  (full history, incremental page-cache, closed bars only,
+  keeps `taker_buy_volume`) and `fetch_oi_history`
+  (merge-append 30d window; running >= 1x/30d accumulates an
+  unbounded panel).  Driver `engine/experiments/load_binance`
+  (universe = the funding UNIVERSE mapped to Binance symbols,
+  cache data/binance/).  Tests: engine/tests/test_binance_fetch.py
+  (6: merge keep-old/dedup/no-shrink, kline parse, in-progress bar
+  dropped).
+- OI ACCUMULATION TRACK: run
+  `python -m engine.experiments.load_binance <SYM> oi` at least
+  every 30 days per symbol (weekly cron recommended).  No backtest
+  until >= 180d contiguous; the eval prereg will be written BEFORE
+  the first backtest.  No peeking at the accumulating panel for
+  signal design.
+
+### TTF v1 (taker-flow divergence) -- PRE-REGISTRATION (fixed BEFORE run)
+
+Backtestable replacement for OI-Price Divergence: aggressive-flow
+divergence against price, same four-regime logic, order-flow proxy
+instead of OI.  Data: Binance USDT-M 1H klines, 6 majors (BTC, ETH,
+SOL, BNB, XRP, DOGE), ~6y.
+
+Frozen parameters (from the user's plan, no tuning):
+  tbv_share = taker_buy_volume / volume (1H bar)
+  s = Z(tbv_share, trailing 336 bars)
+  r = close-to-close return over trailing 24 bars
+  LONG regime: r < 0 AND s >= +2.0 (buy aggression into decline =
+  accumulation); SHORT mirrored: r > 0 AND s <= -2.0.
+  Confirmation: signal bar closes in the intended direction
+  (close > open for long).  Entry at next bar open.
+  Exit: |s| < 0.5, or opposite divergence, or stop.
+  Stop: 2.0 x ATR(24 bars) from entry; no take-profit.
+  One position per asset; notional 1.0.
+  Costs: taker both legs, 0.075% per side (= 0.15% round trip),
+  charged at entry and exit halves.
+  Signals use completed bars only (no lookahead).
+
+Evaluation: F1 = 2021-01-01..2023-08-31, F2 = 2023-09-01..2025-08-31,
+PRIMARY = F1+F2 pooled; F3 = 2025-09-01..now = confirmation,
+reported not gated.  Daily net streams per asset; Sharpe_NW with
+the funding_carry_v3 estimator (Newey-West lags 1..5, factor
+clamped [1, 5]); activity floor 60d.
+
+PRE-REGISTERED gates (all on PRIMARY, else the track is closed,
+no re-tuning):
+  T-G1: Sharpe_NW >= 1.0 on >= 3 of 6 assets.
+  T-G2: portfolio (equal-weight, flat contributes 0) Sharpe_NW >= 1.0.
+  T-G3: portfolio max drawdown <= 20%.
+  T-G4 (sanity): gross (pre-cost) portfolio Sharpe > 0 -- if the
+     signal cannot beat zero before costs it does not exist.
+  Sanity outputs, not gates: n trades per asset (if n < 200 on
+  PRIMARY the result is INCONCLUSIVE, not PASS), fold-by-fold
+  table, gross-vs-net per fold.
+
+### PROSP v2 (probability-based portfolio) -- PRE-REGISTRATION (fixed BEFORE run)
+
+Successor to barrier-probability v1 (CLOSED: model Brier 0.21747 >
+baseline 0.21688 on price/vol/structure features).  v2 tests the
+declared missing ingredient -- flow/positioning features -- as
+tail-event probabilities, not point returns.
+
+Data & labels: Binance USDT-M 1H, the 29-asset Binance universe.
+Labels per (asset, bar t, daily): label_up = 1 iff close(t+24)/
+close(t) - 1 > +2%; label_dn mirrored (< -2%).  Labels from future
+bars only; the 7d embargo guards the label gap.
+
+Features (frozen list): tbv_share z(336), tbv_share delta(24),
+funding z(3d, from data/funding_binance), ret(24), ret(168),
+ATR(24) z(336), volume z(336), range/close z(336).  No price level,
+no calendar features.
+
+Model: LightGBM binary classifier, two tasks (up-tail, dn-tail),
+pooled across assets.  Params frozen at the repo defaults
+(n=400, lr=0.05, leaves=15, mcs=40); isotonic calibration on the
+56d window before the embargo gap (barrier v1 protocol).
+
+Walk-forward: 8 folds x 56d, expanding train, 7d embargo, per the
+repo WF protocol; predictions only on embargoed TEST bars.
+
+Portfolio rule (frozen): daily, rank assets by
+P(up-tail) - P(dn-tail); long top 3, short bottom 3, equal weight,
+rebalanced daily; cost 0.15% RT per leg change; skip a leg if the
+asset's panel row is incomplete.  No vol targeting in v2 (declared).
+
+PRE-REGISTERED gates (pooled TEST, else v2 closed, no re-tuning):
+  P-G1 (kill, user's criterion): mean calibrated Brier (both tasks)
+     < constant class-rate baseline, AND per-fold improvement > 0
+     on >= 5 of 8 folds.
+  P-G2: top-minus-bottom tercile net daily EV > 0 on pooled TEST.
+  P-G3: portfolio net Sharpe_NW >= 1.0 on pooled TEST.
+Reported, not gated: reliability deciles, per-fold portfolio
+Sharpe, long-only vs long-short split.
+
+Standing rule honored: no parameter was fit on any test window;
+TTF/ProSP params come from the user's plan and repo defaults, and
+were written here before either experiment runs.
+
+## 2026-09-20 — ranker ensemble package (`engine/ensemble/`)
+
+- `engine/ensemble/`: `base` (RankerComponent interface, ComponentConfig,
+  rank_normalize), `lgbm` / `catboost` / `logreg` components, `combine`
+  (EnsembleRanker: mean / weighted / rank_mean / stacking), `meta`
+  (stacking meta-learner trained on past-only OOF component scores —
+  no in-sample meta weights).  Determinism kit per component:
+  LGBM deterministic+force_row_wise+1 thread; CatBoost thread_count=1;
+  catboost is an OPTIONAL dependency (lazy import, CATBOOST_AVAILABLE).
+- `protocol.train_ensemble_ranker`: ensemble twin of `train_ranker`
+  (same contract — past-only train_ix, scores for all rows in input
+  order), so replay/experiments switch heads by config alone.
+- `experiments/ensemble_ab.py`: pre-registered grid of 6 configs
+  (lgbm_only / catboost_only / logreg_only / lgbm+catboost /
+  all_three / stacking) through one WF protocol + replay; metrics:
+  pooled R / dd / sharpe, decile spread, top-decile EV, flips@1e-6,
+  peak gate EV; `--quick` smoke mode.  Acceptance: ensemble beats the
+  best single component, dd not worse — else keep LightGBM-only.
+- Tests: `engine/tests/test_ensemble_*.py` (45 tests: determinism
+  byte-for-byte, dtype discipline, scaler convergence, enable/disable
+  vs weight=0, stacking past-only OOF, mini-WF regression, protocol
+  integration) + `ens_synth.py` synthetic panel helper.  catboost
+  tests skip cleanly when the lib is absent.
+- catboost added to root dependencies (installed 1.2.10 locally).
+- Fixed a latent restructure bug: `protocol.REPO` pointed at
+  `engine/` instead of the repo root (data paths were computed from
+  the pre-move location) — experiments had not been re-run since the
+  move, first caught by the ensemble_ab smoke run.
+- Quick smoke (last 3 folds, catboost 60 iters): lgbm_only leads
+  (pess −0.020, spread +0.169); no blend beats it yet.
+- FULL run verdict (8/8 folds, all configs, catboost 300 iters,
+  runs/ensemble_ab.json): the whole grid is negative (dead pool —
+  TZ item 8 predicted the ensemble cannot revive it).  lgbm_only:
+  −0.017R (dd 12.6).  No config passes acceptance: lgbm+catboost is
+  the only positive-peak-gate head (+0.001 vs −0.014) with the best
+  top-decile EV (−0.002) and spread +0.131 (vs +0.062), but worse dd
+  (18.1R) and mean R; stacking edges mean R (−0.014) with equal dd
+  but weak spread.  DECISION (per TZ item 6): keep LightGBM-only;
+  the ensemble package stays as infrastructure, lgbm+catboost 0.5/0.5
+  is the only blend worth re-visiting if the pool turns positive.
+
 ## 2026-09-20 — tests co-located in engine/, CI subordinated to the layout
 
 - `tests/` -> `engine/tests/`: the unit suite lives inside the package
@@ -1672,4 +3262,1129 @@ NaN share of D14 matrix is 0.000 - event bars sit past warm-up.
 Saved: runs/d14_feature_family.json, runs/d14_feature_family.log.
 Env: repo ruff currently fails on pre-existing pyproject RUF067
 selector (unrelated); pytest 327 passed.
+
+## D.15: honest order-block rework (ta pipeline) + raw EV
+
+Semantic bug fixes in ta/src/custom/market_structure (engine okx.py
+untouched - engine panel uses its own detect_order_blocks):
+
+- Zone = source pivot bar range [low, high] + zone_atr_multiplier*ATR
+  extension (zone_source: range|body|close_band, default range;
+  close_band = legacy close +/- m*ATR).  Old default was a
+  close +/- 1 ATR band, not an order block.
+- Wick entry symmetry: supply tested by high[j], demand by low[j]
+  (was inverted for supply).  Penetration guard now meaningful.
+- check_orderflow_shift made causal: past window (idx, j] only,
+  confirm-guarded pivots, ValueError when online ZigZag is off
+  (offline pivots + shift filter = look-ahead leak).
+- min_extreme_gap filter now confirm-guarded: rejects only when the
+  next extreme was confirmed before the breakout bar.
+- reversal_atr_multiple (k * median ATR, default preset k=2.5)
+  replaces per-TF online_reversal_pct constants (reversal/ATR ratio
+  decayed 4.05 -> 0.67 ATR across TFs in the old presets).
+- Presets recalibrated: ADX filter off, RSI confirmation off,
+  cluster_blocks off (1m-1h), confirmation_window 36 on 5m/15m
+  (retest-delay p90 ~ 35), zone_atr_multiplier 0.2,
+  use_online_extremes default True (honest by default).
+- multiple_breakouts=True on 5m/15m, lookback_max=30: semantic bug -
+  with multiple_breakouts=False the "break" was tested at exactly one
+  bar (lookback after pivot), i.e. all candidates had a constant
+  break delay (5 on 5m, 20 on 15m) and lookback_max was a no-op clamp,
+  not a search window.  Natural first-break delay: med 8, p90 28.
+
+Raw EV (in-sample, BTC-USDT only, 35070/9360 bars 15m/5m, taker 5bp
+both legs, entry at retest close, stop beyond zone edge + 0.25 ATR,
+TP in R, horizon 48 bars, conservative within-bar ambiguity):
+
+  15m: blocks 567, gross EV +0.019/+0.044/+0.031 R at TP 1/3/6R
+       (net -0.16/-0.13/-0.15R); win 47/16/3.5%
+  5m:  blocks 1559, gross EV -0.045/+0.026/+0.034 R (net ~-0.25R)
+
+Preliminary positive gross, pending walk-forward.  Do NOT read as
+"OB works": single asset, in-sample, gross only.  Note: pre-fix runs
+on the fixed-delay semantics showed 15m/6R +0.140R gross - mostly an
+artifact of the constant break delay, not an OB edge.
+
+Known anomaly (diagnostic for WF train folds, not an in-sample loop):
+validated blocks skew to late breaks (pivot age med 32 vs natural
+first-break med 8).  Hypothesis: early breaks are impulses (zone
+consumed), OB retest works on post-consolidation reversals.  To be
+checked via EV vs (break_idx - idx) on train folds.
+
+WF (runs/ob_wf_ev.log, engine/experiments/ob_wf_ev.py): 7x56d folds
+(history
+holds 6.5 such windows; embargo 7d; causal prefix detection, ATR
+median on prefix; fixed params - nothing fitted, folds measure
+stability only).  Gross EV per fold (blocks per fold 39-100):
+
+  fold     0      1      2      3      4      5      6   pos  mean
+  1R   +0.001 +0.001 +0.013 +0.011 +0.026 -0.111 +0.103  6/7 +0.006
+  3R   -0.053 +0.007 +0.091 +0.026 +0.082 +0.134 -0.024  5/7 +0.038
+  6R   +0.141 -0.020 +0.187 -0.069 +0.062 -0.002 -0.101  3/7 +0.028
+
+Verdict vs the pre-registered criteria (6/8+ -> maker; 4-5/8 ->
+boundary, dig delay/age; <4/8 -> close): BOUNDARY.  1R is stable but
+EV ~ 0; 3R positive in 5/7 with the best pooled gross; 6R pooled
+positive but only 3/7 folds.  Gross is far below the ~0.16-0.18R
+taker round trip everywhere - any continuation requires maker entry.
+
+Age anomaly RESOLVED, no selection effect: validated ages span
+[30, 60) with min=p10=30 - exactly the dynamic lookback (30 on 15m).
+In candidates.py the break search starts at bar i = idx + lookback:
+lookback is the pivot CONFIRMATION lag (causality - an online zigzag
+pivot is not knowable earlier), so every tradable break is >= lookback
+by construction.  The "natural med 8" distribution is offline and
+untradeable.  Hypothesis 3 ("OB works on reversals, not impulses") is
+not testable as posed; the real knob is the confirmation depth
+(lookback) - a train-fold tuning question, after WF, not a bug.
+
+Retest delay did not shift: break->retest med 5, p90 23 - cw=36 now
+covers p90 with margin (in-sample p90 was censored at the window).
+
+Train-fold diagnostics, step 1 - delay curve (runs/ob_delay_curve.log,
+engine/experiments/ob_delay_curve.py; pre-registered buckets, TPs
+{3,4}R; train = folds 0-3 + 7d embargo, test = folds 4-6 held out;
+gross R, taker NOT included):
+
+  delay      TRAIN n  EV3R/win      EV4R/win | TEST n  EV3R/win     EV4R/win
+  [0,5)          157  -0.012/31.8%  -0.016/29.9% |  93  -0.115/32.3%  -0.101/32.3%
+  [5,10)          60  +0.229/40.0%  +0.425/40.0% |  31  +0.242/35.5%  +0.198/32.3%
+  [10,20)         73  +0.028/38.4%  -0.066/35.6% |  31  +0.123/32.3%  +0.252/32.3%
+  [20,36)         64  -0.104/31.2%  -0.178/29.7% |  24  +0.211/50.0%  +0.058/50.0%
+  pooled         354  +0.020/34.5%  +0.019/32.8% | 179  +0.032/35.2%  +0.033/34.6%
+
+The [5,10) bucket passes the +0.03R criterion on BOTH TPs on train
+AND confirms on held-out test at both TPs (+0.24/+0.20).  Fast-retest
+zones (5-10 bars after break) carry the whole edge; immediate retests
+(<5, the same impulse returning) and stale ones (20+) are a drag.
+Caveats: test n=31 -> per-trade std gives SE ~0.27R (t ~ 1.5 pooled
+n=91); 8 cells were scanned on train - the [5,10)x4R +0.425 cell is
+inflated by selection, trust the cross-segment consistency instead.
+Gross target (+0.10R) reached by the cut alone: delay in [5,10) -
+proceed to lookback calibration and TP grid, then maker model.
+
+Steps 2-3 - lookback grid + TP grid (runs/ob_lookback_grid.log,
+engine/experiments/ob_lookback_grid.py; delay-cut [5,10) fixed;
+static lookback via use_dynamic_lookback=False; train decides):
+
+  L   TRAIN n  EV3R   EV4R   EV5R | TEST n  EV3R   EV4R   EV5R
+  15      75  +0.102 +0.124 +0.126 |  37  +0.330 +0.438 +0.476
+  20      70  +0.049 -0.023 -0.021 |  33  +0.493 +0.281 +0.341
+  25      69  +0.058 +0.080 +0.071 |  36  +0.218 +0.064 +0.091
+  30      60  +0.229 +0.425 +0.451 |  31  +0.242 +0.198 +0.230
+  35      65  -0.070 -0.009 -0.097 |  20  +0.206 +0.283 +0.332
+  40      68  +0.043 -0.007 -0.001 |  27  +0.329 +0.255 +0.254
+
+Verdict: L=30 (the current dynamic preset clamps to exactly this) is
+the train argmax - preset unchanged.  Train L-surface is jagged
+(L=35 negative), i.e. weak identifiability; test column is noisy
+(n=20-37) and NOT used for the decision.
+
+TP surface at L=30, delay [5,10) saturates (extended run, gross):
+
+  TP      3R     4R     5R     6R     8R
+  TRAIN +0.229 +0.425 +0.451 +0.478 +0.495   win 40/40/38/38/38%
+  TEST  +0.242 +0.198 +0.230 +0.262 +0.327   win 35/32/32/32/32%
+
+Pooled train+test (n=91) at 4R: +0.35R, at 6R: +0.40R gross ->
+~+0.19..+0.25R net after taker round trip.  SE ~0.17R (t ~ 2-2.5).
+Working point: delay in [5,10), lookback 30, TP 4-6R, horizon 48.
+
+Warning: selections are stacking (4 delay buckets x 6 lookbacks x
+6+5 TPs scanned on train) - the working-point EV is upward biased;
+folds 4-6 are burned for this config family.  Next: maker entry
+model on the working point, then fresh-data validation on another
+asset (15m AVAX/BNB) as the real holdout.
+
+Holdout verdict - the pocket does NOT replicate (runs/
+ob_holdout_assets.log, engine/experiments/ob_holdout_assets.py;
+fixed point delay [5,10), L=30 static, TP {4,6}R, gross, zero
+tuning on holdout):
+
+  PRIMARY   n     EV4R/win    EV6R/win   delay med
+  AVAX      197  +0.024/29%  -0.038/28%     6
+  BNB       109  -0.177/27%  -0.191/26%     7
+  SOL       237  -0.069/28%  -0.120/27%     6
+  ETH       275  +0.178/36%  +0.139/34%     7
+  SECONDARY (bonus, same fixed point)
+  DOGE      217  +0.270/39%  +0.265/38%     7
+  LINK      100  +0.044/32%  -0.008/31%     6
+  LTC       229  -0.155/31%  -0.135/30%     6
+  NEAR      191  -0.119/28%  -0.096/27%     7
+  XRP        85  +0.105/34%  +0.186/34%     7
+
+Pre-registered criterion: >=3/4 primary gross>0 -> maker; <=1 ->
+close.  Result: 1-2/4 (clearly positive only ETH; AVAX ~0; BNB/SOL
+negative).  All 9 assets pooled per-trade: 4R ~ +0.02R, 6R ~ +0.00R
+- zero, below taker.  Delay med 6-7 replicates the BTC mechanism
+timing but carries no edge outside BTC.  The BTC +0.35R working
+point was selection-inflated + asset-specific.
+
+DECISION: close the OB directional track per the pre-registered
+rule.  No maker study (would model net on inflated gross).  Pivot:
+funding carry.  Negative result is clean: pipeline semantics now
+causal, the fast-retest mechanism timing is real and replicates,
+the profitability does not.
+
+Reopened (scoped): "OB geometry is BTC-specific" hypothesis.
+Phase 0 structural diagnostics (runs/ob_struct_diag.log,
+engine/experiments/ob_struct_diagnostics.py), 10 assets x 15m:
+
+  asset  bars/ATR hl_ar1 hl_acf pv_lag p50/90 ret_p90 rng/ATR vol_ir gap  EV4R
+  BTC      2.51  0.479   1    2 / 9    27     0.87  13.2  ~0  +0.348
+  ETH      2.64  0.442   1    2 / 9    26     0.86  13.3  ~0  +0.178
+  SOL      2.50  0.402   1    2 / 8    24     0.89  10.2  ~0  -0.069
+  BNB      2.45  0.413   1    1 / 8    24     0.87  17.0  ~0  -0.177
+  AVAX     2.40  0.400   1    1 / 6    24     0.88  17.4  ~0  +0.024
+  DOGE     2.53  0.431   1    1 / 6    22     0.88  14.4  ~0  +0.270
+  XRP      2.54  0.414   1    1 / 7    23.4   0.88  11.4  ~0  +0.105
+  LINK     2.46  0.418   1    1 / 7    21     0.86  17.6  ~0  +0.044
+  LTC      2.43  0.405   1    1 / 6    23     0.88  21.4  ~0  -0.155
+  NEAR     2.32  0.375   1    1 / 6    22     0.89  12.1  ~0  -0.119
+
+Spearman vs EV4R/EV6R: half_life_ar1 +0.77/+0.71, bars_per_ATR
++0.72/+0.65, gap_freq -0.66/-0.54 (degenerate metric, all ~0);
+retest_p90, pivot_lag, volume_irreg, spread < 0.4.
+
+Phase-0 criterion met (corr > 0.7) -> Phase 1 allowed.  Caveats:
+metric spread is only 1.1-1.3x (not the hypothesised 2-3x); literal
+half_life_acf spec is degenerate (return ACF < 0.5 at lag 1 always);
+n=10 with noisy EV ranks.  Key structural fact: actual zigzag pivot
+confirmation lag is p50=1-2, p90=6-9 bars - lookback=30 is ~4x the
+real confirmation lag, so the Phase-1 formula (lookback = 1.5 x
+pivot_p90 ~ 9-14, cw = 2 x retest_p90 ~ 42-54) would produce a
+genuinely different configuration, not a cosmetic one.
+
+PHASE 1 (reduced, PRE-REGISTERED before the run): the original
+formula is broken - vol half-life ~1 bar cannot set a delay range
+(conceptually wrong measure), and min_extreme_gap = 0.5 x pivot_p50
+would disable the filter (p50 = 1-2).  What survives is a BTC-only
+lookback recalibration:
+
+  BTC only, 15m:
+    lookback = int(1.5 x pivot_p90 = 9) = 13   (was 30, static)
+    cw       = round(2.0 x retest_p90 = 27) = 54   (was 36)
+    delay    = [5, 10)   (NOT adapted, kept from step 1)
+    min_extreme_gap = 6 (default, NOT adapted)
+    revATR = 2.5, zone_atr_multiplier = 0.2, TP = {4R, 6R}
+  Secondary ablation arm (pre-registered, diagnostic only):
+    lookback=13 with cw=36 (isolates the lookback effect).
+  Decision on TRAIN (folds 0-3 + 7d embargo); test folds 4-6 are the
+  readout vs the L=30/cw=36 baseline (train n=60 EV4 +0.425, test
+  n=31 EV4 +0.198).  Criterion on EV_test: > +0.05R better -> the
+  9-asset test with per-asset lookback/cw is allowed; within noise
+  or worse -> phase 1 closed, OB track closed, funding carry.
+
+PHASE 1 RESULT (runs/ob_lookback13.log, engine/experiments/
+ob_lookback13.py): RECALIBRATION FAILS, criterion is a clean FAIL.
+
+  arm                TRAIN n  EV4R/EV6R        TEST n  EV4R/EV6R
+  A: L=30, cw=36        60  +0.425 / +0.478     31  +0.198 / +0.262
+  B: L=13, cw=36 (abl)  73  +0.177 / +0.397     23  -0.171 / -0.241
+  C: L=13, cw=54 (prim) 73  +0.177 / +0.397     23  -0.171 / -0.241
+
+- EV_test drops -0.37R vs baseline (criterion was > +0.05R better);
+  EV_train also lower.  Shorter lookback admits younger pivots whose
+  fast retests are junk, not signal.
+- B == C exactly: cw is irrelevant once the delay cut [5,10) is
+  applied (all retests are < 10 bars after break anyway); cw only
+  gates which blocks find a retest at all.
+- Pivot-lag insight stands as a fact (real confirmation p90 = 6-9),
+  but the "excess" lookback=30 was acting as a beneficial quality
+  filter on pivot maturity, not as ballast.
+
+FINAL: OB-retest on 15m is CLOSED per the pre-registered rule.
+Hypothesis "lookback was masking edge" rejected.  Next: funding
+carry recon (top-20 assets, funding history, annualized carry /
+pct_positive / std), then baseline carry strategy.
+
+Pre-closure diagnostics (runs/ob_ldgrid.log,
+engine/experiments/ob_ldgrid.py) - all four confirm closure:
+
+1. L x delay grid (5 L x 3 delay buckets, EV4R/EV6R, train vs test):
+   NO coherent surface.  Cells flip sign between segments (L=13
+   [5,10): train +0.51 -> test -0.10; L=35 [5,10): train -0.28 ->
+   test +0.39; L=25 [8,15): train +0.22 -> test +0.84).  Train-best
+   cells do not replicate; test-best cells were train-flat.  The
+   "+0.35R working point" was a train-max artifact on a noise
+   surface, as suspected.
+2. Per-fold EV4R, delay [5,10): L=30 positive in 5/7 folds, L=13 in
+   3/7; L=13 worse in 5 of 7 folds.  Consistent with the arm test,
+   direction stable, magnitudes tiny-n noisy.
+3. Age anomaly resolved: total validated blocks barely move with L
+   (train 354 vs 355, test 179 vs 169; age med 40-41 vs 22-24, min
+   age = L as expected).  The test survivor drop 31 -> 23 is delay-
+   cut pool composition, not a missing population.
+4. Null bootstrap of the holdout asset pattern: with true EV = 0 and
+   per-asset SE from trade counts, P(>=5 of 9 positive) = 0.50,
+   P(>=3 of 9) = 0.91.  Observed 5/9 positive at 4R (3/9 at 6R) is
+   a coin flip - the "works on BTC/ETH/DOGE/XRP" pattern is
+   statistically indistinguishable from noise.  Asset-segregation
+   hypotheses (basis, beta, retail, depth) are moot.
+
+OB-retest 15m: CLOSED, now with a defensible basis (grid incoherent,
+bootstrap null-consistent).  Funding carry next.
+
+## AVSL cross (new signal track) - PRE-REGISTERED before the run
+
+Mapping (user-confirmed): fast line = avsl_ind(low, close, volume,
+fast=70, slow=345) - the full AVSL indicator; slow line =
+sma_ind(close, 345).  Data: BTC-USDT 15m okx21 (916d), warm-up 400
+bars skipped.
+
+Baseline arm (no filters): long when close crosses above fast
+(close[t-1] < fast[t-1] and close[t] > fast[t]); short mirrored.
+Signals with slow on the wrong side (risk = |close - slow| <= 0 or
+stop beyond entry) are skipped - the stop is undefined there.
+Stop = slow line at entry (structural); TP {3R, 5R, 8R}; horizon
+192 bars (2d) with mark-to-market exit; conservative within-bar
+ambiguity (stop wins).  Fees reported separately (gross / net with
+taker 5bp x 2).  No cooldown, no alignment/ADX/volume filters -
+those are step-3 arms, each pre-registered with criterion +0.05R
+over baseline on train.
+
+Segments: protocol folds 8x56d; train = folds 0-3, test = folds 4-7
+(4 test folds; 916d history supports 16 windows).  Criterion on
+train: EV > +0.05R signal, > +0.10R strong, <= 0 filters needed /
+dead.  Readout: n, EV per TP, win rate, long vs short split.
+
+BASELINE RESULT (runs/avsl_baseline.log): EV <= 0 gross, as the
+pre-registered expectation for an unfiltered arm; filters are the
+next step.  BTC 15m, 916d:
+
+  TRAIN (folds 0-3): 1924 raw crosses (~2.1/day - the AVSL(70,345)
+  line hugs price far closer than a swing MA; NOT 1-3/week), 757
+  skipped (slow on wrong side - stop undefined).
+    TP=3R n=1167 gross -0.003 (long -0.16/23%, short +0.08/31%)
+    TP=5R n=1167 gross -0.007
+    TP=8R n=1167 gross +0.098 (long -0.02/15%, short +0.16/22%)
+  TEST (folds 4-7): 469 crosses, 181 skipped; gross +0.00/+0.06/+0.02.
+
+Two structural findings:
+1. Taker round trip in R = 2*fee*price/risk.  With no alignment
+   filter the structural stop (slow SMA345) sits arbitrarily close
+   to price on many crosses -> mean cost ~1.0R, net ~-1.0R.  The
+   structural stop is economically undefined until slow-side
+   alignment and a minimum-risk distance are enforced.
+2. Long/short asymmetry flips between train and test (train short
+   +, long -; test reversed) - no stable side edge at baseline.
+
+Donor audit (user provided Pine source): the repo port is faithful
+- lenV, VPCc clamp, PriceV/100, and the AVSL formula all match.
+Two deltas: (a) Pine divides by PER-BAR VPCc[i] in the window loop,
+the repo by the CURRENT bar's vpc_c (minor - VPCc moves slowly);
+(b) donor default mult=2.0 vs stand_div=1.0 used in the first run.
+
+Donor-calibration arm, stand_div=2.0 (runs/avsl_baseline_sd2.log):
+  TRAIN n=1001 gross +0.03/-0.02/+0.05 (3/5/8R)
+  TEST  n= 256 gross -0.03/-0.00/-0.07
+Same conclusion: gross ~ 0, net ~ -0.85R (cost/risk collapse on
+unfiltered crosses), long/short flip persists.  Cross frequency
+~2/day is intrinsic to the indicator: AVSL is by construction a
+trailing-stop line that lives near price (DeV offset), not a swing
+level - the "swing cross" framing has no support in the formula.
+Verdict unchanged: EV <= 0 -> filter step next, slow-alignment
+first.  Honest alternative: treat AVSL crosses as what they are
+(stop-flip events) or drop the track.
+
+Bug fixes in ta/src/custom/avs_base.py (pre-validation, no Pine
+cross-check by decision):
+1. CRITICAL _price_v_rolling: window denominator now uses PER-BAR
+   vpc_c[start+j] (Pine parity: src[i]/VPCc[i]/VPR[i] with i the
+   loop index), previously current-bar vpc_c[i] was broadcast over
+   the whole window.
+2. _compute_len_v: banker's round() replaced with half-up
+   floor(x+0.5), matching Pine's round().
+Unit tests added (ta/tests/tests_custom/test_avs.py, 9 tests):
+rolling mean on constant denominators, per-bar-VPCc regression
+(fails on pre-fix code), zero-denominator skip, L=0 passthrough,
+half-up rounding, len_v branches, vpcc clamp.  Full engine suite
+green (236 passed / 2 skipped); ruff clean.
+Fixed-code rerun (stand_div=2.0, runs/avsl_baseline_fixed.log):
+  TRAIN n=990 gross +0.05/-0.01/+0.05; TEST n=260 gross
+  -0.05/-0.02/-0.08 (3/5/8R).  Statistically identical to pre-fix:
+  the VPCc-shift error was small (VPCc moves slowly).  Verdict
+  unchanged: gross ~ 0 -> filters or close.
+
+Long/short split + beta check + Path A (runs/avsl_baseline_fixed.log,
+runs/avsl_align.log; stand_div=2.0, config 70/345):
+1. Long/short EV tracks SEGMENT BTC DIRECTION, not signal quality:
+   train (BTC -0.5% flat): short positive (+0.13/+0.10/+0.10),
+   long negative (-0.09/-0.19/-0.02); test (BTC +8.4%): long
+   positive (+0.14/+0.31/+0.08), short negative (-0.22/-0.26/-0.08).
+   The "flip" between segments is beta BTC, confirmed by segment
+   moves printed per segment.  Not a signal edge.
+2. Path A slow-alignment arm (long: slow 1h-slope > 0 AND close >
+   slow; short mirrored; pre-registered criterion +0.05R on train,
+   all TPs): n 990 -> 648 train / 260 -> 175 test.  Train gross
+   +0.039/+0.046/+0.135; test -0.071/-0.044/-0.066.  FAILS: two of
+   three TPs below +0.05R on train, and the 8R TP that "passes" is
+   negative on test.  Improvement does not transfer - consistent
+   with the beta reading: the filter shaves trades but the residual
+   EV is still segment drift.
+Path A verdict: DEAD per pre-registration.  Path B (stop-flip exit
+rule, separate experiment) or close the track.
+
+Swap arm (for fun / diagnostic; runs/avsl_swap.log): entry line
+= SMA(345), stop line = AVSL(70,345) - inverted config, same
+protocol, stand_div=2.0.  Also fixed a NaN hazard: AVSL has
+leading NaNs (~bar 400-710 in train), `risk <= 0` does not catch
+NaN comparisons; entry loop now guards np.isfinite(risk).
+  TRAIN (flat -0.5%): n=1089 gross +0.03/-0.00/+0.01
+    [long -0.06..-0.11; short +0.19..+0.23]
+  TEST (+8.4%):       n=248  gross -0.12/-0.23/-0.12
+    [long -0.11/-0.21/+0.07; short -0.15/-0.27/-0.40]
+Reading: swap is WORSE, and the beta pattern breaks - long is
+negative even in a +8.4% segment.  Mechanism: SMA345 cross entry
+is late (3.6d into the move), AVSL stop hugs price (tight risk)
+-> stopped before continuation; net ~ -1.0R again.  Both configs
+of AVSL/SMA cross-as-entry are dead; strengthens the B-or-C fork
+(stop-flip exit rule vs closing the track).
+
+Price-cross arm (no SMA; runs/avsl_price_cross.log): entry =
+close crossing avsl(70,345) itself, stop = line at entry, both
+orientations, 10 assets (BTC + 9 holdout), per-asset, train/test
+as protocol.  Result: STRUCTURALLY DEGENERATE, not a fair test.
+- Reverse arm: 0 trades on every asset/segment (100% skipped) BY
+  CONSTRUCTION - at a down-cross close is below the line, so a
+  reverse long has stop above entry: risk < 0 always.
+- Normal arm: at the cross the line IS the price, so risk ~ 0 ->
+  taker round trip = 2*fee*price/risk explodes (net -2.5R BNB-adj
+  to -70R BNB-test); economically undefined, same cost collapse as
+  the unfiltered baseline but worse.
+- Only non-trivial signal: 8R TP gross is positive on 7/10 assets
+  in BOTH train and test (e.g. AVAX +0.22/+0.03, LINK +0.23/+0.23,
+  NEAR +0.08/+0.23) while 3R/5R are ~0/negative - tiny-risk, wide-
+  target lottery asymmetry.  Untestable as taker: cost >> EV.
+Conclusion: any stop tied to the AVSL line AT the cross is
+economically void (risk -> 0).  Sane no-SMA designs are: (a) stop
+= line + min-risk distance filter (bps of price, pre-registered),
+or (b) Path B cross-to-cross flip, MTM, no fixed stop.
+
+Price-cross v2, stop=1xATR(14)@entry (runs/avsl_price_cross_atr.log):
+same 10 assets, normal + reverse, sane risk -> sane costs (net
+-0.1..-0.6R).  Readout, 3R gross normal vs reverse:
+  TRAIN: BTC +0.00/-0.02, AVAX +0.06/+0.01, BNB 0.00/-0.02,
+  DOGE +0.04/-0.01, ETH +0.04/+0.02, LINK +0.12/-0.00,
+  LTC +0.00/-0.03, NEAR -0.04/+0.02, SOL +0.10/+0.02,
+  XRP -0.02/-0.01.
+  TEST: BTC +0.02/-0.00, AVAX +0.01/-0.07, BNB +0.11/-0.02,
+  DOGE +0.06/+0.00, ETH +0.00/+0.07, LINK +0.15/-0.00,
+  LTC -0.02/-0.03, NEAR -0.07/-0.00, SOL -0.00/+0.03,
+  XRP +0.12/+0.12.
+Findings:
+1. Normal beats reverse on ~7/10 assets in BOTH segments: the
+   cross DOES carry directional info, but it is tiny, ~+0.03..+0.05R
+   gross at 3R.
+2. Absolute level ~ 0: 3R break-even win rate is 25%, observed
+   24-29% -> EV ~ 0.  8R break-even is 11.1%; observed 12-15% ->
+   small positive EV that is a property of the TP/ATR geometry
+   (lottery payoff), present in BOTH orientations - not signal.
+3. Taker costs on 1xATR(14) 15m risk (~0.3-0.5% price) are
+   ~0.2-0.3R per trade -> every arm net-negative everywhere.
+FINAL VERDICT, AVSL cross as entry (all configs tried: vs SMA345
+stop, alignment, swap, price-cross ATR stop, both orientations,
+10 assets): directional edge <= +0.05R gross, costs >= 0.2R ->
+net-negative on every asset.  TRACK DEAD as entry signal.  The
+only untested mechanism left is AVSL as exit (Path B stop-flip);
+funding carry remains the standing pivot.
+
+Path B stop-flip trailing (pre-registered, runs/avsl_trailing.log):
+entry=cross, initSL=2xATR14, trail=AVSL-0.3ATR monotonic causal;
+v1 time N=10 / v2 profit 1R / v3 AVSL>entry; bench=always-in;
+10 assets, train folds 0-3.  Success criterion: trailing EV >
+bench EV + 0.05R on train, replicated on test.
+RESULT: 0/10 assets pass on train.  Best trailing vs bench EV
+(train): BTC +0.148 vs +0.167, AVAX +0.202 vs +0.258, BNB +0.124
+vs +0.082 (+0.042, <0.05), DOGE +0.150 vs +0.156, ETH +0.164 vs
++0.153 (+0.011), LINK +0.000 vs -0.022, LTC +0.006 vs +0.018,
+NEAR +0.110 vs +0.084 (+0.026), SOL +0.119 vs +0.120, XRP +0.231
+vs +0.183 (+0.048, <0.05).  Bench >= trailing on 6/10 outright;
+no variant clears +0.05R-over-bench anywhere.
+DD: trailing does cut maxDD (BTC 129-144R vs 178R; DOGE 45-53 vs
+71; NEAR 57-61 vs 89) but only by cutting exposure - EV drops
+proportionally.  No DD-free lunch.
+Test replication: moot (nothing to replicate); test nets are
+mostly negative, bench still generally >= trailing.
+VERDICT: FAIL per pre-registration - trailing is beta with extra
+steps.  AVSL track CLOSED in full: cross-as-entry dead (edge
+~0.05R gross < costs ~0.2-0.3R), cross-as-exit no better than
+always-in.  The always-in benchmark being the best arm is itself
+the summary: the AVSL(70,345) line carries mild trend exposure
+(beta), no tradable alpha at 15m taker costs.  Pivot: funding
+carry recon.
+
+Combined arm (user-requested, runs/avsl_trail_norm.log /
+avsl_trail_rev.log): cross-entry + initSL=2xATR14 + IMMEDIATE
+AVSL trailing (no activation gate; buffer 0.3ATR, monotonic),
+normal AND reversed orientations, bench=always-in same orientation.
+NORMAL trail vs bench, train EV: better on 6/10 but only XRP
+clears +0.05R (+0.235 vs +0.183); NEAR +0.038; on test XRP
++0.183 vs +0.050 and NEAR +0.096 vs +0.005 do replicate, but 2/10
+marginal passes are null-consistent (cf. OB bootstrap: asset
+pattern coin flip at these sizes).  REVERSED trail: gross positive
+9/10 train (fade + tight trail, win 40-46%, hold ~20 bars) but
+below costs; net negative essentially everywhere, test 6/10.
+DD: trail < bench nearly everywhere by construction (tighter
+stops, smaller exposure), EV drops with it.
+VERDICT: unchanged - no orientation/exit combo produces EV > bench
++ 0.05R robustly across assets.  XRP/NEAR flagged only as the
+least-uninteresting cases; not actionable.  Track stays CLOSED.
+
+HTF arms (runs/avsl_trail_htf.log): same combined design on 1H
+(10 assets) and 4H (7 assets; no data for BNB/LINK/XRP).
+1H NORMAL: bench (always-in) BEATS trailing on 8/10 train and
+most of test (BTC test bench +0.29 net +0.20 vs trail -0.08;
+SOL test +0.30 net vs -0.05).  Trailing still strictly dominated.
+The only cross-TF pattern that is net-positive on multiple assets
+in BOTH segments is the 1H ALWAYS-IN BENCH itself (train net:
+BNB +0.48, DOGE +0.15, NEAR +0.14, SOL +0.12, XRP +0.07; test
+net: XRP +0.74, SOL +0.30, LINK +0.27, BTC +0.20) - i.e. the
+AVSL(70,345) line on 1H works as a plain trend-regime position
+(long above / short below), which is beta-style directional
+exposure, not per-trade alpha.  1H REVERSED: gross +7/10 test but
+train only 4/10, different assets - noise.  4H: n too small
+(test n=1..26 per arm; single trades dominate, e.g. ETH test
+n=1 +7.6R) - no inference possible.
+SUMMARY: AVSL(70,345) has one defensible use: 1H always-in regime
+direction (beta overlay).  As entry signal, exit rule, or fade at
+15m/1h/4h taker costs: closed.
+
+yfinance data pipeline (engine/experiments/load_yf.py, data/yf/):
+yfinance installed; 40 parquet files loaded (10 assets x 15m/1H/4H/
+1D) in the okx21 schema (ts epoch-ms Int64 + OHLCV Float64), so
+engine experiments run unchanged.  1H = 730d (17326 bars), 4H
+resampled from 1H (4335), 15m = 60d (5742), 1D = full history
+(2192-4387 bars, up to 12y).  Hour-aligned, gaps <= 7 on 1H.
+DATA QUALITY WARNING: yfinance intraday crypto VOLUME is ~half
+zeros (1H: ~8800/17326 zero-volume bars; 15m ~30%; 1D fine).
+Anything volume-dependent (AVSL uses VWMA/VM) run on okx21 data
+or 1D yf only; use yf intraday for price-only statistics or with
+a volume-quality filter.
+
+Universe expanded 10 -> 36 assets (3.6x).  144/144 files present
+(36 x 15m/1H/4H/1D).  Yahoo rate-limits intermittently (different
+symbols come back EMPTY per sweep; 2s pause + targeted re-runs
+filled all holes).  Swaps after persistent Yahoo empties: UNI ->
+CRV-USD, APT -> EOS-USD, SUI -> KSM-USD, GRT -> SAND-USD, PEPE ->
+FLOKI-USD.  Final universe: BTC ETH SOL XRP DOGE AVAX LINK LTC
+NEAR BNB ADA DOT UNI(CRV) ATOM APT(EOS) ARB OP FIL INJ SUI(KSM)
+TIA SEI FET AAVE GRT(SAND) ALGO VET ICP HBAR ETC BCH TRX SHIB
+PEPE(FLOKI) WIF TON.  Loader supports symbol filter args
+(load_yf UNI APT 1H) + 2s throttle for targeted re-runs.
+
+TRAILING ON YF UNIVERSE (runs/avsl_yf_{15m,1h,4h}.log; avsl_trailing
+now accepts "yf" flag -> data/yf + 35-asset list): yf-specific
+read path added: zero-volume ffill (see warning above) + bad-tick
+excision (|1-bar logret|>50% bars -> OHLC := prev close, iterated).
+TON EXCLUDED from yf stats: corrupt Yahoo series (636 bars stuck
+at $0.017 after a fake -99.5% 1H print, Aug 2025); isolated spikes
+in APT/ARB/TIA (1-5 bars) are excised.  15m yf not runnable: 60d
+history < 448d walk-forward span (15m scale remains covered by
+okx21).  Results (35 assets, net EV, pre-reg pass = train & test
+both >= +0.05R, vs always-in bench same orientation):
+1H NORMAL: 13/35 pass, trail>bench test 20/35, med diff +0.02R.
+4H NORMAL: 11/35 pass, trail>bench test 25/35, med diff +0.16R.
+1H/4H REVERSED: 6/35 and 3/35 pass, test med diff negative.
+Reading: 4H NORMAL beats bench out-of-sample in 25/35 - nominally
+binomial p~0.017, but (a) 6 configs tried, (b) 35 crypto assets
+over one overlapping window are NOT independent trials, (c) trail
+cuts exposure so bench DD (up to 200R on TRX) dominates gross
+comparisons, (d) aggregate net-R is unusable (single 100x-trend
+trades in SHIB/FLOKI give hundreds of R).  Before believing 4H:
+block bootstrap over asset-level diffs + fresh window.  Verdict
+unchanged pending that test: AVSL = beta overlay, not alpha; the
+only new candidate is "AVSL trail on 4H" as DD-reducer.
+
+OKX DATA EXPANSION (engine/experiments/load_okx.py, IN PROGRESS -> see
+runs/load_okx_expand.log): breadth 10 -> 36 assets (BASE + NEW lists;
+all 26 new exist as OKX spot {SYM}-USDT -- no Yahoo-style aliases),
+depth caps raised to 15m 100k bars (~2.9y), 1H 40k (~4.6y), 4H 20k
+(~9y), 1D 5000 (~13.7y, listing-capped).  Uses the existing resumable
+okx_fetch page-cache: re-runs walk backwards from the oldest cached
+bar, so depth grows run over run; interrupted runs lose <= 5000 bars.
+First proof: BTC 1D 916d -> 8.94y (3265 bars) on the first invocation.
+BUG FIXED en route (engine/infra/marketdata/okx_fetch.py): a cache
+resume used to start at /market/candles, whose ~1440-bar recent window
+cannot serve an old cursor -> both endpoints empty -> "no candles"
+crash once a file reached listing depth (hit on ADA-USDT 1D, cache
+since 2018).  Resume now starts at /market/history-candles, and an
+empty fetch with a non-empty cache returns the cache as complete.
+Also: run the whole expansion as ONE python process (bash "; " chains
+survive python kills and respawn the next phase -> concurrent writers
+on the same parquets).
+
+LONG-ONLY ON OKX (runs/avsl_okx_long.log; avsl_trailing grew a "long"
+flag + 1D support + min-bars guard, universe = load_okx.ALL 34): same
+pre-registered config (cross entry 70/345, initSL 2xATR14, immediate
+AVSL-0.3ATR trail), short entries skipped, long exits at SL|reverse
+cross; bench = always-in long-only.  Net EV, train/test 224d+224d:
+1D  x32: 1/32 pass, trail>bench test 5/32, med diff -0.011R -> null.
+15m x10: 0/10 pass, 8/10 trail>bench but med diff -0.032R -> null.
+1H  x10: 2/10 pass, 6/10 trail>bench, med diff +0.168R, but raw EVs
+         are beta: trail/bench both strongly + in the 2026 BTC bull
+         (BTC +0.94/+0.81R, XRP +1.18/+1.03R per trade), trail WORSE
+         on choppy recoveries (ETH -0.21 vs +0.25, SOL -0.18 vs +0.60
+         -- trailing cuts winners), better only in downtrends (AVAX
+         -0.29 vs -0.41, DD cut ~30%).
+4H  x8:  thin (n_test=74), 4/8, med +0.105R -- no inference.
+Read: long-only changes nothing material -- the 1H long trail is the
+same "always-in regime beta" as before with a DD-reduction side
+effect; no alpha.  RE-RUN 4H/1H/15m over the full 34-asset universe
+once the okx expansion finishes.
+
+5M LONG-ONLY ON OKX (runs/avsl_okx_5m_long.log; "5m" added to
+avsl_trailing TFs): 10 base assets, 2.5-3y depth (BNB/LINK/XRP 1y ->
+wf_folds gives 7 folds, test 168d).  n_test=6801 trades.  Result:
+fee wall, exactly as pre-diagnosed on 15m.  Test medians: trail
+evG +0.051R/trade vs evN -0.289R (cost drag 0.34R = 0.1% round trip
+over 2xATR14(5m) risk unit); bench evG -0.004 / evN -0.308.  Trail
+"beats" bench 8/10 and cuts DD ~15%, but both are deeply net
+negative on every asset (test evN -0.04..-0.35R).  Even at maker
+0.02%/side the drag (~0.14R) still exceeds the +0.05R gross edge.
+5m closed at taker AND maker costs; no further 5m work planned.
+
+5M x5 CONFIG (runs/avsl_okx_5m_x5.log; cfg=350/1725 added to
+avsl_trailing via _fast_line_fs, regression-checked bit-identical to
+baseline 70/345; warm-up scales with slow).  Two variants, 10 assets:
+LONG-ONLY: pass 0/10, trail>bench 6/10 (med diff +0.056R) but both
+sides net-negative (trail med evN -0.24R, bench -0.17R); NORMAL
+(two-sided): pass 0/10, trail>bench 3/10, med diff -0.060R.
+Diagnosis: x5 halved trade count (n_test 6801 -> 3118) and doubled
+hold (30 -> 57 bars) but gross edge per trade did NOT rise
+(+0.051 -> +0.043R) because the R unit stayed 2xATR14 -- the edge is
+scale-invariant ~+0.02..0.05R/trade while the 0.3R taker cost is
+fixed per trade.  Slow-line configs cannot escape the 5m fee wall;
+only the risk-unit (wider SL / bigger ATR mult) or maker fills could,
+and both were already ruled out.  5m family closed for good.
+
+ENTRY FILTERS ON 1H LONG-ONLY (runs/avsl_okx_1h_filters.log;
+avsl_trailing grew filter tokens adx/ob/stoch/rsi = per-bar LONG
+gate applied to BOTH arms; gated bench = always-in while gate on.
+NOTE: gate is defined long-only; also _read_* now return open.
+BUG FOUND: rsi_clouds_ind returns all-NaN macd/sig/hist -- rsi_ind
+leaves 13 leading NaNs and the non-talib ema path poisons the whole
+MACD with them.  Worked around in _gate_long (manual clouds: seed
+warm-up NaNs with first valid RSI, causal).  Gate True fractions:
+rsi 50%, stoch 50%, adx 24%, ob 2.5% of bars.)
+Test-window results (10 base assets, same data+windows, unfiltered
+rerun included):
+  none          pass 2/10, tr>bn 6/10, n=610, med test diff +0.051,
+                bench (always-in long) itself +0.285R/trade = beta.
+  adx(>25,+DI)  3/10, 5/10, n=130, test diff -0.073; gate CUT bench
+                to +0.116 (loses bull drift) -> not helpful.
+  rsi-clouds    2/10, 7/10, n=352, test diff +0.388; trail own test
+                EV med ~+0.37R (7/10 assets positive) vs unfiltered
+                trail med ~+0.17R -- filter roughly doubles per-trade
+                edge while cutting trades 42%.  CAVEATS: XRP +2.3R
+                outlier, best-of-7 selection (nominal p(>=7/10)=0.17
+                uncorrected), single bull window, correlated assets.
+  stoch         1/10, 6/10, n=439, test diff +0.186 -- weak.
+  adx+rsi+stoch 2/10, 4/10, n=69, test diff -0.338 -- stacking kills.
+  ob (demand-zone veto) DEAD: 1 test trade.  Structural mismatch:
+  AVSL cross bars almost never coincide with price-inside-zone bars
+  (ob+stoch same).  OB gates entry-TIMING systems, not cross-veto.
+Read: RSI-clouds entry gate is the first filter that improved the
+trail (vs gated bench AND vs unfiltered trail) -- candidate worth a
+block-bootstrap/holdout on the full 34-asset universe, NOT yet a
+verdict.  ADX gate and OB veto rejected; ADX also worsens plain
+always-in.  OB stays a standalone entry system, not a filter.
+
+RSI-GATE TEARDOWN (steps 1-2 of the pre-agreed kill chain;
+'rsi50' = plain RSI(close,14)>50 and 'rand' = seeded random 50%
+gate added as controls; runs/avsl_okx_1h_filters.log tail).
+Step 1 no-XRP + distribution (test diffs trail-gated_bench):
+  clouds ALL med +0.388 (7/10 pos, q1 -0.118, q3 +0.715);
+  clouds noXRP med +0.229 (6/9) -- passes the >+0.15 stop but XRP
+  alone is 41% of the effect; breadth real (BTC .77 BNB .79 DOGE
+  .55 LINK .55 NEAR .23 LTC .14), lower quartile negative.
+Step 2 controls:
+  rand 50%: med diff -0.042 (4/10), trail EV negative on 7/10 ->
+  capacity-matched noise does NOT reproduce; gate is not a trade-
+  count artifact.
+  rsi50:   med diff +0.406 ALL, +0.405 NO-XRP (7/10) -- plain
+  RSI>50 fully reproduces clouds WITHOUT the XRP crutch (clouds
+  noXRP +0.229 vs rsi50 noXRP +0.405).  Trail test EV med ~+0.39R,
+  7/10 positive, XRP only 0.86.
+VERDICT: RSI-clouds machinery is redundant -- the effect is a coarse
+momentum-regime gate (RSI>50), i.e. "beta with a momentum filter"
+(hypothesis 2 of 3), not a clouds-specific timing edge.  Per the
+kill chain: STOP on RSI-clouds as a signal.  The residual pattern
+"gated 1H long trail beats gated always-in ~+0.4R/trade, XRP-robust"
+is the same trailing DD-trim/regime story as before; it inherits the
+old verdict (beta overlay) unless a bear-window holdout says
+otherwise.  Do not spend bootstrap hours on clouds.
+
+DONCHIAN BREAKOUT -- PRE-REGISTRATION (before any run; engine/
+experiments/donchian_breakout.py).  Hypothesis: Donchian(20) breakout
++ EMA(200) trend filter + 2xATR(14) stop + Donchian(10) exit gives
+positive net result on 4h crypto on >= 4/6 majors, train AND test.
+Entry long: close > max(high[t-20:t]) AND close > EMA(200) AND
+close > open AND ATR(14) percentile rank within last 500 bars > 0.3.
+Entry short: mirrored (close < min(low,20), close < EMA200, red bar).
+Exit: close < min(low[t-10:t]) OR close < entry - 2xATR(14)
+(long; mirrored for short).  SPEC DEVIATION, declared: the user's
+exit clause 3 ("close < max(exit_price, entry-2xATR)") is degenerate
+-- max of two entry-time constants never rises; the trailing intent
+is already Donchian(10).  Implemented as the two exits above, close-
+based (as written), no intrabar wick trigger.  Also pre-registered:
+no same-bar re-entry after an exit; each segment starts flat; risk
+unit R = 2xATR(14) at entry; costs = actual 2x taker 0.05%/side
+normalized by R (user's flat "0.16R" overstates 4h costs; at 4h
+2xATR ~ 3-4% of price -> ~0.03R).  Sizing is R-normalized, fixed
+fraction 1% is EV-invariant here.  Data: 4H, BTC/ETH/SOL/BNB/XRP/DOGE
+(916d each), warm-up 700 bars.  Split = standard walk-forward: train
+= folds 0-3 (224d), test = folds 4-7 (224d), segments start flat.
+Benchmark: buy-and-hold over the same segment, expressed in R.
+PRIMARY system = both sides (shorts mirrored, per spec); long-only
+reported as secondary.  KILL: <= 2/6 assets with positive total net R
+on test -> close the swing track, go look at funding carry.
+
+DONCHIAN RESULTS (runs/donchian_4h_prereg.log) -- **KILLED**.
+TRAIN: 6/6 positive net R (totR +12..+140, evN +0.13..+0.73/trade) --
+textbook overfit-free train boom.  TEST: 2/6 (SOL +9.0R, BNB +6.0R;
+BTC -6.3R, DOGE -7.3R, XRP -3.6R, ETH -1.9R) -> kill criterion hit
+(<=2/6).  Vs buy-and-hold on test (B&H +5.1R BTC, +5.8R ETH, +6.2R
+SOL, +6.6R BNB, -0.7R XRP, -2.1R DOGE): system loses to B&H on 4/6
+and trails on a 5th.  Long-only secondary: 3/6 positive -- also
+fails >=4/6.  Reads: (1) n_test is small (15-19 trades/asset), so
+the kill itself is low-powered -- the test window may simply lack
+clean ranges-to-trends; (2) the train/test flip with identical rules
+is exactly the regime-dependence the AVSL work kept showing: 4h
+breakout edge, where it exists, is a bull-trend beta, not portable
+alpha; (3) close-based Donchian exit gives back a lot in chop
+(BTC test: 47% win, negative EV).  Per pre-registration: swing/
+Donchian track closed.  Next on the board was funding carry.
+
+DONCHIAN ALL-TF ROLLOUT (runs/donchian_all_tf.log; same fixed rules,
+6 majors, per-TF kill <=2/6 test; 1D now has deep okx data ~13y so
+its train = first ~11y of history, test = last 448d; on 1D the fixed
+WARM=700 bars eats part of train -- declared beforehand):
+  5m : TRAIN 0/6, TEST 0/6 -> dead (fee wall, as everything on 5m).
+  15m: TRAIN 0/6, TEST 2/6 -> dead.
+  1H : TRAIN 4/6 (mixed: BTC -38.5R, ETH -12.5R vs XRP +61R),
+       TEST **5/6** (BTC +7.2, ETH +11.3, SOL +28.1, BNB -0.2,
+       XRP +47.1, DOGE +15.5R; evN +0.08..+0.56, win ~50%).
+       Long-only 1H test: 6/6 positive (+5.5..+47.4R).
+       Vs B&H test: beats it where B&H lost (XRP +47 vs -6.2R,
+       DOGE +15.5 vs -9.1R) and on SOL; loses BTC/BNB, ties ETH.
+  4H : TRAIN 6/6, TEST 2/6 -> the PRE-REGISTERED TF is killed.
+  1D : TRAIN 6/6 (11y of history), TEST 1/6 -> dead.
+Read: the pre-registered hypothesis (4H) stays killed; 1H passing is
+a POST-HOC best-of-5 discovery in the same bull window that flattered
+every long-biased test.  EV per trade on 1H test is small (+0.08
+BTC) with heavy train maxDD (27-46R) -- looks like regime survival,
+not breakout alpha.  Worth ONE fresh pre-registered confirmation
+(full 34-asset 1H universe once the loader finishes, or a later
+holdout window), explicitly labelled as such; no tuning of 20/10/200.
+
+DONCHIAN 1H DD AUDIT (per-asset, runs/donchian_all_tf.log; user rule:
+"DD > 20R on most assets = unacceptable risk regardless of EV").
+TRAIN: DD 27.0..46.1R on **6/6** -> risk-inadmissible by the rule.
+Recovery factor (totR/DD): XRP 2.26, DOGE 1.39, BNB 1.16, SOL 0.85,
+BTC/ETH negative-total.  TEST: DD > 20R on 3/6 (BTC 30.0, ETH 22.5,
+BNB 22.8); winners' path acceptable: XRP DD 7.6R (recov 6.2), SOL
+10.8R (2.6), DOGE 16.9R (0.92).  Test totR distribution: med +13.4,
+q1 +7.2, q3 +28.1, 5/6 positive; noXRP med +11.3 (4/5); XRP = 43% of
+positive sum -- moderate concentration, not a single-asset carrier.
+DD/n is small (0.05-0.33R/trade) -- the big DD_R numbers come from
+hundreds of trades, i.e. they measure cumulative noise + regime, not
+per-trade risk; still, by the pre-agreed 20R rule the TRAIN period
+fails.  Therefore the 34-asset confirmation run carries an added
+pre-registered risk gate (fixed now, before the run): median test
+DD <= 20R AND recovery >= 1.0 on >= 17/34 assets, alongside the
+>= 17/34 positive-net-R criterion.  Loader 1H phase still running
+(no PHASES_DONE); test fires when data lands.
+
+### Sim-audit: gap-through-stop / allow_reverse / GEN_SLIP layers (2026-09-20)
+
+External review flagged 4 issues in engine/sim; all verified, 2 fixed.
+
+1. gap-check missing in maker_sim AND market_sim (sim() had it).
+   FIXED as defense-in-depth: both now scratch (negative, net of
+   costs) when the fill is beyond the stop, mirroring sim().
+   IMPACT ON PAST RUNS: ZERO.  Audit on the 751 WF-B signals with 1m
+   data currently on disk (BTC/ETH/SOL/DOGE subset, scripts/
+   audit_sim_gaps.py): 0/751 gap-through-stop at market entry;
+   market_sim == sim() pess exactly on the baseline (-0.0543 R);
+   maker_entry's 0.05*ATR limit-vs-stop guard blocked every possible
+   beyond-stop fill (0 violations).  D.12 verdict (maker REJECTED,
+   adverse selection) stands unchanged.  No re-runs needed.
+2. allow_reverse fired at d < busy_until (position still open) and
+   kept the old trade's ISOLATED r_net/exit_idx -> overlapping
+   exposure double-counted.  IMPACT ON PAST RUNS: ZERO - no
+   experiment ever set allow_reverse=True (unit test only).  FIXED
+   semantics: reverse now force-closes the open trade at bar d
+   (flagged force_exit_idx; isolated r_net is stale, caller must
+   recompute) before opening the new side; docstring was wrong too
+   ("bar >= exit bar"), rewritten.  Pinned by tests.
+3. GEN_SLIP appears 4x on an SL exit (entry slip in cost_r, exit slip
+   in price, pe=2x, xtr=1x -> 25 bps worst-case price slip; hand
+   check on a 1%-stop trade: r_opt -1.2995R, r_pess -1.449R +gap).
+   VERDICT: intentional layered pessimism, NOT a composition bug
+   (r_opt already carries entry+exit slip honestly; pe/xtr are
+   pess-only add-ons).  Left as-is: changing constants would
+   invalidate all logged results; effect sizes here are +-0.4R vs
+   ~0.15R of pessimism layers - conservative direction anyway.
+4. Dead code in state_machine (second same-bar check, unreachable)
+   removed; busy_until init -1 -> -2 (never collides with a bar).
+
+Also verified: risk_ref normalization scales costs exactly inversely
+(pess ratio 0.5000 for risk_ref 1.0 -> 2.0).  Full engine test suite:
+231 passed / 2 skipped.  Cosmetic note: sim()'s `hold` parameter is
+ignored (hardcoded i0+47 == HOLD-1 in maker); semantics identical,
+no change made.
+
+### OKX EXPANSION LOADER -- DONE (PHASES_DONE, log line 1439)
+
+Final state: data/okx21 1H = 34/34 (complete, all validated; the
+34-asset prereg ran with ZERO skips), 15m = 27/34 -- 7 assets failed
+at 15m (end-of-run burst of OKX /market/candles + /history-candles
+4-attempt failures: VET, ICP, HBAR, ETC, BCH, TRX, SHIB, PEPE, WIF,
+TON among the FAILED lines; 54 FAILED lines total across both
+phases).  1m legacy files remain 4 (BTC/DOGE/ETH/SOL).  Watcher
+(pid 2832) fired correctly: runs/donchian_1h_34_prereg.log was
+auto-created and ran to completion once the 34th 1H file landed.
+
+### DONCHIAN 34-GATE 1H CONFIRMATION -- RESULT :x: (FAIL -> DONCHIAN CLOSED)
+
+Pre-registered gates (fixed in 917bf70, any FAIL = Donchian closed
+entirely -> funding carry).  TEST segment, full (both sides):
+  G1 positive net-R: 27/34 (need >=17) -- PASS
+     negatives: TRX -35.0R (worst), BCH -9.5, SHIB -5.9, LTC -6.6,
+     AVAX -0.3, APT -0.8, BNB -0.2
+  G2 median test maxDD: 14.9R (need <=20) -- PASS
+     (unlike the 6-major TRAIN audit's 27-46R: bigger universe
+     dilutes the DD tails)
+  G3 recovery >= 1.0: 16/34 (need >=17) -- FAIL (BY ONE ASSET)
+  OVERALL: FAIL -> per prereg, DONCHIAN TRACK CLOSED ENTIRELY.
+Per-asset test totR highlights: XRP +47.1 (dd 4.8), ARB +41.5 (10.5),
+INJ +39.4 (9.4), DOT +29.4 (12.4), SOL +28.1 (5.3), ALGO +25.6 (11.0),
+FIL +25.4, HBAR +22.4, TIA +23.8; evN med ~+0.17, n=58-106/asset.
+Honest reading: 27/34 positive in the SAME bull window that lifted
+every long-biased test, train positives only 11/34 -- the wide
+universe test inherits the regime-beta problem, and the recovery
+factor (tot/DD) gate kills it even before that discussion.  NO
+re-litigation of the one-asset miss: the gate was fixed before the
+run (that is its entire point).  NEXT TRACK per prereg: funding
+carry (OKX /public/funding-rate-history availability + pipeline).
+
+### BARRIER-PROBABILITY MODEL -- PRE-REGISTRATION (2026-09-20, fixed BEFORE run)
+
+New frame (user proposal): not direction, but P(hit TP before SL) --
+first passage time.  Baseline no-edge P = sl_r/(tp_r+sl_r) (zero-drift
+Brownian); any calibrated deviation from it is the tradeable signal.
+User's own success prior: 30%.  ONE shot, gates below fixed now.
+
+Pinned spec:
+  Data: 6 majors 1H okx21 (BTC ETH SOL XRP DOGE BNB), entry = next
+  bar open after the signal bar (generator rule), R = 1xATR14(signal).
+  Barrier grid (tp_r/sl_r): (1,1) (1.5,1) (2,1) (3,1) (4,1.5) --
+  taken from the user spec as-is; both sides; horizon 48 bars.
+  Label: 1 = TP touched before SL with SL-FIRST pessimism (both in
+  one bar -> 0); timeout (neither in 48 bars) -> 0.  Declared: the
+  label is P(TP-first within horizon), timeouts count as losses.
+  Features (entry-time only, causal): atr_pct, atr pct-rank(500),
+  bollinger width + pct-rank, returns 1/4/12/48 bars, signed distance
+  to Donchian(20) and Donchian(55) edges in ATR, (close-SMA200)/ATR.
+  NO funding features in v1 (fetch infra exists; time-alignment is a
+  v2 item -- declared, not an omission).
+  Models: LightGBM binary per (side x config) = 10 models, pooled
+  across the 6 assets.  Walk-forward: wf_folds 8x56d; per fold, train
+  = past-only with 7d embargo (fold_masks); isotonic calibration on
+  the 56d window immediately before the embargo gap; test = the fold.
+  No tuning of LGBM params (n=400, lr=0.05, leaves=15, mcs=40 --
+  the adaptive_tp defaults), fixed now.
+  Trading rule on test bars: EV = P_cal*RR - (1-P_cal) - cost_R,
+  RR = tp_r/sl_r, cost_R = (2*COMM+GEN_SLIP)*fill/(sl_r*ATR); per bar
+  take the max-EV side+config; trade iff EV > 0; per-asset position
+  slot (state machine); P&L from the PESSIMISTIC sim_trade (SL-first,
+  slip, gap 0.25 ATR) -- the binary EV formula never touches P&L.
+
+PRE-REGISTERED gates (all must PASS on pooled TEST, else the
+barrier-probability track v1 is closed with no re-tuning):
+  K1 calibration: pooled Brier(calibrated model) < Brier(baseline
+     b/(a+b)) AND per-config improvement > 0 on >= 7/10 configs.
+  K2 EV edge: top-decile (by model EV) pessimistic per-trade EV > 0
+     on pooled TEST with n >= 300.
+  K3 risk: pooled taken-trade curve maxDD <= 20R on TEST.
+Sanity outputs (not gates): measured baseline-P table vs b/(a+b)
+  theory; reliability deciles.  Parallel track: funding_carry.py
+  (already implemented, never run) executed as-is, results reported
+  separately; no interaction with this prereg.
+
+### BARRIER-PROBABILITY v1 -- RESULT :x: (FAIL all gates, track v1 CLOSED)
+
+runs/barrier_prob_prereg.log.  Smoke sanity first: measured raw
+P(TP-first) for (2R,1R) on BTC 1H = 0.329 vs Brownian baseline 0.333
+-- the b/(a+b) theory is CONFIRMED almost exactly, i.e. the raw
+probability carries no drift edge to begin with.
+
+Gates (pooled TEST, 8 folds x 56d, 6 majors, 10 side-x-config models
++ isotonic cal):
+  K1 calibration: FAIL -- model Brier 0.21747 vs constant-baseline
+     0.21688 (model WORSE); improvement on 1/10 configs only.
+  K2 top-decile EV: FAIL -- pess EV = -0.372R (n=1306); all taken
+     trades -0.400R, win 32%.
+  K3 maxDD: FAIL (5279R across 13,057 trades -- artifact of scale;
+     the real story is per-trade EV ~ -0.4R: the EV>0 rule is not
+     selective, pessimistic costs ~0.25-0.35R at 1R stops dominate).
+Verdict: entry-time vol/momentum/structure features do NOT shift
+P(TP-first) enough to beat the constant baseline, let alone clear
+taker costs.  The informative null the user predicted: on this
+feature set first-passage probability is NOT predictable.  Track v1
+CLOSED per prereg; v2 (funding/OI features, higher-RR configs where
+the cost fraction is smaller) would need a NEW prereg -- standing
+rule: no re-tuning after a kill.
+
+### FUNDING CARRY -- RESULT :x: (REJECTED: costs >> carry; data thin)
+
+runs/funding_carry.log, runs/funding_carry.json.  Pipeline executed
+as-is (bug fixed en route: REPO was engine/ not repo root -- commit
+this one).  Data: OKX funding history gave only ~97 days x 29 assets
+(max_records=1800 insufficient for multi-year persistence analysis --
+rerun with paged history if this track reopens).  Results:
+gross carry +1.59bp/day (5.8% annualized, hit 96%, persistence high
+as expected) but turnover costs 10.5bp/day (2.11 new positions/day x
+0.3% round trip) -> net -32.6% annualized, hit 5%.  Even the
+top-k-dead-zone filter (2bp/day) cannot bridge a 9x cost-vs-carry
+gap; k=1 concentration would need top-asset funding >> 15bp/day
+sustained, which the 97d sample does not show.  REJECTED at current
+cost assumptions; reopening requires either maker execution on the
+perp leg (~5x cost cut) or demonstrated sustained high funding.
+
+### PER-ASSET SLOW CARRY v3 -- PRE-REGISTRATION (fixed BEFORE run)
+
+Follows user directive after v2: cross-sectional rotation is dead
+(extremes mean-revert faster than any rebalance frequency); the
+surviving signal is per-asset hold-until-sign-flip carry.  v3 tests
+it on 3y of funding history.
+
+Data: Binance USDT-M funding, 1096d x 29 assets (cached).  Binance
+is the only multi-year source; OKX tradability is an assumption to
+be re-validated on the OKX 96d panel BEFORE any live step.  Params
+frozen from v2 prereg (no tuning): signal = trailing 3d mean daily
+funding, entry |sig| >= 2bp/day, exit on sign flip, maker half
+round-trip (0.10%) charged at entry and exit, side = receive funding
+(short perp + long spot for positive funding, mirror for negative).
+
+CONTAMINATION CONTROL: the (3d, 2bp) params were chosen while
+looking at OKX 2026-06..09, so the trailing year is tainted.
+  PRIMARY eval = F1+F2 pooled (2023-09..2025-08, pre-observation).
+  F3 (2025-09..2026-09) = reported confirmation, not gated.
+No parameters are fit anywhere; WF means evaluation windows, not
+fitting.
+
+Metrics: per-asset daily net streams; Sharpe_ann and Sharpe_NW with
+Newey-West factor sqrt(1+2*sum(rho_k, k=1..5)), factor clamped to
+[1,5].  Asset counts toward the gate only if in-position >= 60 days
+over the eval window (activity floor).  Portfolio = equal-weight
+fixed 29 slots (flat contributes 0).
+
+PRE-REGISTERED gates (all on PRIMARY F1+F2):
+  C-G1: Sharpe_NW >= 1.0 on >= 10 of 29 assets.
+  C-G2: portfolio Sharpe_NW >= 1.0.
+  C-G3: portfolio max drawdown <= 20%.
+Reported, not gated: F3 per-asset/portfolio Sharpe_NW, fold-by-fold
+regime table, trade counts, OKX 96d cross-check (from v2 run).
+### PER-ASSET SLOW CARRY v3 -- RESULT :white_check_mark: (PASS all gates, first survivor)
+
+runs/funding_carry_v3.log, runs/funding_carry_v3.json.  One bug
+fixed pre-result (same mirrored-sign class as v2 portfolio -- now
+pinned by engine/tests/test_funding_carry_v3.py, 4 tests).
+
+PRIMARY F1+F2 (2023-09..2025-08, uncontaminated, Binance 3y):
+  C-G1: 28/29 assets Sharpe_NW >= 1 (top: ETH 6.88, BTC 6.45,
+        LTC 6.45, XRP 5.82, LINK 5.22; NW factor 2.24).  PASS.
+  C-G2: portfolio Sharpe_NW 5.19 (raw 11.60), ann +8.50%.  PASS.
+  C-G3: portfolio maxDD 0.55%.  PASS -- BUT SEE CAVEAT 2.
+Fold decay (the honest picture):
+  F1 (2023-24): 29/29 assets, ann +13.5%
+  F2 (2024-25): 22/29 assets, ann +3.75%
+  F3 (2025-26, tainted window): 11/29 assets, ann +1.45%,
+      portfolio Sharpe_NW still 3.72, maxDD 0.14%.
+CAVEATS (declared):
+  1. Carry alpha is DECAYING -- +13.5% -> +3.75% -> +1.45% ann by
+     fold.  Classic crowding: funding premia are arbitraged down.
+     F3 run-rate ~1.5%/yr is close to the noise floor of the cost
+     model (maker assumption).
+  2. maxDD is a FUNDING-STREAM drawdown: the simulation models no
+     price risk (delta-neutral by construction), no basis moves,
+     no margin/liquidation.  True DD will be larger; C-G3 as
+     measured is nearly vacuous and will be re-specified in the
+     execution prereg with a real simulator.
+  3. Binance data; OKX tradability unvalidated.  F3 (11/29 >= 1)
+     still clears the user's >=10/29 bar even in the decayed regime.
+VERDICT per prereg efcb6d5: PASS -> track advances to (a) OKX 96d
+validation of per-asset levels/persistence and (b) execution design
+prereg (real sim: basis, margin, partial fills on maker legs).
+ standing rule holds: params (3d, 2bp, sign-flip exit) stay FROZEN.
+
+### ORDER FLOW -- DESIGN SPEC (no code, pending user go)
+
+Goal: test whether microstructure information predicts short-horizon
+direction beyond what OHLCV already showed it cannot.  Data is the
+hypothesis: everything before used OHLCV derivatives only.
+Sources (OKX, public): REST /market/trades + /market/agg-trades
+(history depth to be probed), WS channels trades + books5 for live
+collection; tick-by-tick L2 needs auth tier -- probe first.
+Features (first prereg candidate set, keep SMALL): aggressor-signed
+trade delta (1m/5m/15m), order-flow imbalance (top-5 book),
+trade-size distribution skew, VWAP deviation vs mid, spread state.
+Infra: WS collector -> daily parquet (trade ticks ~50GB/yr/major ->
+start with 6 majors, 3 months); backfill via REST agg-trades.
+Experiment prereg (before any run): WF 6 folds, same discipline as
+barrier v1; gate = out-of-sample direction hit rate > 52% at 15m
+horizon with taker-cost EV > 0, else close.  Heavy: 2-4 weeks.
+NOT STARTED until user explicitly green-lights infra build.
+
+
+### FUNDING CARRY v2 -- PRE-REGISTRATION (2026-09-20, fixed BEFORE run)
+
+User challenge accepted: v1 was daily cross-sectional rotation (2.11
+new positions/day), not carry.  Gross +1.59bp/day (96% hit) is real
+persistence; the kill was execution-frequency + fee class, declared
+fixable.  v2 tests the user's fixes.  DATA LIMIT (verified live):
+OKX /public/funding-rate-history serves only ~94 days (0 records
+beyond cache via after-cursor) -- "fetch 3 years" is IMPOSSIBLE on
+OKX public API.  Longer persistence cross-check = Binance funding
+API (years of history, different venue, clearly labeled as such,
+NOT tradability evidence for OKX).
+
+Pinned variants (all declared now, no tuning between runs):
+  V-daily-taker : v1 as-is (baseline for continuity).
+  V-weekly-taker: rebalance every 7 days, taker round trip 0.30%
+                  (2x (spot 0.10% + perp 0.05%)).
+  V-weekly-maker: PRIMARY.  rebalance every 7 days, maker round trip
+                  0.20% (2x (spot 0.08% + perp 0.02%)).  NOTE: the
+                  user's 5x maker cut is wrong for a delta-neutral
+                  book -- the SPOT leg dominates and only drops
+                  0.10 -> 0.08; real cut is 1.5x (0.30% -> 0.20%).
+  Per-asset dead zone: skip positions with |trailing 3d mean| < 2bp/
+  day (replaces v1's global OR-mask, which effectively never filtered).
+  Per-asset slow carry (user's Sharpe gate): hold short while trail-
+  ing 3d mean > +2bp/day, long while < -2bp/day, exit on sign flip;
+  half round-trip charged at entry and exit (maker fees).
+  K=3/3, signal decided on d-1 data, gross stream from held book.
+
+PRE-REGISTERED gates (primary = V-weekly-maker, else the track
+closes; per-asset gate uses OKX 97d window):
+  W-G1: portfolio net annualized >= 3% AND net daily Sharpe >= 1.0.
+  W-G2: per-asset slow-carry net Sharpe >= 1.0 on >= 3 assets.
+  W-G3: portfolio turnover <= 0.3 new positions/day.
+### FUNDING CARRY v2 -- RESULT :x: (primary gate FAIL; track CLOSED per prereg)
+
+runs/funding_carry_v2.log, runs/funding_carry_v2.json.  Two bugs
+fixed en route (documented, no tuning: portfolio PnL sign inverted
+in first run -- hit 0.12 = mirror of v1's 0.96, caught and fixed
+before the recorded run; Binance symbol mapping 'LINK-USDT' ->
+'LINKUSDTUSDT' via str.replace).
+
+Portfolio variants (OKX 96d panel, 29 assets):
+  daily_taker : ann -76.7%, Sharpe -24.3, gross +0.90bp/d, 4.39
+                new pos/day (v1's cost disease, confirmed).
+  weekly_taker: ann -13.7%, Sharpe -5.5, gross +0.68bp/d, 0.89/day.
+  weekly_maker: ann -8.3%, Sharpe -5.0, gross +0.68bp/d, 0.89/day.
+KEY FINDING: weekly rotation does NOT preserve the gross edge -- it
+collapses +1.6 -> +0.68bp/d.  Cross-sectional funding extremes
+mean-revert within days: by the time you hold the top-3 for a week,
+the extreme has decayed.  And turnover stays 0.89/day (the whole
+6-name book churns every weekly rebalance) because extreme-tail
+membership is not persistent.  User's model partially confirmed
+(frequency costs dominate: -77% -> -14% just from weekly), partially
+refuted (gross edge does not survive holding; maker is 1.5x not 5x).
+
+Per-asset slow carry (W-G2, maker, hold-until-sign-flip): 15/29
+assets net Sharpe >= 1 (AAVE 34, DOGE 20, LINK 17, BTC 17 ...).
+Caveats: 96d single-regime window, no WF split possible, annualized
+Sharpe inflated ~2.7x by funding autocorr (rho=0.76 -> Newey-West).
+This is the user's actual mental model of carry and it is the ONLY
+surviving signal -- but per prereg it is a secondary gate.
+
+Binance 3y cross-check (1096d x 29): lag-1 autocorr 0.761, top-
+quartile weekly Jaccard 0.363 -- funding persistence is real and
+venue-independent, but moderate; extremes churn too fast for
+cross-sectional rotation at any frequency tested.
+
+Gates: W-G1 FAIL, W-G2 PASS, W-G3 FAIL (0.89 > 0.3).  OVERALL:
+FAIL -> funding carry track CLOSED per prereg 58849ca.  If anything
+here ever reopens, it is a NEW prereg for per-asset slow carry with
+a WF split and NW-corrected Sharpe, tested on Binance 3y first as
+the only source of multi-year funding history.  Order flow remains
+the next track (needs explicit user decision).
+
+
+
+
+
+
+Variant of the KILLED Donchian 4H (TEST 2/6 -> closed).  External
+spec ("Quattro Donchian" / "Bitcoin Comet" family), claimed but
+UNVERIFIABLE live stats (WR 46%, PF 6.7, 8/8 positive years).  This
+is a POST-HOC filter addition after a failed test = data-mining risk;
+declared.  ONE shot, no parameter tuning, per the standing discipline.
+
+Pinned spec (taken from the external claim as-is, NO tuning):
+  Universe: 6 majors (BTC ETH SOL BNB XRP DOGE) on okx21 4H
+  (the spec's native universe is BTC/ETH only; 6 avoids cherry-pick).
+  Indicators: Donchian(20) prior-bars high/low (ending t-1), SMA(200)
+  closes (simple, NOT the EMA200 of the killed run -- that is part of
+  the claimed spec), ATR(14) Wilder.
+  LONG entry at bar t close: cp[t] > hh20[t] AND
+    cp[t] > sma200[t] + 1.2 * atr14[t]  ("decisive break" margin).
+  SHORT mirror: cp[t] < ll20[t] AND cp[t] < sma200[t] - 1.2 * atr14[t].
+  Fill at the signal close (same convention as the killed 4H run,
+  for comparability).  Initial stop entry -/+ 2.75 * ATR(entry),
+  ATR FROZEN at entry.  Trailing: stop = max(init, runmax -
+  2.75*ATR_frozen) from the running extreme since entry.  NO TP, no
+  time exit (segment end closes at segment close).  Exits evaluated
+  on CLOSE crossing the stop as of the previous bar (conservative,
+  no intrabar stop-tightening look-ahead; matches the killed
+  harness).  Costs: 2*TAKER_FEE*entry / (2.75*ATR_e); R denominator
+  = 2.75*ATR_e (initial risk).  Same TRAIN/TEST split as the killed
+  run (wf_folds 8x56d, TEST = fold 4 start .. end, WARM=700).
+  Both sides primary; long-only secondary; bench = buy&hold in R.
+
+PRE-REGISTERED verdict gates (all must PASS on TEST, else the whole
+Quattro family is closed with no tweaks):
+  G1: >= 4/6 assets positive net R on TEST
+      (stricter than the old kill <= 2/6: family already failed once)
+  G2: median TEST maxDD <= 20R  (user's standing risk rule)
+  G3: recovery >= 1.0 on >= 4/6 TEST assets
+  G4: pooled TEST profit factor (net) >= 1.3
+Expectation checks (NOT gates): claimed WR ~46% and PF ~6.7 on TEST;
+NOTE a 2.75-ATR trailing stop cannot plausibly produce avgWin/avgLoss
+= 6.7 (the trail caps winners on a 2.75-ATR retrace); if measured WR
+/PF wildly exceed the claim's internal consistency, treat the claim
+as fabricated and say so.  Regime-beta suspicion is explicit: this is
+an always-in-after-entry trend rider -- the recurring "beta, not
+alpha" pattern of this project applies.
+
+### QUATTRO DONCHIAN 4H -- RESULT :x: (FAIL per prereg, family CLOSED)
+
+One shot, no tuning (runs/quattro_4h_prereg.log, long-only secondary
+runs/quattro_4h_prereg_longonly.log).  TEST segment:
+  full:   G1 4/6 positive (BARE pass), G2 med DD 5.7R (pass),
+          G3 recov>=1 2/6 (FAIL), G4 pooled PF 1.05 (FAIL) -> FAIL.
+  longonly: G1 2/6, G3 0/6, G4 PF 0.99 -> FAIL worse.
+Per-asset test totR (full): BTC -5.2, ETH -5.8, SOL +5.8, BNB +3.4,
+XRP +5.4, DOGE +0.1; BTC/ETH -- the spec's OWN native universe --
+lose on test in both configs.  TRAIN 5/6 positive with tiny evN
+(+0.05..+0.16R, PF 0.88-1.35) in the bull window = regime beta
+again; it does NOT survive walk-forward (train winners BTC/ETH flip
+negative on test).
+
+Claim check (vs "confirmed live" WR 46% / PF 6.7 / 8 positive years):
+measured pooled TEST PF 1.05, per-asset PF 0.62-1.68, WR 30-59%,
+mean hold ~20x4H ~= 3.3 days.  Nothing remotely like the claim; as
+pre-registered, the claim's internal consistency was already
+implausible (a 2.75-ATR trail cannot produce 6.7 avg win/loss) and
+the data falsifies it outright.  The 1.2-ATR "decisive break" margin
+did NOT fix the fakeout problem of the killed Donchian 4H -- same
+verdict, same reason.  QUATTRO FAMILY CLOSED: no parameter tweaks,
+no TF sweep, no further variants.
+
+
+
+
 

@@ -51,8 +51,13 @@ def zscore_numpy(
         Rolling window size.  The first `length-1` elements of the result
         will be NaN (or filled with `fillna` if offset > 0).
     multiplier : float, default 1.0
-        Multiplier applied to the standard deviation.  A value of 2.0 gives
-        a Z-score normalised to two standard deviations.
+        Divisor applied to the standard deviation:
+        ``z = (price - mean) / (multiplier * std)``.  ``multiplier=1.0``
+        gives the standard z-score in units of sigma.  A value of 2.0
+        does NOT mean "two standard deviations" -- it rescales the
+        output so that z = +/-1.0 corresponds to the price being +/-2
+        sigma from the mean (a Bollinger-band-style band-width
+        parameter).  Larger multiplier -> smaller output magnitude.
     ddof : int, default 1
         Delta Degrees of Freedom used in the standard deviation calculation.
         0 gives population standard deviation, 1 gives sample standard
@@ -65,12 +70,15 @@ def zscore_numpy(
         Value used to fill positions that become NaN due to the offset.
         If None, NaN is used.
     use_talib : bool, default True
-        If True and TA-Lib is installed, it will be used for the rolling
-        mean and standard deviation.  Otherwise, the Numba implementation
-        is used.
+        If True and TA-Lib is installed, it is used for the rolling mean
+        and (when ``ddof == 0``) the rolling standard deviation.  For
+        ``ddof != 0`` the Numba implementation computes the standard
+        deviation so the result honours ``ddof``; see
+        :func:`ta.src.statistics.stdev.stdev_ind`.
     algorithm : {'online', 'two_pass'}, default 'online'
         Which Numba algorithm to use for standard deviation.  This parameter
-        is only effective when `use_talib=False` or TA-Lib is not available.
+        is only effective when the Numba implementation runs (use_talib=False,
+        TA-Lib not available, or ddof != 0).
         - 'online' : one-pass algorithm (fast, may have small numerical
             errors for large windows).
         - 'two_pass' : two-pass algorithm (slower, but more accurate).
@@ -91,8 +99,10 @@ def zscore_numpy(
     >>> import numpy as np
     >>> prices = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
     >>> zscore_numpy(prices, length=3, multiplier=1.0, ddof=1)
-    array([       nan,        nan, -1.       , -1.       , -1.       ,
-        -1.       , -1.       , -1.       , -1.       , -1.       ])
+    array([nan, nan,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.])
+
+    For a monotonically increasing series the z-score is +1 at every
+    window: the current price sits one sample std above the window mean.
 
     """
     close = np.asarray(close, dtype=np.float64, copy=False)
@@ -146,7 +156,7 @@ def zscore_ind(
     length : int, default 30
         Rolling window size.
     multiplier : float, default 1.0
-        Multiplier for standard deviation.
+        Divisor for the standard deviation (see :func:`zscore_numpy`).
     ddof : int, default 1
         Delta Degrees of Freedom.
     offset : int, default 0
@@ -154,9 +164,11 @@ def zscore_ind(
     fillna : float or None, default None
         Value to fill positions that become NaN due to offset.
     use_talib : bool, default True
-        Use TA-Lib if available.
+        Use TA-Lib if available (standard deviation only when ddof == 0;
+        see :func:`zscore_numpy`).
     algorithm : {'online', 'two_pass'}, default 'online'
-        Numba algorithm for standard deviation (ignored if TA-Lib is used).
+        Numba algorithm for standard deviation (effective only when the
+        Numba implementation runs; ignored on the TA-Lib path).
 
     Returns
     -------
@@ -168,8 +180,7 @@ def zscore_ind(
     >>> import polars as pl
     >>> s = pl.Series([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
     >>> zscore_ind(s, length=3, multiplier=1.0, ddof=1)
-    array([       nan,        nan, -1.       , -1.       , -1.       ,
-           -1.       , -1.       , -1.       , -1.       , -1.       ])
+    array([nan, nan,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.])
 
     """
     if isinstance(close, pl.Series):
@@ -214,7 +225,7 @@ def zscore_polars(
     length : int, default 30
         Rolling window size.
     multiplier : float, default 1.0
-        Multiplier for standard deviation.
+        Divisor for the standard deviation (see :func:`zscore_numpy`).
     ddof : int, default 1
         Delta Degrees of Freedom.
     offset : int, default 0
@@ -222,9 +233,11 @@ def zscore_polars(
     fillna : float or None, default None
         Value to fill shifted positions.
     use_talib : bool, default True
-        Use TA-Lib if available.
+        Use TA-Lib if available (standard deviation only when ddof == 0;
+        see :func:`zscore_numpy`).
     algorithm : {'online', 'two_pass'}, default 'online'
-        Numba algorithm for standard deviation (ignored if TA-Lib is used).
+        Numba algorithm for standard deviation (effective only when the
+        Numba implementation runs; ignored on the TA-Lib path).
     output_col : str or None, default None
         Name of the output column.  If None, the column will be named
         f'ZS_{length}'.
@@ -240,17 +253,17 @@ def zscore_polars(
     >>> df = pl.DataFrame({"close": [1.0, 2.0, 3.0, 4.0, 5.0]})
     >>> zscore_polars(df, length=3, output_col="ZSCORE")
     shape: (5, 2)
-    +-------+--------+
-    | close | ZSCORE |
-    | ---   | ---    |
-    | f64   | f64    |
-    +=======+========+
-    | 1.0   | NaN    |
-    | 2.0   | NaN    |
-    | 3.0   | -1.0   |
-    | 4.0   | -1.0   |
-    | 5.0   | -1.0   |
-    +-------+--------+
+    ┌───────┬────────┐
+    │ close ┆ ZSCORE │
+    │ ---   ┆ ---    │
+    │ f64   ┆ f64    │
+    ╞═══════╪════════╡
+    │ 1.0   ┆ NaN    │
+    │ 2.0   ┆ NaN    │
+    │ 3.0   ┆ 1.0    │
+    │ 4.0   ┆ 1.0    │
+    │ 5.0   ┆ 1.0    │
+    └───────┴────────┘
 
     """
     close = df[close_col].to_numpy()

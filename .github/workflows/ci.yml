@@ -13,11 +13,11 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - run: uv sync --all-packages
       - name: Lint (library incl. tests, dsl)
-        # Research-grade zones (engine/experiments, engine/datasets) carry
+        # Research-grade zones (experiments, engine/datasets) carry
         # explicit per-file-ignores in pyproject: real bugs block, style
         # pedantry does not.
-        run: uv run ruff check engine dsl
+        run: uv run ruff check engine dsl experiments
       - name: Type check
-        run: uv run mypy engine
+        run: uv run mypy engine experiments
       - name: Tests
         run: uv run pytest

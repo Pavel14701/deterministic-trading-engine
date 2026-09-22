@@ -1,0 +1,71 @@
+DONCHIAN(20)+EMA200+2xATR stop+Donchian(10) exit, 6 majors; walk-forward train 224d / test 224d; both sides primary (long-only secondary); bench=buy&hold; pre-registered, no tuning; kill per TF: <=2/6 positive net R on test.  Fixed WARM=700 bars: on 1D this exceeds the train span (declared consequence, not tuning).
+=== TF 5m ===
+       BTC TRAIN: full[n=4717 evN=-0.326 totR=-1537.9 win=51% hold=20 maxDD=1547.9R] long[n=2391 evN=-0.352 totR=-841.8 win=32% hold=21 maxDD=850.6R] B&H=+155.2%
+       BTC TEST: full[n=1060 evN=-0.342 totR=-362.6 win=50% hold=20 maxDD=372.7R] long[n=522 evN=-0.366 totR=-191.1 win=32% hold=21 maxDD=206.0R] B&H=+4.7% (+8.4R)
+       ETH TRAIN: full[n=3763 evN=-0.204 totR=-768.5 win=52% hold=21 maxDD=791.8R] long[n=1819 evN=-0.173 totR=-315.2 win=34% hold=22 maxDD=354.1R] B&H=-44.4%
+       ETH TEST: full[n=969 evN=-0.193 totR=-186.6 win=51% hold=21 maxDD=207.3R] long[n=471 evN=-0.133 totR=-62.7 win=34% hold=22 maxDD=83.1R] B&H=+17.2% (+64.1R)
+       SOL TRAIN: full[n=3783 evN=-0.176 totR=-665.1 win=51% hold=21 maxDD=684.1R] long[n=1833 evN=-0.170 totR=-311.3 win=34% hold=22 maxDD=332.8R] B&H=-55.5%
+       SOL TEST: full[n=987 evN=-0.198 totR=-195.9 win=50% hold=22 maxDD=240.6R] long[n=497 evN=-0.223 totR=-110.9 win=33% hold=22 maxDD=140.4R] B&H=+13.6% (+41.7R)
+       BNB TRAIN: full[n=1144 evN=-0.344 totR=-393.9 win=51% hold=21 maxDD=413.8R] long[n=550 evN=-0.316 totR=-174.0 win=34% hold=21 maxDD=196.5R] B&H=-31.6%
+       BNB TEST: full[n=804 evN=-0.316 totR=-254.4 win=48% hold=21 maxDD=256.7R] long[n=416 evN=-0.348 totR=-144.8 win=31% hold=21 maxDD=145.6R] B&H=+15.8% (+117.8R)
+       XRP TRAIN: full[n=1107 evN=-0.276 totR=-305.0 win=50% hold=21 maxDD=303.8R] long[n=532 evN=-0.257 totR=-137.0 win=31% hold=20 maxDD=135.6R] B&H=-52.5%
+       XRP TEST: full[n=788 evN=-0.238 totR=-187.9 win=48% hold=21 maxDD=233.0R] long[n=374 evN=-0.283 totR=-105.9 win=29% hold=21 maxDD=145.7R] B&H=-7.3% (-39.0R)
+      DOGE TRAIN: full[n=3720 evN=-0.159 totR=-591.9 win=50% hold=21 maxDD=647.6R] long[n=1810 evN=-0.129 totR=-233.7 win=32% hold=22 maxDD=286.3R] B&H=-37.9%
+      DOGE TEST: full[n=998 evN=-0.268 totR=-267.2 win=50% hold=21 maxDD=270.7R] long[n=494 evN=-0.368 totR=-182.0 win=30% hold=20 maxDD=193.6R] B&H=-16.2% (-35.0R)
+TF 5m: POSITIVE net-R TRAIN 0/6, TEST 0/6 (kill <= 2/6 on test)
+=== TF 15m ===
+       BTC TRAIN: full[n=1566 evN=-0.075 totR=-117.5 win=50% hold=21 maxDD=242.2R] long[n=793 evN=-0.033 totR=-26.1 win=34% hold=22 maxDD=123.0R] B&H=+153.2%
+       BTC TEST: full[n=326 evN=-0.222 totR=-72.4 win=48% hold=20 maxDD=103.4R] long[n=164 evN=-0.317 totR=-52.0 win=28% hold=20 maxDD=72.1R] B&H=+7.9% (+26.5R)
+       ETH TRAIN: full[n=1195 evN=-0.191 totR=-228.6 win=50% hold=23 maxDD=251.8R] long[n=583 evN=-0.045 totR=-26.5 win=35% hold=23 maxDD=66.6R] B&H=-46.4%
+       ETH TEST: full[n=331 evN=-0.052 totR=-17.4 win=47% hold=21 maxDD=67.9R] long[n=168 evN=-0.049 totR=-8.3 win=25% hold=20 maxDD=48.6R] B&H=+17.3% (+19.5R)
+       SOL TRAIN: full[n=1247 evN=-0.136 totR=-169.5 win=49% hold=23 maxDD=178.1R] long[n=617 evN=-0.052 totR=-32.0 win=35% hold=22 maxDD=46.1R] B&H=-49.7%
+       SOL TEST: full[n=330 evN=-0.127 totR=-41.8 win=51% hold=22 maxDD=77.1R] long[n=169 evN=-0.199 totR=-33.6 win=33% hold=20 maxDD=63.6R] B&H=+14.8% (+16.8R)
+       BNB TRAIN: full[n=370 evN=-0.147 totR=-54.2 win=51% hold=22 maxDD=79.8R] long[n=178 evN=-0.080 totR=-14.3 win=35% hold=23 maxDD=33.2R] B&H=-32.3%
+       BNB TEST: full[n=262 evN=+0.019 totR=+5.0 win=53% hold=22 maxDD=41.0R] long[n=131 evN=-0.059 totR=-7.7 win=30% hold=24 maxDD=44.4R] B&H=+15.4% (+69.9R)
+       XRP TRAIN: full[n=349 evN=-0.117 totR=-40.8 win=49% hold=23 maxDD=55.2R] long[n=159 evN=+0.078 totR=+12.3 win=33% hold=22 maxDD=18.9R] B&H=-54.1%
+       XRP TEST: full[n=244 evN=+0.106 totR=+25.9 win=51% hold=23 maxDD=32.9R] long[n=104 evN=+0.337 totR=+35.1 win=36% hold=23 maxDD=18.5R] B&H=-8.8% (-35.7R)
+      DOGE TRAIN: full[n=1203 evN=-0.070 totR=-84.5 win=48% hold=22 maxDD=117.2R] long[n=583 evN=+0.010 totR=+5.7 win=32% hold=22 maxDD=65.5R] B&H=-47.9%
+      DOGE TEST: full[n=317 evN=-0.168 totR=-53.4 win=46% hold=22 maxDD=81.8R] long[n=160 evN=-0.228 totR=-36.5 win=27% hold=21 maxDD=61.5R] B&H=-16.6% (-14.0R)
+TF 15m: POSITIVE net-R TRAIN 0/6, TEST 2/6 (kill <= 2/6 on test)
+=== TF 1H ===
+       BTC TRAIN: full[n=604 evN=-0.064 totR=-38.5 win=51% hold=24 maxDD=46.1R] long[n=305 evN=-0.014 totR=-4.3 win=37% hold=24 maxDD=27.8R] B&H=+72.3%
+       BTC TEST: full[n= 90 evN=+0.080 totR=+7.2 win=50% hold=27 maxDD=30.0R] long[n= 46 evN=+0.345 totR=+15.9 win=39% hold=27 maxDD=13.4R] B&H=+13.7% (+9.6R)
+       ETH TRAIN: full[n=588 evN=-0.021 totR=-12.5 win=49% hold=25 maxDD=39.8R] long[n=290 evN=+0.069 totR=+20.0 win=33% hold=25 maxDD=25.3R] B&H=-28.5%
+       ETH TEST: full[n= 80 evN=+0.142 totR=+11.3 win=50% hold=25 maxDD=22.5R] long[n= 39 evN=+0.510 totR=+19.9 win=38% hold=25 maxDD=11.5R] B&H=+23.6% (+11.8R)
+       SOL TRAIN: full[n=573 evN=+0.045 totR=+25.7 win=49% hold=25 maxDD=30.3R] long[n=298 evN=+0.179 totR=+53.5 win=37% hold=25 maxDD=19.4R] B&H=-11.5%
+       SOL TEST: full[n= 82 evN=+0.342 totR=+28.1 win=50% hold=25 maxDD=10.8R] long[n= 41 evN=+0.643 totR=+26.4 win=41% hold=28 maxDD=5.3R] B&H=+20.9% (+9.4R)
+       BNB TRAIN: full[n=464 evN=+0.111 totR=+51.4 win=52% hold=23 maxDD=44.5R] long[n=230 evN=+0.218 totR=+50.0 win=36% hold=25 maxDD=25.7R] B&H=+155.4%
+       BNB TEST: full[n= 76 evN=-0.003 totR=-0.2 win=39% hold=24 maxDD=22.8R] long[n= 45 evN=+0.123 totR=+5.5 win=27% hold=25 maxDD=13.3R] B&H=+13.3% (+10.1R)
+       XRP TRAIN: full[n=546 evN=+0.112 totR=+61.1 win=52% hold=24 maxDD=27.0R] long[n=260 evN=+0.124 totR=+32.2 win=34% hold=25 maxDD=30.4R] B&H=+89.5%
+       XRP TEST: full[n= 84 evN=+0.560 totR=+47.1 win=51% hold=24 maxDD=7.6R] long[n= 36 evN=+1.316 totR=+47.4 win=42% hold=27 maxDD=4.8R] B&H=-11.3% (-6.2R)
+      DOGE TRAIN: full[n=550 evN=+0.068 totR=+37.6 win=49% hold=24 maxDD=27.1R] long[n=274 evN=+0.102 totR=+28.0 win=34% hold=24 maxDD=39.2R] B&H=-32.1%
+      DOGE TEST: full[n= 90 evN=+0.172 totR=+15.5 win=50% hold=21 maxDD=16.9R] long[n= 44 evN=+0.199 totR=+8.7 win=34% hold=19 maxDD=15.3R] B&H=-19.2% (-9.1R)
+TF 1H: POSITIVE net-R TRAIN 4/6, TEST 5/6 (kill <= 2/6 on test)
+=== TF 4H ===
+       BTC TRAIN: full[n=241 evN=+0.277 totR=+66.8 win=49% hold=30 maxDD=20.6R] long[n=132 evN=+0.766 totR=+101.1 win=40% hold=32 maxDD=8.3R] B&H=+399.2%
+       BTC TEST: full[n= 19 evN=-0.330 totR=-6.3 win=47% hold=22 maxDD=11.0R] long[n= 11 evN=-0.198 totR=-2.2 win=27% hold=20 maxDD=4.2R] B&H=+18.9% (+5.1R)
+       ETH TRAIN: full[n=254 evN=+0.216 totR=+54.9 win=46% hold=28 maxDD=23.8R] long[n=138 evN=+0.549 totR=+75.7 win=35% hold=30 maxDD=15.7R] B&H=+65.4%
+       ETH TEST: full[n= 17 evN=-0.114 totR=-1.9 win=41% hold=26 maxDD=9.5R] long[n= 11 evN=+0.215 totR=+2.4 win=27% hold=26 maxDD=3.2R] B&H=+26.9% (+5.8R)
+       SOL TRAIN: full[n=168 evN=+0.278 totR=+46.7 win=50% hold=25 maxDD=23.6R] long[n= 97 evN=+0.479 totR=+46.5 win=38% hold=25 maxDD=11.1R] B&H=+3334.4%
+       SOL TEST: full[n= 15 evN=+0.603 totR=+9.0 win=67% hold=26 maxDD=5.1R] long[n=  8 evN=+1.219 totR=+9.8 win=50% hold=28 maxDD=1.7R] B&H=+38.7% (+6.2R)
+       BNB TRAIN: full[n= 99 evN=+0.125 totR=+12.4 win=47% hold=28 maxDD=12.6R] long[n= 55 evN=+0.298 totR=+16.4 win=38% hold=28 maxDD=6.8R] B&H=+155.2%
+       BNB TEST: full[n= 16 evN=+0.375 totR=+6.0 win=62% hold=21 maxDD=5.0R] long[n=  8 evN=+0.640 totR=+5.1 win=62% hold=21 maxDD=3.8R] B&H=+18.4% (+6.6R)
+       XRP TRAIN: full[n=232 evN=+0.562 totR=+130.5 win=46% hold=28 maxDD=17.9R] long[n=123 evN=+1.134 totR=+139.4 win=30% hold=27 maxDD=18.0R] B&H=-16.8%
+       XRP TEST: full[n= 17 evN=-0.211 totR=-3.6 win=29% hold=23 maxDD=11.2R] long[n=  9 evN=+0.104 totR=+0.9 win=11% hold=11 maxDD=4.0R] B&H=-3.2% (-0.7R)
+      DOGE TRAIN: full[n=192 evN=+0.728 totR=+139.8 win=47% hold=26 maxDD=14.9R] long[n=105 evN=+1.370 totR=+143.9 win=35% hold=26 maxDD=16.7R] B&H=+3105.2%
+      DOGE TEST: full[n= 17 evN=-0.429 totR=-7.3 win=41% hold=19 maxDD=10.8R] long[n= 10 evN=-0.381 totR=-3.8 win=20% hold=13 maxDD=4.8R] B&H=-10.5% (-2.1R)
+TF 4H: POSITIVE net-R TRAIN 6/6, TEST 2/6 (kill <= 2/6 on test)
+=== TF 1D ===
+       BTC TRAIN: full[n= 37 evN=+1.692 totR=+62.6 win=57% hold=30 maxDD=6.0R] long[n= 22 evN=+2.739 totR=+60.3 win=50% hold=37 maxDD=2.8R] B&H=+1355.7%
+       BTC TEST: full[n=0] long[n=0] B&H=+7.4% (+0.9R)
+       ETH TRAIN: full[n= 30 evN=+1.586 totR=+47.6 win=70% hold=35 maxDD=4.2R] long[n= 16 evN=+3.076 totR=+49.2 win=81% hold=44 maxDD=1.2R] B&H=+593.2%
+       ETH TEST: full[n=0] long[n=0] B&H=+12.9% (+1.1R)
+       SOL TRAIN: full[n= 21 evN=+1.418 totR=+29.8 win=62% hold=25 maxDD=2.2R] long[n= 10 evN=+2.495 totR=+25.0 win=50% hold=33 maxDD=2.7R] B&H=+3461.1%
+       SOL TEST: full[n=0] long[n=0] B&H=+27.1% (+1.4R)
+       BNB TRAIN: full[n=  8 evN=+0.203 totR=+1.6 win=50% hold=33 maxDD=4.0R] long[n=  4 evN=+0.605 totR=+2.4 win=25% hold=49 maxDD=1.3R] B&H=+153.3%
+       BNB TEST: full[n=  4 evN=+0.188 totR=+0.8 win=75% hold=10 maxDD=0.0R] long[n=  2 evN=-0.175 totR=-0.4 win=50% hold=9 maxDD=0.0R] B&H=+18.8% (+2.3R)
+       XRP TRAIN: full[n= 34 evN=+1.697 totR=+57.7 win=71% hold=26 maxDD=2.8R] long[n= 17 evN=+3.091 totR=+52.5 win=65% hold=32 maxDD=2.1R] B&H=-33.7%
+       XRP TEST: full[n=  2 evN=-0.070 totR=-0.1 win=50% hold=14 maxDD=0.0R] long[n=  1 evN=-1.161 totR=-1.2 win=0% hold=25 maxDD=0.0R] B&H=+0.7% (+0.0R)
+      DOGE TRAIN: full[n= 28 evN=+0.310 totR=+8.7 win=39% hold=23 maxDD=4.6R] long[n= 15 evN=+0.615 totR=+9.2 win=27% hold=16 maxDD=4.3R] B&H=+3315.1%
+      DOGE TEST: full[n=0] long[n=0] B&H=-17.6% (-1.1R)
+TF 1D: POSITIVE net-R TRAIN 6/6, TEST 1/6 (kill <= 2/6 on test)

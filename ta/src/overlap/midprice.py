@@ -35,7 +35,9 @@ def _midprice_numba_core(
     Returns
     -------
     np.ndarray
-        Midprice values; first `length-1` positions are NaN.
+        Midprice values; first `length-1` positions are NaN, and any
+        window containing a NaN in high or low yields NaN (matching
+        TA-Lib MIDPRICE).  Infinities propagate through min/max.
 
     """  # noqa: E501
     n = len(high)
@@ -46,14 +48,25 @@ def _midprice_numba_core(
         # Initialize with the first value in the window
         mn = low[i - length + 1]
         mx = high[i - length + 1]
+        # NaN comparisons are always False, so without this guard a NaN
+        # would be silently skipped by min/max and the window would get
+        # a numeric value while TA-Lib reports NaN.
+        if np.isnan(mn) or np.isnan(mx):
+            continue
+        poisoned = False
         # Scan the window
         for j in range(i - length + 2, i + 1):
             lo = low[j]
             hi = high[j]
+            if np.isnan(lo) or np.isnan(hi):
+                poisoned = True
+                break
             if lo < mn:
                 mn = lo
             if hi > mx:
                 mx = hi
+        if poisoned:
+            continue  # out[i] stays NaN
         out[i] = (mn + mx) * 0.5
     return out
 

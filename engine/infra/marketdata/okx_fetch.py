@@ -118,7 +118,14 @@ def fetch_candles(
     else:
         rows = []
         cursor = None
-    endpoint = "/market/candles"
+    # Resuming from a cache: the oldest cached bar may be far outside
+    # the recent endpoint's window (~1440 bars), which would serve an
+    # empty page for the old cursor.  Start at the history endpoint.
+    endpoint = (
+        "/market/history-candles"
+        if cached_df is not None
+        else "/market/candles"
+    )
     last_saved = 0
     while len(rows) < max_bars:
         params: dict[str, str] = {
@@ -128,7 +135,21 @@ def fetch_candles(
         }
         if cursor is not None:
             params["after"] = cursor
-        page = _get(endpoint, params)
+        try:
+            page = _get(endpoint, params)
+        except RuntimeError:
+            if endpoint == "/market/candles":
+                # Some instruments persistently fail the recent endpoint;
+                # history-candles still serves them.
+                endpoint = "/market/history-candles"
+                continue
+            raise
+        if not page:
+            # A transient empty page (rate-limit blips return empty data
+            # with code "0" sometimes) must not be mistaken for the end
+            # of history: re-ask once before concluding.
+            time.sleep(1.5)
+            page = _get(endpoint, params)
         if not page:
             if endpoint == "/market/candles":
                 endpoint = "/market/history-candles"
@@ -162,6 +183,13 @@ def fetch_candles(
 
     rows = rows[:max_bars]
     if not rows:
+        if cached_df is not None:
+            # Cache already reaches listing depth -- nothing older exists.
+            print(
+                f"[{inst_id}] {bar}: cache complete "
+                f"({cached_df.height} bars)"
+            )
+            return cached_df
         raise RuntimeError(f"no candles returned for {inst_id}")
 
     df = _rows_to_df(rows, cached_df)
