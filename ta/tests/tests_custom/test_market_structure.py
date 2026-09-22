@@ -16,6 +16,7 @@ Covers:
 """
 
 from datetime import datetime, timedelta
+from itertools import pairwise
 
 import numpy as np
 import polars as pl
@@ -816,3 +817,27 @@ def test_liquidity_tolerance_is_relative_to_price() -> None:
     assert out_small.height == out_big.height
     assert out_small["start"].to_list() == out_big["start"].to_list()
     assert out_small["retest"].to_list() == out_big["retest"].to_list()
+
+
+@pytest.mark.custom
+def test_online_pivot_indices_are_strictly_increasing() -> None:
+    """Pivot bar indices are strictly increasing (audit batch 2, R7).
+
+    ``pivot_confirm`` / ``pivot_next_extreme`` are dicts keyed by
+    ``p.idx``; two pivots sharing a bar would silently collide.  That
+    is impossible by construction: a pivot is confirmed at bar
+    ``confirm_idx > pivot.idx`` and the next leg starts AT the confirm
+    bar, so every later pivot index is strictly greater.
+    """
+    rng = np.random.default_rng(11)
+    n = 2000
+    close = 100.0 + np.cumsum(rng.normal(0, 1.0, n))
+    spread = np.abs(rng.normal(0.5, 0.2, n))
+    high = close + spread
+    low = close - spread
+    zz = OnlineZigZag(reversal=2.0)
+    pivots = zz.update_series(high, low)
+    assert len(pivots) >= 10
+    idxs = [p.idx for p in pivots]
+    assert all(a < b for a, b in pairwise(idxs))
+    assert all(p.confirm_idx > p.idx for p in pivots)

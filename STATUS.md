@@ -4496,9 +4496,26 @@ AVSL live-scale prereg (previous section) is UNAFFECTED: the frozen
 AVSL-cross 4H S1 module does not import market_structure; engine/
 is clean.
 
-TESTS: ta suite 46+5 new regression tests (causal reversal, window
+TESTS: ta suite +5 batch-1 regression tests (causal reversal, window
 scan, zone-intact guard, structure confirm guard, price-scale
-invariance); full suite 410 passed / 6 skipped; ruff, mypy clean.
+invariance) and +1 batch-2 guard test (strictly increasing pivot
+indices).  Full monorepo run is `pytest ta/tests engine/tests dsl/tests`
+(root `pytest -q` covers only engine+dsl per testpaths):
+2543 passed / 6 skipped; ruff and mypy clean.
+
+AUDIT BATCH 2 (2026-09-22, later same day): a second review batch
+(17+5 items) was verified against the code -- verdicts appended to
+experiments/ob/detector_audit.md.  NO new code defects: the headline
+items are batch-1 fixes re-stated (fixed-offset breakout = A1+A2;
+zone re-pierce = A6); refuted: min_reaction_size IS relative (0.2%
+of price -- R6), pivot-idx dict collisions are impossible by
+construction (R7, now locked by a test), cluster_blocks is off
+everywhere including R1-R3 (R8), shallow-copy mutation leak has no
+live path (R9), ATR period is bar-scaled by definition (R10).
+New policy items documented: P8 zone anchored to pivot-bar ATR, P9
+one-sided volume gate (no cap), P10 RSI gate = momentum-continuation
+semantics (dead code, off), P11 mature-trend structure extremes,
+P12 tail-window truncation, P13 range-vs-body zone source.
 
 
 

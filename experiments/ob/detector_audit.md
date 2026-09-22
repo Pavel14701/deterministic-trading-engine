@@ -130,9 +130,129 @@ not library bugs:
 
 ## TESTS
 
-`ta/tests/tests_custom/test_market_structure.py`: 46 existing + 5 new
+`ta/tests/tests_custom/test_market_structure.py`: batch 1 added 5 new
 regression tests (causal reversal threshold, breakout window scan,
 zone-intact guard, structure-filter confirm guard, price-scale
-invariance of the relative liquidity tolerance).  Full suite:
-410 passed, 6 skipped.  ruff clean, mypy clean.
+invariance of the relative liquidity tolerance) on top of the 29
+tests the file already collected.  Full suite: green.  ruff clean,
+mypy clean.
+
+=====================================================================
+SECOND REVIEW BATCH (same day, 2026-09-22)
+=====================================================================
+
+A second review batch arrived (17 + 5 items).  Same protocol: every
+claim checked against the code.  NO new code defects were found --
+the batch is either (a) already covered by the batch-1 fixes, or
+(b) refuted, or (c) policy items now documented below.  One guard
+test added (strictly increasing pivot indices).
+
+ALREADY FIXED IN BATCH 1 (credited, no new work):
+
+- "Fixed-offset breakout: `multiple_breakouts=False` + lookback=50
+  checks EXACTLY the bar idx+50" -- that is A1+A2 verbatim (the
+  quoted code is the OLD code); the pipeline now scans
+  [idx+lookback_min, idx+lookback_max).
+- "No zone re-pierce check between breakout and retest" -- A6
+  (`require_zone_intact`), exactly the suggested guard.
+- "`multiple_breakouts` semantics", "None-trend pass-through",
+  confirmation-window default-10-on-4h, strength knobs, E8
+  cross-asset lookback offsets -- A2, P4, R-2, P7 and the
+  CONSEQUENCES section respectively.
+
+REFUTED (batch 2):
+
+R6  "`min_reaction_size=0.002` is absolute, no scale calibration
+     (BTC $100 vs $0.002 on a $1 token)".  Wrong: it applies to
+     `reaction_pct = reaction_abs / ref_price` (filters.py
+     compute_reaction) -- a FRACTION OF PRICE.  0.002 = 0.2% on
+     BTC and on the $1 token alike; the quoted $100/$0.002 numbers
+     ARE the scale-free behaviour.  (Contrast with the true units
+     bug A1.)  The "negative reaction_abs works by accident" add-on
+     is also wrong: close beyond the zone's far edge means no
+     rejection reaction, and rejecting that is the coherent
+     semantic, not an accident.
+
+R7  "Pivot dicts keyed by p.idx can collide (items #9/#17)" --
+     impossible by construction.  OnlineZigZag confirms a pivot at
+     bar c > pivot.idx and starts the next leg AT bar c, so every
+     later pivot index is strictly greater than all previous ones;
+     dict keys are unique.  Locked by a new test
+     (test_online_pivot_indices_are_strictly_increasing).
+
+R8  "`cluster_blocks` glues blocks in flats -- and R1-R3 run with
+     cluster on".  The mechanism exists but the flag is FALSE by
+     default and is not enabled ANYWHERE in the repo (grep: no
+     `cluster_blocks=True`); all six live presets have it off and
+     research R1-R3 inherit the "4h" preset (off).  Dormant, no
+     trigger.
+
+R9  "`OrderBlock` is not frozen; `list.copy()` is shallow so
+     clustering mutations leak into the caller's list" -- no live
+     path: `identify_order_blocks` passes `existing_blocks=[]` and
+     `validate_block_candidates` copies it before appending only
+     NEWLY created blocks; clustering runs on that private list
+     after validation.  Freezing the dataclass is a future
+     robustness nicety, not a bug.
+
+R10 "`atr_period=14` is not scaled per timeframe" -- ATR period is
+     in BARS by definition; the bar itself carries the timeframe
+     scale, which is exactly why every threshold in the pipeline is
+     ATR-multiple calibrated (and why the price-scale invariance
+     test passes).
+
+R11 "`_empty_block_frame` pl.Datetime is generic / falls apart" --
+     repeat of R-5: pl.Datetime defaults to Datetime("us"), same
+     as the non-empty path; both branches compatible (covered by
+     the empty-frame tests).
+
+R12 "avg_vol including volume[j] makes the filter pass exactly the
+     high-volume bars it should reject" -- repeat of R-1 with a new
+     conclusion.  Direction still wrong (inclusion TIGHTENS the
+     lower bound).  The new part -- "huge retest volume should be
+     REJECTED" -- is a two-sided volume CAP, which was never
+     specified anywhere; see P9 below.
+
+ADDITIONAL POLICY ITEMS (batch 2; confirmed as described,
+deliberately unchanged):
+
+P8  Zones are anchored to the PIVOT-bar ATR (`atr[idx]`): the zone
+    is fixed at formation time and is NOT rescaled by retest-time
+    volatility.  Causal and standard for OB definitions; if a
+    future prereg wants volatility-following zones it must choose
+    the `atr[j]/atr[idx]` scaling explicitly.
+
+P9  The retest volume gate is ONE-SIDED (lower bound: volume[j] >
+    avg_vol[j]); there is no upper cap.  "Retest on huge volume is
+    bearish for the setup" is a strategy hypothesis to be prereg'd,
+    not implemented.
+
+P10 The RSI/MACD gate (dead code, off in ALL presets -- grep clean)
+    requires rsi >= overbought at a SUPPLY retest, i.e. it gates on
+    momentum CONTINUATION, not rejection.  Known and already
+    documented in configs.py's rationale as the reason it is off;
+    if ever enabled, its semantics must be chosen deliberately.
+
+P11 `min_structure_extremes=3` (live 4h/1d presets where the
+    structure filter is ON) classifies only mature trends -- late
+    entries by design.  Research presets (and E8) run with the
+    filter OFF.
+
+P12 `require_complete_window=True` (4h/1d) drops candidates whose
+    confirmation window crosses the end of history -- a documented,
+    deliberate backtest-hygiene choice.
+
+P13 `zone_source="range"` builds the zone from the pivot's FULL
+    [low, high] (sweep wicks included); "body" and "close_band"
+    modes exist but are off in all presets.  Body-based zones are a
+    strategy variant a future prereg may choose; also note the
+    wick-touch entry (P1) interacts with this: touching the
+    wick-end of a range zone counts.
+
+Updated TESTS line: batch 2 added one guard test (strictly
+increasing pivot indices); the market_structure test file now
+collects 35 tests (34 before).  FULL MONOREPO suite
+(`pytest ta/tests engine/tests dsl/tests`; the root `pytest -q`
+only runs engine+dsl per ``testpaths``): 2543 passed / 6 skipped,
+ruff and mypy clean.
 
