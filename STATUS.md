@@ -803,6 +803,58 @@ engine; the entry adds a real F3-segment lift (+0.335 vs +0.168,
   The frozen A>B / A>C gates remain on the AVSL entries; random
   baselines are reported, not gated.
 
+#### E3 RESULT (2026-09-22): NARROW TP KILLS EVERYTHING; STOP FLOOR CRITICAL ONLY ON PRIMARY
+
+runs/ablation_rr.log (+ runs/ablation_rr_d.log appended for arm D,
+omitted from the first pass by implementation error, rerun with the
+identical frozen procedure).  Sanity: arm A reproduced E1 numbers
+(+0.172/+0.335, MATCH).
+
+Arms on AVSL entries (EV PRIMARY / F3, z):
+  A  frozen (max(|c-line|,2xATR), 5R)   +0.172 / +0.335   3.33/1.70
+  B  1xATR (floor off), 5R              +0.037 / +0.293   0.73/3.36
+  C1 frozen stop, TP 1R                 -0.020 / +0.011  -0.90/0.30
+  C15 frozen stop, TP 1.5R              +0.022 / +0.020   0.82/0.47
+  D  frozen stop, reverse-cross exit    +0.447 / +0.422   3.28/2.99
+  E  3xATR (floor off), 5R              +0.175 / +0.456   3.21/1.90
+
+Random-geometry nulls (100 draws, mean+-sd):
+  A  +0.135+-0.044 / +0.168+-0.068   (published E1, reused)
+  B  -0.013+-0.060 / -0.011+-0.073
+  C1 -0.010+-0.022 / -0.012+-0.033
+  C15 -0.001+-0.027 / +0.008+-0.039
+  D  +0.415+-0.124 / +0.145+-0.069
+  E  +0.054+-0.046 / +0.064+-0.067
+
+GATES (frozen): A>B+0.05 and A>C+0.10 both segments.
+  A vs B: PASS on PRIMARY, FAIL on F3 (0.335 vs 0.293+0.05).
+  A vs C1, A vs C15: PASS everywhere, by an order of magnitude.
+Verdict per prereg: **stop floor is critical on PRIMARY only; the
+WIDE TP is the absolute requirement -- narrow TP (1R/1.5R) reduces
+both segments to ~zero for BOTH the signal and the null.**
+
+Findings, in strength order:
+1. TP asymmetry is the engine.  5R TP with any wide-ish stop is the
+   only configuration with a nonzero null.  Narrow TP = no edge
+   anywhere, even random.  Drift capture, not entry timing.
+2. "Not too tight" is what matters for stops, not the line.  B
+   (1xATR) collapses PRIMARY to +0.037 (null ~0) -- but on F3 B is
+   fine (+0.293).  E (3xATR) matches A on PRIMARY and BEATS it on
+   F3 (+0.456).  The frozen 2x/line-floor is not magic; the
+   constraint is "wide enough to survive 4H noise".
+3. D (reverse-cross trailing) beats the frozen config in BOTH
+   segments (+0.447/+0.422 vs +0.172/+0.335), and its PRIMARY
+   number is ~all null (+0.415 of +0.447).  Per the anti
+   cherry-pick rule this does NOT change the passed module; a
+   trailing variant requires a NEW prereg.
+4. Entry lift over the matched null (F3): A +0.167, E +0.392, D
+   +0.277 -- the AVSL entry's information shows up on the holdout
+   across geometries, strongest with the wide stops.
+
+Method takeaway for all successor tracks: the null is not one
+number -- every geometry has its own null, and "signal vs null"
+must be computed per geometry.
+
 User directive after carry v3 PASS-with-decay (13.5 -> 3.75 ->
 1.45 %/yr by fold, the user's "funding carry сжался до 4%" read):
 three-track plan, amended by a live data audit before any prereg.
