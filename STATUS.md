@@ -4903,6 +4903,32 @@ Cadence next: cron per experiments/live/README.md (update 4x/day
 on the ledger: Phase B stays BLOCKED pending the AVSL DD
 convention adjudication (see above); Phase A (paper ops) proceeds.
 
+#### PHASE A OPS: CRON LIVE + POST-MORTEM #3 (2026-09-24)
+
+Cron installed on the ops machine (Windows scheduled tasks, TZ
+UTC+3 fixed): TINV_AVSL_pilot_update every 4h at 03:20/07:20/
+11:20/15:20/19:20/23:20 local (= 20 min after each 4H close),
+TINV_AVSL_pilot_snapshot weekly Sun 12:00; both append to
+runs/live_pilot/cron_*.log.  Setup script kept at
+runs/live_pilot/setup_cron.ps1 (gitignored).
+
+POST-MORTEM #3 -- parity gate vs recording order (found at the
+first update that closed an in-scope entry; XRP short @124317):
+the gate demanded every closed in-scope entry to be ALREADY in
+state BEFORE _update recorded it -- structurally, the pilot's
+first entry could never pass (observed: PARITY FAIL on a healthy
+state, two aborts).  Two defects fixed in pilot_tracker._update:
+(1) gate moved AFTER the recording pass, per the parity
+docstring's own semantics (#3: the check that the tracker missed
+no closed-bar entry is meaningful only against recorded state);
+(2) state persisted BEFORE the independent check -- parity_ok
+reads state.json from disk, and previously compared against the
+stale pre-update file.  Post-fix first live entry recorded and
+PARITY OK (tracker == full recomputation, 1 entry, provisional).
+All three pilot defects were caught by the pilot's own gates
+(g1 fired twice, fetch failure surfaced as +0/abort) -- no
+silent divergence at any point.  Frozen module untouched.
+
 #### R-OB-1 PREREG -- OB LONG-ONLY (frozen 2026-09-23, BEFORE any
 #### run code; the freeze commit hash IS the prereg reference)
 

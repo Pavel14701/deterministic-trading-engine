@@ -136,10 +136,15 @@ def _update(repo: Path, do_fetch: bool) -> None:
         raise SystemExit("FROZEN MODULE CHANGED -- pilot invalidated")
     if do_fetch:
         refresh_cache(repo)
-    if not parity_ok(repo, do_fetch=False):
-        st["parity_last"] = "FAIL " + _now()
-        _save(repo, st)
-        raise SystemExit("PARITY FAIL -- STOP per prereg g1")
+    # Post-mortem 2026-09-24 (STATUS): the parity gate used to run
+    # HERE, before recording.  It demands every closed in-scope
+    # entry to be already in state -- but the entries closed by
+    # THIS update's fetch are recorded only LATER in this function,
+    # so the pilot's first real entry could never pass the gate
+    # (observed: XRP 124317 -> PARITY FAIL on a healthy state).
+    # Correct order per the parity docstring (#3): record first,
+    # then check the recorded state against the full recomputation.
+    # On genuine mismatch the abort still marks the state below.
 
     rec = _recompute(repo)
     sizes = {sym: s1_sizes(rec[sym]["cp"]) for sym in ASSETS}
@@ -199,6 +204,15 @@ def _update(repo: Path, do_fetch: bool) -> None:
             tr["resolved"] = True
             if not was:
                 new_resolved += 1
+    _save(repo, st)   # persist FIRST: parity_ok reads state.json
+    if not parity_ok(repo, do_fetch=False):
+        st["parity_last"] = "FAIL " + _now()
+        st["events"].append({"date": _now(),
+                             "kind": "parity_fail",
+                             "new_entries": new_entries,
+                             "new_resolved": new_resolved})
+        _save(repo, st)
+        raise SystemExit("PARITY FAIL -- STOP per prereg g1")
     st["parity_last"] = "OK " + _now()
     st["events"].append({"date": _now(), "kind": "update",
                          "new_entries": new_entries,
