@@ -4805,6 +4805,24 @@ gate numbers reproduced identically; corr, null and the TP-grid
 snippet completed on the rerun.  No signal, gate or sizing edit
 was made at any point after the freeze.
 
+#### E8b ADJUDICATION (2026-09-23, principal decision)
+
+E8b PASS (WEAK, 95c06e2) -> **FAIL**, adjudicated under true grid
+alignment: the recompute of the identical frozen frame (same 9571
+trades, same S1 sizing, prereg 83c2b3f run) passes E-a/E-b/E-c/E-f
+but FAILS E-d on the PRIMARY segment (DD 29% vs 25% cap; legacy
+convention had shown 6%).  Convention-free inputs (per-trade EV,
+matched-null percentile) PASS comfortably -- the revival question
+E8b answered stays answered YES; the track dies on account-level
+risk, which is structural (PRIMARY short EV -0.169R, WR 18%;
+overlapping clusters; S5 shows the DD is not a vol-regime event;
+no sizing rescue: S1/S5 breach G2' PRIMARY, S3 toxic 90/9571).
+OB CLOSED FINAL, one-shot preserved.  Full record incl. E-gate
+table, root cause and the R-OB-1/2/3 BACKLOG revival candidates
+(explicitly NOT pre-registered; R-OB-2 flagged as pass-by-
+construction): experiments/ob/e8b_adjudication.md.
+Focus: AVSL Phase A.
+
 
 
 
