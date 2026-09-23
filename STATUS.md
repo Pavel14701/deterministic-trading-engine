@@ -4862,6 +4862,47 @@ budget), or the principal accepts the verdict with the DD
 convention caveat on the ledger.  Convention-free evidence
 (NW-z +3.31/+3.85 per-trade, EV, breadth) is unaffected.
 
+#### PHASE A CLOCK STARTED (2026-09-23)
+
+Machine turned out to be online -> clock started same day.
+pilot_tracker seed: pilot_start_bucket 124317 (2026-09-23), F3
+reference rate 0.964 trades/day; first ONLINE update: cache
+refreshed incrementally (all 10 assets, gaps=0), PARITY OK
+(tracker == full recomputation, pilot window), +0 entries; first
+snapshot taken (snapshots=1): parity OK, r2 ATR pct 91 (high-vol),
+brake idle, g4 pilot DD 0.0%.
+
+OPS POST-MORTEM (two bugs found and fixed at first live use; both
+in pilot infra, neither touches signal/gates/frozen module):
+
+1. parity_check.refresh_cache called the loader as
+   experiments.load_binance -- wrong path (real module:
+   experiments.loaders.load_binance) AND with bare asset tags
+   (BTC...), which fall through the loader's symbol filter and
+   silently trigger a fetch of its ENTIRE default universe.
+   Fixed: correct module path + full Binance symbols (BTCUSDT...).
+   First failed update (no fetch, stale cache) was aborted by the
+   runbook's own failure rules -- machinery worked as designed.
+
+2. pilot_tracker.cmd_seed set pilot_start_bucket = max(b[-1]) --
+   the newest CACHED bucket, whose close was already determinable
+   at seed time.  Its entries can never be recorded by the seed,
+   so the first update flagged XRP entry (124306, long) as a
+   missed closed-bar entry -> PARITY FAIL -> STOP per g1 (the g1
+   gate fired exactly as designed on a real defect).  Post-mortem:
+   off-by-one in the seed boundary convention.  Fix: start =
+   b[-1] + 1 -- the pilot trades only buckets whose close happens
+   AFTER the seed (conservative; independent of intra-bar cache
+   state).  State wiped and reseeded; the aborted seed never
+   entered the ledger clock.  Resume-after-STOP formally satisfied
+   by this dated note (root cause + fix recorded before the new
+   seed's first update).
+
+Cadence next: cron per experiments/live/README.md (update 4x/day
+>= 15 min after 4H close; snapshot weekly -> STATUS).  Reminder
+on the ledger: Phase B stays BLOCKED pending the AVSL DD
+convention adjudication (see above); Phase A (paper ops) proceeds.
+
 
 
 

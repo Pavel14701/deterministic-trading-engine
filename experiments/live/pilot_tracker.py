@@ -91,6 +91,13 @@ def cmd_seed(repo: Path) -> None:
         b, _cp = _buckets(repo, sym)
         last_closed[sym] = int(b[-1]) - 1
         start = max(start, int(b[-1]))
+    # Post-mortem 2026-09-23 (STATUS): start was max(b[-1]) -- the
+    # newest CACHED bucket, whose close was already determinable at
+    # seed time.  Its entries could never be recorded by the seed,
+    # so the first update flagged them as missed closed-bar entries
+    # (PARITY FAIL, g1).  Correct convention: the pilot trades only
+    # buckets whose close happens AFTER the seed -> start = b[-1]+1.
+    start += 1
     st = {
         "frozen_sha": frozen_sha(repo),
         "created": _now(),
