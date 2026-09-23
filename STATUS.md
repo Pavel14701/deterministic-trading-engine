@@ -4535,6 +4535,31 @@ Verdicts R13-R20 in detector_audit.md.  OB track stays CLOSED for
 all eras; early close_band-era kills are citable as prior evidence
 for a close-band-variant revival only.
 
+AUDIT BATCH 4 (2026-09-22, post-fix follow-up): reviewer "tails"
+adjudicated -- items T1-T6 in detector_audit.md are repeats of
+existing policy/refuted verdicts (wick-entry=P1, reaction
+semantics=R6, volume algebra=P9, is_aligned(None)=P4, cluster
+mutation=R9, empty-frame schema=R-5/R11, exercised by
+test_empty_output_schema); NO new code defects.  Perf (T7): the
+new numba window scan costs 1.1 s per 500k bars (zigzag 2.2 s;
+end-to-end 79 s is dominated by the PRE-EXISTING python validation
+pass, not the window loop) -- non-issue at production scale
+(~1.5 s/asset on the 4H grid).  Funnel diagnostics added
+(experiments/ob/detector_funnel.py; matches the pipeline count
+exactly): on the live "4h" preset the dominant cutter is
+min_extreme_gap=8 (83% of BTC candidates), NOT the zone-intact
+guard (1.7%) -- hypothesis refuted by measurement.  POST-FIX
+ACCEPTANCE RE-RUN (runs/ob_research_check_postfix.log): R1/R2/R3
+pass A1-A5 on all 10 assets (n=889-1110 within [200,2000], width
+median 1.69-1.82 ATR, delay 2 / p90 6-7, S 47-53%, determinism
+OK); only A6 fails, as expected -- its frozen references (131/10)
+are stale pre-fix baselines.  The research acceptance criterion
+SURVIVES the audit fixes; the earlier "smoke 30-83 blocks =
+acceptance FAIL" verdict was a category error (live "4h" preset
+compared against the R1-R3 research floor).  E8 KILL and CLOSED
+status stand; revival still requires a new dated prereg on the
+current code.
+
 
 
 

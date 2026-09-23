@@ -342,3 +342,65 @@ check and E8.  E8 additionally predates the 59ac42d audit fixes
 already documented above.  The OB track remains CLOSED regardless
 of era; any revival needs a new dated prereg on the current code.
 
+BATCH 4 (2026-09-22, post-fix follow-up): the reviewer's "tails"
+list adjudicated, plus funnel diagnostics, detector performance,
+and a full post-fix acceptance re-run.
+
+T1  wick entry without close confirmation -- repeat of P1 (policy).
+    With require_closure_outside=False everywhere it never rejects
+    on a wick-touch alone; documented, unchanged.
+T2  min_reaction_size semantics -- repeat of R6 (0.2% of price,
+    intended).  The "negative reaction_pct when close_j is beyond
+    the far edge" observation is coherent, not fragile: for supply,
+    close_j > zone_high means the retest bar CLOSED back above the
+    zone; displacement then fails by construction (r_abs < 0), so
+    the bar cannot confirm a rejection.  Working as specified.
+T3  volume-gate algebra -- the reviewer's own derivation
+    (v > avg_vol[j]  <=>  v > typical volume excluding j, up to the
+    w/(w-1) tightening) matches R-1/P9; the missing high-volume cap
+    stays open as policy P9.  No new defect.
+T4  is_block_aligned_with_trend(None) -> True -- repeat of P4.
+T5  cluster_order_blocks mutates OrderBlock.start in place --
+    repeat of R9: clustering runs on a freshly created private
+    list, no upstream shared reference.  Robustness nicety only.
+T6  _empty_block_frame pl.Datetime without unit -- repeat of
+    R-5/R11; the premise "nobody triggers the empty branch" is
+    false: test_empty_output_schema exercises it and pins the
+    schema.  Neither latent nor untriggered.
+
+T7  performance of the new breakout-window scan.  Synthetic 500k
+    4H-like bars, "4h" cfg, warm end-to-end 79 s: OnlineZigZag
+    2.2 s, the numba candidate scan (the feared O(n x lookback_max)
+    loop) 1.1 s, indicators ~0 s.  The remaining ~75 s is the
+    pure-Python validation pass, dominated by the structure
+    filter's per-candidate rebuild of confirmed pivot lists
+    (O(#candidates x #pivots)) -- PRE-EXISTING, not introduced by
+    the window fix.  At production scale (4H grid, ~15k bars) the
+    full detector runs ~1.5 s per asset.  No action.
+
+FUNNEL DIAGNOSTICS (new experiments/ob/detector_funnel.py; exact
+mirror of the validation guard order -- cross-checked: funnel
+confirmed == identify_order_blocks count on every run):
+
+  BTC 4H, live "4h" preset:  pivots 6035 -> candidates 1897.
+    min_extreme_gap=8 rejects 83.0% of candidates, structure
+    filter 6.5%, confirm-guard 1.8%, zone-intact 1.7%,
+    no-retest 3.7% -> 64 confirmed.  THE dominant post-fix cutter
+    on the live preset is min_extreme_gap, NOT the zone-intact
+    guard (the reviewer's hypothesis is refuted by measurement).
+  BTC 4H, R1:  pivots 7451 -> candidates 2109.  zone-intact 22.0%,
+    no-retest 25.3%, all other stages ~0 -> 1110 confirmed.
+
+POST-FIX ACCEPTANCE RE-RUN (research_preset_check; full log
+runs/ob_research_check_postfix.log): R1/R2/R3 pass A1-A5 on ALL
+10 assets -- n = 889-1110 (frozen floor [200, 2000]), zone-width
+median 1.69-1.82 ATR14, retest delay median 2 / p90 6-7 bars,
+supply share 47-53%, byte-identical reruns (A5).  The only FAIL
+is A6, and it fails as EXPECTED: its frozen references ("1h"=131,
+"4h"=10) are outputs of the pre-fix buggy detector, already
+declared stale in batch 1.  Verdict: the research acceptance
+criterion SURVIVES the audit fixes.  The earlier "smoke 30-83
+blocks = acceptance FAIL" claim was a category error: it compared
+the LIVE "4h" preset (never gated by the 200-2000 research floor)
+against the R1-R3 criterion.
+
