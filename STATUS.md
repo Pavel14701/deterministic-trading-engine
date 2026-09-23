@@ -4673,6 +4673,33 @@ risk-overlay prereg is BACKLOG (after the user-directed AVSL
 productization); min_extreme_gap / wick-entry policy items are
 moot for live until that overlay prereg exists.
 
+### AVSL PRODUCTIZATION IMPLEMENTED (2026-09-23)
+
+The two files named by the frozen live-scale prereg are written:
+experiments/live/parity_check.py (PARITY hard gate g1: frozen-sha
+pinning of engine/passed/avsl_cross_s1.py + full-series
+recomputation vs the tracker's incremental record; repaint,
+missed-entry, nondeterminism -> exit 1 / update abort) and
+experiments/live/pilot_tracker.py (seed / update / snapshot:
+incremental paper entries from the refreshed kline cache,
+PROVISIONAL trades re-priced until the exit bar closes, S1 sizing
+at entry, accrual mirroring the frozen evaluate(), read-outs
+r1 rolling-90d daily Sharpe + mechanical disaster brake (arms
+after 90 daily obs; brake_on < 0; brake_off >= 0 with a
+"dated STATUS note required" event), r2 500-bar ATR percentile +
+regime tag, r3 corr(|daily ret|, active mean S1 size), r4
+closed-trade rate vs the F3 reference computed at seed, g4 pilot
+DD).  Runbook: experiments/live/README.md.  Smoke on the local
+cache (offline): seed (pilot start bucket 124306, F3 ref 0.970
+trades/day) -> update --no-fetch (parity OK, 0 new bars) ->
+snapshot (r2 = 91, high-vol) -> standalone parity OK; ruff and
+mypy clean.  STATE IS LOCAL (runs/ is gitignored) -- seed must be
+re-issued on the machine that runs the pilot.  The Phase A clock
+starts at the FIRST update that ingests fresh bars (i.e. after
+the first online `load_binance` refresh); seed date recorded in
+state.  Next: schedule the cron per the runbook; first weekly
+snapshot into STATUS.
+
 
 
 
