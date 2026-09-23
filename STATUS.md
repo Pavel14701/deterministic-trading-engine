@@ -4823,6 +4823,45 @@ table, root cause and the R-OB-1/2/3 BACKLOG revival candidates
 construction): experiments/ob/e8b_adjudication.md.
 Focus: AVSL Phase A.
 
+#### AVSL PREREG CONVENTION CHECK (2026-09-23; diagnostic, no
+#### gate/signal/sizing edit; script
+#### experiments/avsl/grid_alignment_check.py)
+
+Question: is the only issued PASS (AVSL-cross S1, overlay verdict
+e6b4b4d) robust to the grid-alignment convention that killed E8b?
+Method: identical trades (n=2939), sizes and thresholds as
+evaluate(); stream rebuilt with e0/e1 shifted to the true global
+4H grid.  Legacy numbers reproduce the frozen verdict bit-for-bit
+(Sh 1.50/2.84, DD 22%/12%, EV +0.17/+0.33) -- baseline OK.
+
+RESULT: the AVSL PASS is NOT convention-robust.  True-aligned:
+PRIMARY NW-Sharpe +1.23 (PASS), DD 26.0% (FAIL, cap 25%), EV
++0.16R PASS, 9/10 assets, CI +0.0008 (PASS, marginal); F3 DD
+28.9% (FAIL; trough 2024-09-15 -- the first epoch where all 10
+assets trade concurrently, which the legacy convention silently
+time-diversified away), EV +0.32R, 7/10, CI +0.0157.  So G2'
+fails BOTH segments under honest alignment, by 1-4pp (vs OB's
+86%/62%) -- the DD margin of the issued PASS was largely a
+convention artifact; EV/CI/breadth margins are convention-free
+and stand.
+
+ENGINE OBSERVATION (recorded, module untouched): nw_sharpe can
+blow up on sparse streams -- true-aligned F3 sum_rho = -1.7
+sends the NW factor to its 1e-6 floor (printed Sh +9076);
+plain Sharpe +9.08 / DD 28.9% are the meaningful F3 figures.
+Any successor metric work should floor the factor sanely (new
+prereg territory; frozen module is read-only).
+
+OPERATIONAL CONSEQUENCE (principal to adjudicate; Phase A NOT
+stopped): the live pilot (paper-only) remains a valid ops/parity
+instrument -- its g4 pilot DD is measured live, not inherited
+from the backtest -- but **Phase B (real capital) is BLOCKED**
+until this finding is adjudicated: either a new dated prereg
+re-issues the verdict under true alignment (fresh multiplicity
+budget), or the principal accepts the verdict with the DD
+convention caveat on the ledger.  Convention-free evidence
+(NW-z +3.31/+3.85 per-trade, EV, breadth) is unaffected.
+
 
 
 
