@@ -4560,6 +4560,79 @@ compared against the R1-R3 research floor).  E8 KILL and CLOSED
 status stand; revival still requires a new dated prereg on the
 current code.
 
+#### E8b REVIVAL PREREG -- OB-RETEST 4H, CORRECTED DETECTOR
+(frozen 2026-09-22, BEFORE any run code/executes; the freeze commit
+hash IS the prereg reference)
+
+MOTIVATION AND SCOPE.  The E8 KILL (prereg 7105724) adjudicated the
+BUGGY detector: fixed breakout check at exactly pivot+50 (A1/A2),
+look-ahead reversal median (A3), unconfirmed-pivot structure filter
+(A4, inert on R2), absolute liquidity_tolerance (A5), no zone-intact
+guard (A6).  "OB as tested has no edge" does not automatically
+transfer to the corrected generator.  Post-fix, the research
+acceptance re-PASSes (R1-R3, A1-A5, all 10 assets; log
+runs/ob_research_check_postfix.log), so a candidate exists.  This
+prereg is OB REVIVAL #1.  It is NOT a re-adjudication of E8 and NOT
+a tuning iteration: the detector code is FROZEN at commit 759d74c
+(audit fixes + batches 1-4); no detector, preset or runner parameter
+may change between this freeze and the run.
+
+ONE-SHOT RULE.  Whatever the outcome, the revival question closes
+with this run.  FAIL -> the OB track is PERMANENTLY dead; no further
+revivals absent a genuinely different mechanism (different ENTRY
+LOGIC, not preset/parameter changes -- the min_extreme_gap=8 and
+wick-entry policy items die with it).  PASS -> the E6-family
+follow-up pattern applies (risk-overlay prereg first; no direct
+live).  Family ledger gains a NEW line "OB-revival"; family
+false-positive budget remains 0 until a PASS.  Declared a priori:
+the prior for PASS is LOW (E8 lost to random geometry at n=5872);
+the revival is justified by the identified detector defects, not by
+hope.
+
+ENTRY (frozen, identical to E8): OB-retest events on the 4H grid
+from RESEARCH preset R2 (experiments/ob/research_presets.py at the
+freeze commit); demand retest -> long, supply retest -> short;
+entry bar = the detector's retest bar; WARMUP 400; same-bar
+opposite-side duplicates kept.  R1/R3 are sensitivity references,
+descriptive only, never gated, never switched post-hoc.  DECLARED
+DEGENERACY: post-fix R1 == R2 == R3 output-identically on this
+universe (the A2 fix folded multiple_breakouts into the window
+scan), so the R-axis sensitivity is vacuous; the only live
+sensitivity contrast is R2 vs R4_diagnostic (structure filter ON).
+
+FRAME (frozen, identical to E8/E6/E7 -- deliberately unchanged so
+E8 vs E8b is apples-to-apples): stop 3xATR14, TP 5R, horizon 500,
+fee 10bp RT, S1-sized account stream, SPLIT_FRAC 2/3 -> PRIMARY
+(pre-2025) and F3 (post-2025) segments.
+
+NULL (frozen, identical protocol): matched random-geometry,
+per-geometry, 100 draws, seeds 0..99, drawn at the SAME entry count
+as the revival run.
+
+GATES (frozen, identical thresholds): E-a pooled NW EV > null mean
++ 0.05R on BOTH segments; E-b EV >= 95th null percentile on BOTH
+segments; kill on E-a/E-b failure.  Then E-c Sharpe >= 1.0,
+E-d DD <= 25%, E-f bootstrap CI > 0 (seed 11, block 500).
+
+DECLARED DIFFERENCES vs E8 (all detector-side, this is the TESTED
+CHANGE SET): causal reversal warmup (reversal_warmup_bars=500);
+breakout window [lookback_min, lookback_max), first valid wins
+(replaces fixed pivot+50); confirm-guarded structure filter;
+relative liquidity_tolerance; require_zone_intact=True.  Nothing
+else differs from the E8 run configuration.
+
+FORBIDDEN: preset/parameter edits, null re-drawing or re-seeding,
+segment redefinition, added filters, any detector commit between
+freeze and run, reading any EV/return output before this freeze is
+committed.  Descriptive (non-gating) read-outs allowed after the
+run: funnel decomposition (experiments/ob/detector_funnel.py),
+retest-delay distribution, EV vs pivot age, per-asset spread.
+
+RUNNER: experiments/avsl/retest_entry.py kind "ob" (unchanged;
+imports R2 from the frozen presets module).  Log:
+runs/retest_e8b.log.  Pre-run invariant: research_preset_check
+A1-A5 must PASS on the run day (it does as of this freeze).
+
 
 
 

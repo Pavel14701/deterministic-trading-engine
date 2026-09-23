@@ -36,5 +36,12 @@ runs/ob_research_check.log); the live-preset regression baselines
 blocks/asset).  E8 ran on R2 per prereg (STATUS, commit 7105724) ->
 FAIL/KILL (runs/retest_e8.log): OB-retest is 0th null percentile
 on PRIMARY.
+Post-audit status (batches 1-4, detector fixed at 759d74c): research
+acceptance re-PASSes on R1-R3 (runs/ob_research_check_postfix.log,
+n=889-1110/asset); funnel diagnostics in detector_funnel.py.
+E8b REVIVAL PREREG (STATUS, frozen 2026-09-22, one-shot): the
+corrected detector gets exactly one re-test on the unchanged E8
+frame/gates via retest_entry.py kind "ob"; FAIL = OB permanently
+dead.  No run before that freeze commit exists.
 NEVER use a research preset for live trading or a live preset for
 EV research.
