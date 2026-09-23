@@ -4754,6 +4754,57 @@ edits; no S-variants added after the run; no tuning on F3; no
 E8c on any preset.  Runner: experiments/ob/ob_risk_overlay.py;
 log runs/ob_risk_overlay.log.
 
+#### OB CONFIRMATION + SIZING RESULT (2026-09-23; prereg 83c2b3f)
+
+VERDICT: KILL -> OB CLOSED FINAL.  Arm A (raw, the frozen gate
+target) FAILED G2' in BOTH segments: event DD 86% PRIMARY / 62%
+F3 vs the 25% cap.  All other A gates passed (G1' Sh +1.00/+1.31;
+G3' EV +0.15R/+0.26R; G4' 8/10 and 10/10 positive assets; G5'
+CI excludes 0 both; descriptive matched-null: EV 100th pct both
+segments) -- the PER-TRADE edge is real, the ACCOUNT-LEVEL drawdown
+is not survivable at 1x sizing.  No sizing rescue: S1 DD 29%/23%
+and S5 29%/22% also breach G2' PRIMARY; S3 collapses (90/9571
+trades kept, EV -0.07R/-0.22R, G1'/G3'/G4'/G5' all F) -- the
+concurrency cap is toxic for OB exactly as it was for AVSL
+(clusters carry the edge; law of method confirmed twice).
+
+GRID-ALIGNMENT DISCOVERY (evidence-trail finding, recorded here
+because it touches E8b too): the 10 Binance 4H series start at
+buckets 109056..111302 (~374d spread), but retest_entry.py (E6/E7/
+E8/E8b) and the frozen module's evaluate() place trades in the
+portfolio stream by ASSET-LOCAL indices.  Per-trade EV, the
+matched-null percentile comparison, and segment EVs are
+unaffected; stream-based metrics (Sharpe/DD/CI) are not: this
+runner's TRUE-alignment arm A shows Sh +1.00/+1.31 DD 86%/62%,
+while the legacy convention sensitivity gives Sh +1.62/+1.90 DD
+29%/51%.  The kill is convention-robust (A fails G2' under both).
+E8b's frozen E-d margin (S1-sized DD 6%/17%, legacy convention)
+should be treated as convention-dependent; its EV/null/E-z verdict
+inputs are convention-free.  No gate re-adjudication was done
+here (one-shot rule); flagged for the ledger.
+
+READ-OUTS (non-gating, arm A, true alignment):
+- Long/short: PRIMARY long +0.473R (n=2924, WR 27%) vs short
+  -0.169R (n=2938, WR 18%); F3 long +0.268R / short +0.243R
+  (both sides positive late).  PRIMARY shorts are the DD engine.
+- Per-asset: 9/10 positive pooled (XRP -0.008R); ETH +0.353 best,
+  LTC +0.045 weakest of the positive.
+- Regime: monotone low-vol edge -- Q1 (ATR pct 0-20] +0.333R,
+  Q5 (80-100] +0.102R.  Same direction as the AVSL regime slice.
+- Corr with AVSL 4H S1 stream: +0.13 PRIMARY / +0.10 F3 -- would
+  have diversified strongly (portfolio-fit was NOT the problem;
+  moot under CLOSED FINAL).
+- TP grid (descriptive): EV rises with TP -- 3R +0.142/+0.188,
+  5R +0.151/+0.255, 8R +0.235/+0.327 (PRIMARY/F3).  If any OB
+  geometry is ever revisited from scratch, 8R dominates; frozen
+  PRIMARY stays 5R, noted only as ledger fact.
+
+Process notes: run 1 crashed in the corr read-out (segment/full-
+stream length mismatch, pure reporting bug); fixed and rerun --
+gate numbers reproduced identically; corr, null and the TP-grid
+snippet completed on the rerun.  No signal, gate or sizing edit
+was made at any point after the freeze.
+
 
 
 
