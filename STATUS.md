@@ -4903,6 +4903,67 @@ Cadence next: cron per experiments/live/README.md (update 4x/day
 on the ledger: Phase B stays BLOCKED pending the AVSL DD
 convention adjudication (see above); Phase A (paper ops) proceeds.
 
+#### R-OB-1 PREREG -- OB LONG-ONLY (frozen 2026-09-23, BEFORE any
+#### run code; the freeze commit hash IS the prereg reference)
+
+HONEST LABEL (recorded first): this is a DECOMPOSITION-DRIVEN
+hypothesis.  Motivation is the measured long/short asymmetry of
+the CLOSED OB track (PRIMARY short -0.169R vs long +0.473R;
+shorts were the DD engine).  It is NOT an independent idea and
+NOT an OB revival: OB stays CLOSED FINAL; E8/E8b ledgers gain no
+multiplicity.  This is a NEW family "R-OB", one-shot, own kill
+rule.  Aged since the OB closure: same session -- accepted
+explicitly, with the label above, at principal instruction.
+
+HYPOTHESIS: demand-block retest entries alone (long-only) carry a
+per-trade edge AND a survivable account-level risk profile under
+S1 sizing on the true grid -- i.e. the OB failure was a
+short-side/overlap phenomenon, not a long-side one.
+
+SIGNAL (frozen): R2 preset (research_presets.py as of the freeze
+commit) DEMAND blocks only -> long entries at the retest bar
+close.  Everything else identical to the E8b frame: stop 3xATR14,
+TP grid {3, 5, 8}R with PRIMARY = 5R, horizon 500 stop-first,
+fee 10bp RT, WARMUP 400, universe BTC AVAX BNB DOGE ETH LINK LTC
+NEAR SOL XRP (Binance 1H -> 4H), split 2/3 PRIMARY / 1/3 F3.
+
+ALIGNMENT (declared, lesson of the convention findings): TRUE
+global grid -- absolute 4H bucket minus the earliest asset
+bucket; every stream, segment split and read-out computed on
+true-time placement.  No legacy-index numbers will be produced.
+
+ARMS: single gate config -- S1 vol-target sizing
+(clip(0.20/rv100, 0.25, 2.0), frozen-module formula).  Raw 1x is
+NOT a gate arm; its account DD is a declared sensitivity
+read-out (the OB kill came from raw-level DD; the ledger gets
+the number either way).
+
+GATES (both segments, thresholds unchanged from the family
+precedent): G1' Sharpe >= 1.0; G2' event DD <= 25%; G3' net EV
+>= 0.10R; G4' >= 7/10 assets positive; G5' block bootstrap CI
+(B=1000, block 500) excludes 0.  Metric rule (frozen before the
+run, symmetric): G1' uses nw_sharpe as implemented in the frozen
+module; if the NW autocorrelation sum < -0.5 the factor is
+degenerate (floored) and the G1' input becomes the plain
+annualized Sharpe (mean/std * sqrt(6*365)) at the same 1.0
+threshold.  The rule fires on the metric, never on the outcome.
+
+KILL RULE: any gate FAIL in either segment -> R-OB-1 CLOSED
+(does not touch OB CLOSED FINAL status).  One-shot: one pass, no
+re-runs, no parameter or threshold edits after this freeze, no
+F3 tuning, decisions on PRIMARY.
+
+NULL (descriptive, NOT gated): matched random-geometry for the
+long-only set (per-asset long counts matched, long side only,
+100 draws, seeds 0..99, TP 5R); reported as EV percentiles per
+segment.
+
+READ-OUTS (non-gating): per-asset EV; ATR-pct quintiles x EV;
+corr(long-only S1 stream, AVSL 4H S1 true-aligned stream) per
+segment; raw-1x DD sensitivity; TP {3, 8}R descriptive EV.
+Runner: experiments/ob/rob1_long_only.py; log
+runs/rob1_long_only.log.
+
 
 
 
