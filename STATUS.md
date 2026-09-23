@@ -4633,6 +4633,46 @@ imports R2 from the frozen presets module).  Log:
 runs/retest_e8b.log.  Pre-run invariant: research_preset_check
 A1-A5 must PASS on the run day (it does as of this freeze).
 
+#### E8b RESULT (2026-09-22, runs/retest_e8b.log; prereg 1ce933e):
+#### PASS -- WEAK per family multiplicity
+
+Runner unchanged; detector frozen at 759d74c (no commits between
+freeze and run).  9571 entries (R2 preset, corrected detector; E8
+had 8538 on the buggy one).  Gates, both segments:
+
+  PRIMARY: EV +0.165R (n=6613, NW z +3.40) vs null +0.051+-0.022
+           -> E-a PASS (+0.114R > 0.05R margin), E-b 100th pct;
+           Sh +2.10 (E-c PASS), DD 6% (E-d PASS),
+           CI [+0.0319, +0.0629] (E-f PASS).
+  F3:      EV +0.251R (n=2958, NW z +5.72) vs null +0.073+-0.039
+           -> E-a PASS (+0.178R), E-b 100th pct;
+           Sh +2.62 (E-c PASS), DD 17% (E-d PASS),
+           CI [+0.0410, +0.0997] (E-f PASS).
+
+All six gates pass on BOTH segments -- the first PASS in the
+family ledger.  The WEAK label is the runner's frozen multiplicity
+downgrade (addendum 68953e0; any PASS through this runner is
+WEAK), and the prereg independently prescribes the E6-family
+consequence: risk-overlay prereg BEFORE any live use; no direct
+live entries from this verdict.
+
+Reading (descriptive, non-gating): the swing E8 -> E8b
+(-0.034R -> +0.165R PRIMARY, both at n~6k) is consistent with the
+audited defects having been signal-relevant, not cosmetic -- most
+plausibly the fixed pivot+50 breakout check (entries were taken
+~50 bars after the actual breakout) and the look-ahead reversal
+median.  Caveat kept on record: this is the corrected detector's
+FIRST and ONLY confirmatory test; the family false-positive
+accounting now has one issued PASS (WEAK) at risk.
+
+Family ledger amendment: re-tests 3/3 (E8 KILL) + OB-revival 1/1
+EXECUTED -> 1 PASS (WEAK) issued.  Per the frozen one-shot rule
+the revival question is CLOSED: no further OB revivals absent a
+genuinely different entry mechanism.  Queue consequence: OB
+risk-overlay prereg is BACKLOG (after the user-directed AVSL
+productization); min_extreme_gap / wick-entry policy items are
+moot for live until that overlay prereg exists.
+
 
 
 

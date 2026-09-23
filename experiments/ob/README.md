@@ -43,5 +43,12 @@ E8b REVIVAL PREREG (STATUS, frozen 2026-09-22, one-shot): the
 corrected detector gets exactly one re-test on the unchanged E8
 frame/gates via retest_entry.py kind "ob"; FAIL = OB permanently
 dead.  No run before that freeze commit exists.
+E8b RESULT (runs/retest_e8b.log, prereg 1ce933e): PASS -- WEAK per
+family multiplicity (all gates, both segments; PRIMARY +0.165R
+z+3.40, F3 +0.251R z+5.72, 100th null pct).  Revival question
+CLOSED by the one-shot rule; next OB step is a risk-overlay prereg
+(BACKLOG), never direct live.  The numbers above remain
+research-only: NEVER use a research preset for live trading or a
+live preset for EV research.
 NEVER use a research preset for live trading or a live preset for
 EV research.
