@@ -4700,6 +4700,60 @@ the first online `load_binance` refresh); seed date recorded in
 state.  Next: schedule the cron per the runbook; first weekly
 snapshot into STATUS.
 
+#### OB CONFIRMATION + SIZING PREREG (frozen 2026-09-23, BEFORE
+#### any run code; the freeze commit hash IS the prereg reference)
+
+Reframe: E8b PASSED with DD 6%/17% already inside the G2' cap, so
+this is NOT an DD-fix overlay -- it is the E8b-prereg's promised
+confirmation step: missing checks (long/short, per-asset, regime,
+AVSL correlation) + sizing ablation + portfolio fit.  The E8b
+one-shot rule is unaffected: the revival question stays closed;
+this prereg adds NO new multiplicity to the entry verdict (same
+signal, same data path, no E8c on any preset).
+
+SIGNAL (frozen, identical to E8b): OB-retest events on the 4H grid
+from RESEARCH preset R2 (post-fix, experiments/ob/research_presets.py
+as of the freeze commit); demand -> long, supply -> short; entry =
+retest bar close; stop 3xATR14; TP grid {3, 5, 8}R with PRIMARY =
+5R; horizon 500, stop-first within-bar; fee 10bp RT; universe BTC
+AVAX BNB DOGE ETH LINK LTC NEAR SOL XRP (Binance 1H -> 4H);
+WARMUP 400; split 2/3 PRIMARY / 1/3 F3.
+
+ARMS (frozen before code; sizing only, signal untouched):
+  A   raw 1x per trade (the E8b baseline config)
+  S1  vol-target: size = clip(0.20 / rv100, 0.25, 2.0)
+  S3  concurrency cap: skip entry if >= 5 open trades or open
+      exposure >= 3x base (size 1); processed on PRIMARY (5R) exits
+  S5  S1 x regime: ATR14 pct (500-bar) > 80% -> size x 0.5
+S-parameter values are frozen; exits for all arms computed at
+PRIMARY 5R; TP {3, 8}R are per-trade descriptive read-outs only.
+
+GATES (per arm, BOTH segments, thresholds identical to the AVSL
+overlay): G1' Sharpe_NW >= 1.0; G2' event DD <= 25%; G3' net EV
+>= 0.10R; G4' >= 7/10 assets positive; G5' block bootstrap CI
+(B=1000, block 500) excludes 0.
+
+KILL RULE (frozen interpretation): arm A is the PRIMARY gate
+target -- ANY A gate FAIL in either segment -> OB CLOSED FINAL,
+no sizing rescue.  Among arms passing ALL gates on both segments:
+risk-first pick, order S3 > S5 > S1 > A (most conservative
+exposure first).  An S-arm failing while A passes is an ablation
+finding, not a kill.
+
+NULL (descriptive, NOT gated): matched random-geometry, per-asset
+entry counts + p_long matched, 100 draws, seeds 0..99, arm A at
+TP 5R; reported as EV percentiles per segment.
+
+READ-OUTS (non-gating): long/short EV + win rate per segment;
+per-asset EV distribution; ATR-pct quintiles x EV; correlation of
+the OB arm stream vs the AVSL 4H S1 backtest stream (same global
+grid, per segment).
+
+RULES: one pass, all arms x 2 segments; no signal or threshold
+edits; no S-variants added after the run; no tuning on F3; no
+E8c on any preset.  Runner: experiments/ob/ob_risk_overlay.py;
+log runs/ob_risk_overlay.log.
+
 
 
 
