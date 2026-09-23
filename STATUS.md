@@ -4964,6 +4964,42 @@ segment; raw-1x DD sensitivity; TP {3, 8}R descriptive EV.
 Runner: experiments/ob/rob1_long_only.py; log
 runs/rob1_long_only.log.
 
+#### R-OB-1 RESULT (2026-09-23; prereg 44a0c75, one pass)
+
+VERDICT: FAIL -> R-OB-1 CLOSED.  Gates (S1-sized, true grid):
+PRIMARY NW-Sharpe +1.03 (PASS by 0.03), DD 50% (FAIL); F3 Sharpe
++0.55 (FAIL), DD 53% (FAIL), CI [-0.017,+0.140] (FAIL).  G3'/G4'
+pass everywhere (EV +0.471R / +0.270R; 10/10 and 8/10 assets).
+
+THE INTERESTING PART -- the prereg hypothesis is REFUTED at the
+account level and the OB post-mortem story needs a correction:
+- Per-trade: the long side is genuinely strong (null 100th pct
+  BOTH segments, EV +0.471/+0.270, 9/10 assets positive pooled).
+- Account: long-only DD (50%/53%) is MUCH WORSE than the full
+  OB signal's S1 DD (29%/23%).  The shorts were not the DD
+  engine -- they were a partial HEDGE: supply-block entries fire
+  in downtrends that coincide with long-drawdown epochs, so
+  removing them doubled the S1 DD.  The raw-1x sensitivity
+  confirms (long-only 76%/93% vs full-signal 86%/62%).
+- Corrected causal story for the OB ledger: the OB account
+  failure is an OVERLAP-CLUSTER phenomenon on the LONG side
+  (bull-window clustering), and the short side was carrying
+  offsetting exposure.  Neither side is deployable alone; the
+  cluster structure, not direction, is the risk driver.
+
+Read-outs kept on the ledger: corr(rob1, AVSL S1) +0.08/+0.10 --
+diversification potential was real but is moot under CLOSED;
+regime profile of longs is NOT low-vol monotone (Q1 +0.481, Q5
++0.536) -- unlike the full signal; TP 8R descriptive +0.704/
++0.455 (consistently dominates the grid, per-trade view only).
+
+Standing rule respected: no re-runs, no parameter changes, no
+rescue attempts.  R-OB family: one member, CLOSED.  Remaining
+backlog items R-OB-2 (pass-by-construction, recommended never to
+run) and R-OB-3 (8R primary; post-hoc unless re-derived from
+scratch on untouched grounds).  Focus returns to AVSL: pilot
+cadence + the Phase B adjudication of the DD convention finding.
+
 
 
 
