@@ -192,6 +192,37 @@
 #### fill/cost pattern) before any capital.  Run:
 #### experiments/avsr/portfolio_layer.py.
 ####
+#### PORTFOLIO-LAYER RESULT (2026-09-24; one-shot @ 65f43bc).
+#### Verdict: **FAIL -- portfolio layer CLOSED, tracks stay
+#### LATENT** (per the frozen rule; PF-G4 honest layer).
+####   PF-G1: PRIMARY Sh +1.39P; F3 Sh +9150.48 "P" --
+####       DEGENERATE READ-OUT: the frozen NW factor
+####       sqrt(1+2*sum(rhos)) with lags=500 blows up when
+####       the 500-lag autocorrelation sum approaches -0.5
+####       (accrual-stream sawtooth); the F3 Sharpe number is
+####       not interpretable.  Methodology caveat recorded for
+####       all future preregs using NW lags >= 500 (no
+####       retroactive change to closed batteries).
+####   PF-G2: DD 20.9% PRIMARY / 23.4% F3 vs cap 30% -- PASS
+####       (honesty note: cap was declared with knowledge of
+####       the 26.7R diagnostic; it did NOT bind).
+####   PF-G3: CI [+0.0013,+0.0221] / [+0.0107,+0.0456] -- PASS.
+####   PF-G4: FAIL -- 75 of 13080 trailing 12m windows
+####       negative; ALL window-starts fall in 2022-07-31..
+####       2022-08-13; worst window 2022-08-09..2023-08-09 at
+####       -8.7R.  The bear-year + 2023 dead zone (the family's
+####       known holdout weakness, decomposition 2026-09-22)
+####       survives diversification: trigger diversification
+####       fixes DD, NOT the regime hole.
+#### READ-OUT: the 50/50 portfolio is statistically alive
+#### (G1-G3 pass) but fails the deployability honest layer on
+#### a persistent negative year.  Any revival must address the
+#### 2022-23 regime hole explicitly (regime gate calibrated
+#### out-of-sample, or capital-schedule that tolerates a
+#### -9R year) -- that would be a NEW family attempt beyond
+#### the 3/3 budget, principal-level decision.  Execution
+#### layer not reached; no capital.
+####
 #### ProSP v2 RESULT (2026-09-24; RUN B, one-shot; runner
 #### prosp_v2.py @ da1d2b3).  Verdict: **CLOSED -- SIGNAL-DEAD**
 #### (two-layer P-2 verdict: no deployable signal in this
