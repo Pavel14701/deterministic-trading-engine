@@ -143,6 +143,17 @@
 #### (honest fill/cost layer, the P4-EX pattern) before any
 #### capital.  Frozen modules untouched throughout.
 ####
+#### CORRELATION CHECK (2026-09-24, diagnostic, no gates):
+#### AVSL-cross S1 vs AVS-channel S1 per-bar accrual streams
+#### (identical S1 sizing + bookkeeping, global 4H grid
+#### n=15269; runner experiments/avsr/corr_check.py).
+####   Pearson: PRIMARY +0.627, F3 +0.622, FULL +0.625
+####   Spearman: PRIMARY +0.408, F3 +0.433, FULL +0.425
+####   50/50 combined: sum +257.1R, maxDD 26.7R vs 34.1R
+####   (AVSL alone) / 38.0R (channel alone) -- diversification
+####   benefit is real but the tracks are NOT independent
+####   (moderate correlation, shared geometry/base).
+####
 #### ProSP v2 RESULT (2026-09-24; RUN B, one-shot; runner
 #### prosp_v2.py @ da1d2b3).  Verdict: **CLOSED -- SIGNAL-DEAD**
 #### (two-layer P-2 verdict: no deployable signal in this
