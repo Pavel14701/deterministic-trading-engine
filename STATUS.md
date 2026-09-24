@@ -5231,6 +5231,30 @@ of the cum stream.  Otherwise R-OH-1 PARKED and the rank-one
 DD reading ("structural, unfixable by overlay") is confirmed
 by a fifth independent test.
 
+VERDICT (2026-09-24, one-shot run of rhedge_check.py, 9585
+entries, full grid n=15269): PARKED -- and the mechanism is
+REFUTED, not just short of the bar.  Baseline alpha=0: total
++830 R-units, DD 29.3%, NW Sharpe +1.23 (metric cross-check
+against R-OB-1 machinery: matches).  Every alpha makes
+everything monotonically WORSE: alpha=.25 -> DD 30.5%, total
+-1.4%; alpha=.5 -> DD 31.9%; alpha=1.0 -> DD 34.9%, total
+-2.8%, Sharpe 1.20.  Reading: (a) the overlay has NEGATIVE
+mean PnL -- E(t) is positively correlated with BTC drift, i.e.
+the OB book is implicitly long the market on average, and
+shorting that drift subtracts return without touching the DD
+windows; (b) DD increases under the hedge, which means the OB
+drawdown windows are NOT BTC-crash windows -- the DD is
+asset-level idiosyncratic whipsaw, exactly the E5
+'spread-over-time, not tail exposure' reading.  Conclusion is
+robust to hedge costs (any cost only worsens the overlay).
+This is the FIFTH independent confirmation that rank-one DD on
+this universe is structural: S5 sizing, PC1 cap (R-SVD-1),
+lambda1 halt (R-SVD-3), long-only split, and now beta-hedge
+overlay all fail to touch it.  Regime-gated entry (R-OR-1) is
+the only remaining OB-adjacent feasibility candidate from the
+mechanism list; its premise is untouched by this result, but
+the S5 prior stands.
+
 #### R-OB-1 PREREG -- OB LONG-ONLY (frozen 2026-09-23, BEFORE any
 #### run code; the freeze commit hash IS the prereg reference)
 
