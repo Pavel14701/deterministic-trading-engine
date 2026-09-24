@@ -5198,6 +5198,39 @@ OB side) parked by their own predeclared gates with mechanisms
 recorded.  Denoising/factor-decomposition yields no live track
 on this universe.
 
+#### R-OH-1 FEASIBILITY GATE -- BETA-HEDGE OVERLAY (2026-09-24,
+#### prereg frozen before code; runner experiments/ob/rhedge_check.py)
+
+Hypothesis: OB DD is crypto-beta crash exposure; a short-BTC
+overlay proportional to the portfolio's net PC1 exposure keeps
+all OB signals (unlike the parked PC1 cap) while removing the
+beta component of the stream.
+
+Design (frozen):
+- Signal: frozen E8b OB frame, ALL blocks, both sides, S1
+  vol-target sizing -- the exact R-OB-1 machinery
+  (ob_risk_overlay.base_trades/decorate), unmodified.
+- Exposure: E(t) = sum over open trades of s1_i x sign_i
+  (PC1 loadings are near-uniform 0.26..0.35, absorbed into the
+  hedge calibration; declared simplification).
+- Hedge: overlay return per bucket = -alpha x E(t) x r_BTC(t),
+  true mark-to-market on BTC 4H simple returns; positions
+  accrue per the frame's spread-over-hold convention (declared
+  approximation).  No hedge costs (taker on rebalance would be
+  ~2-4bp/bucket turnover; noted as read-out at PASS).
+- Arms: alpha in {0, 0.25, 0.5, 1.0}; alpha=0 is the baseline.
+  The alpha axis is EXPLORATORY by design (the question is
+  whether ANY beta-neutrality level helps); a PASS leads to a
+  prereg that freezes ONE alpha chosen by the declared rule
+  (smallest alpha meeting the gate).
+
+Gate (declared): PASS iff exists alpha > 0 with
+maxDD(stream) <= 20% AND total return >= 0.8 x alpha-0 total
+return.  Stream: S1-sized accrual + overlay, DD = running max
+of the cum stream.  Otherwise R-OH-1 PARKED and the rank-one
+DD reading ("structural, unfixable by overlay") is confirmed
+by a fifth independent test.
+
 #### R-OB-1 PREREG -- OB LONG-ONLY (frozen 2026-09-23, BEFORE any
 #### run code; the freeze commit hash IS the prereg reference)
 
