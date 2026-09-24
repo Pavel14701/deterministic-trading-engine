@@ -5198,6 +5198,66 @@ OB side) parked by their own predeclared gates with mechanisms
 recorded.  Denoising/factor-decomposition yields no live track
 on this universe.
 
+#### PROTOCOL AMENDMENT P-2: TWO-LAYER VERDICTS (2026-09-24,
+#### dated, PROSPECTIVE; non-retroactivity clause binds)
+
+Motivation: the ledger recorded deploy-layer failures with the
+same vocabulary as signal-layer deaths ("CLOSED FINAL"), which
+conflates "no edge" with "edge alive, not deployable".  The
+amendment refines classification; it does NOT re-run, re-score,
+or unlock anything by itself.
+
+Rule 1 -- two layers on every future prereg:
+  SIGNAL layer: does the per-trade edge exist? (entry/exit
+  geometry, frozen after prereg)
+  PORTFOLIO layer: is it deployable? (sizing, cap, hedge,
+  construction -- separate preregs allowed on signal-alive
+  tracks without touching signal verdicts)
+Verdict vocabulary: SIGNAL-DEAD / LATENT (signal-alive,
+portfolio-blocked) / DEPLOYABLE.
+
+Rule 2 -- family budget: max 3 preregs per family ABSENT a
+structural kill.  A mechanism-level refutation (rank-one fact,
+beta-window refutation, crowding measurement) closes the
+family immediately regardless of budget -- score-based
+closure alone does not.
+
+Rule 3 -- non-retroactivity: no gate re-run, no seed/parameter
+change, no family reopening.  A relabel below authorizes
+nothing; every latent revival still requires its own one-shot
+portfolio-layer prereg with pre-declared gates, and prior
+mechanism evidence is honest input into whether to prereg at
+all.  Adopting an amendment right after a losing streak to
+unlock specific tracks is protocol-level p-hacking; hence this
+clause.
+
+LEDGER RECLASSIFICATION (documentation only, verdicts
+unchanged):
+- z-score track: SIGNAL-DEAD (no post-entry edge, cause
+  established).  Not latent.
+- AVSL-cross-as-entry (1H/4H/high-TF): SIGNAL-DEAD (edge did
+  not survive confirmation).  Not latent.
+- Donchian-4H: SIGNAL-DEAD (no config passes; entry retained
+  only as a component, not a track).
+- Funding carry v2/v3: mechanism-dead (crowding, premia eaten
+  -- measured, not scored).  Basis trade = new family, not a
+  revival.
+- AVSL S1 (promoted engine/passed, live paused by principal):
+  LATENT -- signal-PASS (per-trade edge), portfolio layer DD
+  26% vs cap 25% (marginal).
+- E8b OB: LATENT -- signal-PASS (weak, per-trade gates),
+  portfolio-FAIL on deploy DD 29% vs 25%.
+- R-OB-1 cap, S5 sizing, R-SVD-1/3, R-SSA-1/2, R-SVD-2,
+  R-OH-1 hedge: mechanism-dead entries; they change neither
+  signal verdicts nor latent status.
+- HONEST PRIOR on latent revivals: the strongest
+  portfolio-layer mechanism (beta-hedge) was tested first and
+  REFUTED (DD windows are not BTC-crash windows).  Remaining
+  portfolio-layer candidates on latent tracks (regime gate,
+  split-exit) have materially lower priors; breadth into NEW
+  signal classes (TTF, P4 low-cap carry, basis, multi-market)
+  dominates further portfolio-layer work on latent tracks.
+
 #### R-OH-1 FEASIBILITY GATE -- BETA-HEDGE OVERLAY (2026-09-24,
 #### prereg frozen before code; runner experiments/ob/rhedge_check.py)
 
