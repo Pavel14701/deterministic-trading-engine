@@ -4969,6 +4969,44 @@ Consequences (recorded, NOT acted on):
 - Frozen AVSL/OB frames and the live pilot are untouched; the
   pilot continues on the current universe per its prereg.
 
+#### SVD FOLLOW-UP LEDGER: R-SVD-1..6 REGISTERED (2026-09-24)
+Backlog registration ONLY -- none prereg'd, no code, no gates
+frozen.  All six are NEW families (decomposition-driven, not
+E8/AVSL/OB multiplicity); each needs its own prereg before code.
+Rank-one context (see diagnostic above) applies to all: SVD
+cannot create diversification; these are separation/monitoring
+tools, not signal sources.
+
+- R-SVD-1 PC1 net-exposure cap (candidate S3 replacement).
+  Priority HIGH.  Feasibility numbers from the frozen S1 backtest
+  (2941 trades / 14411 buckets): gross concurrency mean 12.1,
+  p90=23, max 42 (>=5 concurrent 78% of time) -- BUT net signed
+  factor exposure p50=4, p90=12, p99=20, range [-24,+23]:
+  longs/shorts offset ~2/3 of gross.  This is the material
+  difference from S3: S3 capped GROSS (and cut the offsetting
+  hedges -- edge died); a PC1 cap limits NET and leaves natural
+  long/short offset alone.  Hypothesis alive, not dead-on-
+  arrival.  Pre-reg (when written) must freeze ONE cap rule a
+  priori (e.g. cap = historical p90 of net exposure) + gates:
+  DD must drop materially, per-trade EV must survive.
+- R-SVD-2 residual cross-sectional market-neutral (PC1-orthogonal
+  spreads, C(10,2) pairs).  Priority MED.  Residual variance is
+  33% of total on this universe -- thin but nonzero material.
+- R-SVD-3 lambda1(t) rolling regime indicator (factor
+  concentration, NOT vol-target; E5 showed vol regime does not
+  explain DD).  Priority MED; diagnostic-first like L1.
+- R-SVD-4 funding-rate SVD / cross-sectional carry revival
+  (carry closed at F3 1.45%; SVD regime filter is the revival
+  hypothesis).  Priority MED; funding data on disk.
+- R-SVD-5 lead-lag via lagged SVD.  PARKED: needs 1m/tick data
+  (cache is 1h minimum).
+- R-SVD-6 SSA denoising of signal/EV series.  PARKED:
+  monitoring tool, post-processing, lowest priority.
+Order of execution: R-SVD-1 pre-reg mechanics -> freeze -> one
+historical pass (same discipline as R-OB-1).  The others wait;
+running several SVD families at once would be the multiplicity
+error the ledger exists to prevent.
+
 #### R-OB-1 PREREG -- OB LONG-ONLY (frozen 2026-09-23, BEFORE any
 #### run code; the freeze commit hash IS the prereg reference)
 
