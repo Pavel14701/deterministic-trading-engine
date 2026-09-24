@@ -5177,6 +5177,27 @@ PASS -> full R-SVD-2 prereg with declared arms N in {10, 30, 90}
 (and no other tuning).  PARKED -> structural fail with mechanism
 recorded; the SVD family closes.  One-shot: no W/k/N search.
 
+VERDICT (2026-09-24, one-shot run of rsvd2_check.py, 533
+rebalances, full history): PARKED.  net Sharpe = -1.03 (gross
+-0.74), total net -3.77 on notional-1 baskets, maxDD 4.08 --
+far below the 0.5 park line.  Orthogonality worked exactly as
+designed: corr(net, AVSL S1) = -0.02, corr(net, BTC) = +0.06 --
+residual PnL is genuinely beta-free.  The failure is the MR
+direction itself: long-losers/short-winners on 30-bar cumulative
+residuals LOSES (gross -0.74), i.e. residuals exhibit residual
+MOMENTUM, not reversal.  Note for the ledger only: flipping the
+sign is post-hoc tuning under the one-shot rule and would still
+miss the PASS bar (|gross| 0.74 < 1.0); no momentum prereg is
+scheduled.  Data note: the first run aborted on NaN -- a
+double-log bug in the runner (not dirty data); fixed before any
+metric existed, no peeking occurred.  CONSEQUENCE: the SVD
+family CLOSES.  Final tally: rank-one diagnostic stands (L1),
+all four downstream hypotheses (R-SVD-1 PC1 cap, R-SVD-3
+lambda1 halt, R-SVD-2 residual MR; R-SSA-1/2 smoothing on the
+OB side) parked by their own predeclared gates with mechanisms
+recorded.  Denoising/factor-decomposition yields no live track
+on this universe.
+
 #### R-OB-1 PREREG -- OB LONG-ONLY (frozen 2026-09-23, BEFORE any
 #### run code; the freeze commit hash IS the prereg reference)
 
