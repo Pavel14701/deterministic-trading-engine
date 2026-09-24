@@ -215,6 +215,45 @@ OKX API serves)?  Data: engine/infra okx_fetch.fetch_funding_history
 written BEFORE the fetch.  Status: staged, do not run until the
 design prereg is committed.
 
+#### P4 RESULT (2026-09-24; prereg frozen 2026-09-21; snapshot
+#### p4_universe_2026-09-24.json, pull window 30d declared
+#### before pull; runner p4_carry.py; v3 rules AS-IS via
+#### imports; P2 bootstrap 30d/B=10k/seed=7).  Verdict: PASS,
+#### all five gates.
+
+Panel: 1095 days x 30 assets (2023-09-26 .. 2026-09-24).
+- G1 PRIMARY portfolio Sharpe_NW = +7.16 (ann +6.58%,
+  maxDD 0.23%) >= 1.0 -- PASS
+- G2 trailing-12m Sharpe_NW = +10.22 (ann +7.97%) >= 0.7 --
+  PASS
+- G3 PRIMARY maxDD 0.23% <= 15% -- PASS
+- G4 30/30 assets (100% >= 60% required) Sharpe_NW >= 0 with
+  active >= 60d -- PASS
+- G5 bootstrap ann CI95: PRIMARY [+5.40, +8.10], 12m
+  [+6.82, +9.77] -- both exclude 0 AND the ~4-5% risk-free
+  benchmark -- PASS
+
+DECLARED CAVEATS (alter nothing in the frozen verdict, bound
+the forward expectation):
+1. SURVIVORSHIP: the frozen universe rule selects on TODAY's
+   exchangeInfo (TRADING status + current-volume top-30 among
+   age>=180d).  Perps that had high volume in 2023-2024 but
+   delisted before the pull are structurally absent -- the
+   backtest cannot see failed low-caps.  The ann +6.58% is an
+   estimate on survivors; forward expectation is lower by an
+   unmeasurable margin.
+2. EXECUTION: MAKER_RT 0.2% assumes maker fills on low-cap
+   perps AND the spot legs; low-cap books are thinner and
+   wider than the majors the assumption was priced on.
+3. Funding magnitude on low-caps is fatter-tailed than majors;
+   hold-until-flip can hold through violent funding swings.
+
+STATUS: first PASS of the breadth pivot.  The track is
+deployable per the frozen gate.  Scaling decision (small live
+pilot vs paper) is principal-level, same bucket as the AVSL
+live-restart decision; live ops remain paused.  Breadth queue
+unchanged: basis trade next-feasibility, market switch after.
+
 #### P4 -- low-cap carry (NEW hypothesis, no era contamination)
 
 Hypothesis: funding-carry crowding is concentrated in large-cap
