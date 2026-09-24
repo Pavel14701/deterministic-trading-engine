@@ -321,6 +321,45 @@
 #### 20% pessimistic (EV < 0.10R, signal weaker on non-majors).
 #### RUNNER: experiments/avsl/avsl_extended_universe.py.
 ####
+#### AVSL-EXTENDED VERDICT (2026-09-24, one-shot, log
+#### runs/avsl_extended_universe.log, code frozen @ 59e199b).
+#### 3823 trades inside the window (PRIMARY 2669 / F3 1154).
+####   G1' Sharpe_NW: +5011 / +5862 (degenerate NW factor, as
+####       pre-declared; raw Sharpe +5.01 / +5.86 governs the
+####       narrative) -> PASS both.
+####   G3' net EV:    +0.125R / +0.161R -> PASS both, and in
+####       the REALISTIC prior branch (+0.10..0.15): the edge
+####       DOES carry to non-majors, weaker than the 10-major
+####       +0.17/+0.33, F3 roughly halved.
+####   G2' event DD:  59.8% / 50.3% -> FAIL both (gate 25%).
+####       Consistent with the frozen FORBIDDEN finding
+####       (clustered entries carry the edge; caps destroyed
+####       it): 29 rank-one-correlated assets make the clusters
+####       ~3x bigger -> DD triples (22% -> 60%).  The SVD
+####       rank-one result PREDICTED this: no diversification
+####       to offset the added concurrent exposure.
+####   G4' assets positive: 20/29 / 19/29 -> FAIL (>= 21).
+####       Marginal, but frozen thresholds do not bend.
+####   G5' bootstrap CI (block 500, seed 11): [-0.004,+0.069] /
+####       [-0.038,+0.118] -> includes 0, FAIL both.  Power
+####       note: a 2.56y grid with 500-bar blocks has only ~7
+####       independent blocks per segment -- the gate is
+####       power-limited here (declared window caveat), but it
+####       stays FAIL as frozen.
+####   PF-G4 read-out (NOT gated): 0/3417 trailing 12m windows
+####       negative, worst +19.6R (accrual-stream construction,
+####       positive-biased by design; informational only).
+#### KILL RULE APPLIED: 6 gate FAILs -> **AVSL-EXTENDED
+#### CLOSED**.  The frozen signal's per-trade edge survives on
+#### non-majors (G1'/G3'), but portfolio-level gates fail:
+#### expansion adds clustered rank-one exposure, not
+#### diversification -- SVD predicted the DD, the run measured
+#### it.  This does NOT touch the 10-major PASS (different
+#### window/universe, own prereg intact).  Deployment remains
+#### the 10-major frozen config; any 29-asset redesign
+#### (de-lever/caps) is FORBIDDEN territory (S3/S4) and would
+#### close the passed module for a new dated prereg.
+####
 #### ProSP v2 RESULT (2026-09-24; RUN B, one-shot; runner
 #### prosp_v2.py @ da1d2b3).  Verdict: **CLOSED -- SIGNAL-DEAD**
 #### (two-layer P-2 verdict: no deployable signal in this
