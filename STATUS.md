@@ -1509,6 +1509,48 @@ no re-tuning):
   PRIMARY the result is INCONCLUSIVE, not PASS), fold-by-fold
   table, gross-vs-net per fold.
 
+#### TTF v1 RESULT (2026-09-24; prereg frozen 2026-09-21 BEFORE
+#### code; runner experiments/ttf/ttf_v1_check.py, one-shot)
+
+Runner conventions declared in the docstring (prereg-silent
+execution details, not parameters): z ddof=1, stop-first
+intrabar with gap fill at open, ATR frozen at signal bar,
+daily MTM streams, portfolio = sum/6 fixed denominator.
+Process note: two earlier executions crashed on mechanical
+bugs (missing __main__ guard; ms-vs-day-id units in
+searchsorted) BEFORE any metric existed; the portfolio-level
+numbers were identical across both complete outputs.  No
+parameter or logic choice followed a look.
+
+RESULT -- CLOSED per prereg (T-G1, T-G2, T-G4 fail; no
+re-tuning):
+- Trade counts (PRIMARY): 647..779 per asset -- all >= 200,
+  so the result is CONCLUSIVE, not INCONCLUSIVE.
+- T-G1: 0/6 assets >= 1.0 net Sharpe_NW (range -1.07..-3.01).
+- T-G2: portfolio net Sharpe_NW = -4.75 (fail).
+- T-G3: portfolio maxDD = 1.3% (passes trivially -- the track
+  loses slowly rather than drawing down).
+- T-G4 (kill): gross portfolio Sharpe = -0.77 <= 0 -- per the
+  prereg's own wording, the signal does not exist before
+  costs.
+- Folds (gross/net portfolio): F1 -0.23/-3.89, F2 -1.73/-6.38,
+  F3 +1.21/-4.54 (F3 reported, not gated).  Gross is negative
+  in both PRIMARY folds; the lone positive F3 gross is far
+  below its own cost drag and gates nothing.
+
+Mechanism recorded: aggressive-flow divergence (buy aggression
+into decline = accumulation) is ANTI-signal at the 1H scale on
+these six majors -- gross negative means continuation dominates
+the presumed reversal, the opposite of the divergence premise.
+Independent of direction, the frame's turnover (~0.4 round
+trips/asset/day) at 15bp RT needs a per-trade edge this signal
+family does not have.  TTF family: the flow-DIVERGENCE variant
+is closed by mechanism.  ProSP v2 remains prereg'd and open
+(it uses tbv features as probabilities under a walk-forward
+protocol, a different claim); P4 low-cap carry and basis trade
+remain the breadth queue.
+
+
 ### PROSP v2 (probability-based portfolio) -- PRE-REGISTRATION (fixed BEFORE run)
 
 Successor to barrier-probability v1 (CLOSED: model Brier 0.21747 >
