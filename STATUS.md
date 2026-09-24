@@ -60,6 +60,26 @@
 #### family budget: counts as attempt #2 of the AVS family
 #### (N=3 per P-2).  Runner: experiments/avsr/risk_overlay_mirror.py.
 ####
+#### AVSR-MIRROR RESULT (2026-09-24; one-shot @ 594aa40).
+#### Verdict: **CLOSED -- 0/4 configs pass** (per the frozen
+#### risk-first rule; the AVSL LATENT verdict is unaffected).
+####   S1: PRIMARY 5/5 PASS (Sh +1.55, DD 17%, EV +0.18R,
+####       8/10 assets, CI [+0.0068,+0.0275]) -- numerically
+####       almost identical to frozen AVSL PRIMARY (1.50,
+####       22%, +0.17R); F3 FAIL (Sh +0.52, DD 32%, EV +0.08R,
+####       CI includes 0).  AVSR has NO F3 leg, unlike AVSL
+####       (F3 Sh 2.84).
+####   S2: PRIMARY DD 45% F; S3/S4: mixed single-segment noise,
+####       no config passes both segments.
+#### Read-out: the mirror reproduces the AVSL PRIMARY surface
+#### (shared geometry + shared AVS base) but carries none of
+#### the F3 regime edge -- consistent with the declared prior
+#### (same-as-AVSL band, weaker side; high is noisier than
+#### low).  Family budget: AVS attempt #2 of 3 consumed; one
+#### attempt remains (channel AVSL+AVSR is the declared
+#### backlog candidate and would be attempt #3).  Frozen AVSL
+#### module untouched throughout.
+####
 #### ProSP v2 RESULT (2026-09-24; RUN B, one-shot; runner
 #### prosp_v2.py @ da1d2b3).  Verdict: **CLOSED -- SIGNAL-DEAD**
 #### (two-layer P-2 verdict: no deployable signal in this
