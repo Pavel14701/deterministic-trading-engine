@@ -1,3 +1,19 @@
+# STATUS
+
+#### P4 RUN DECLARATION (2026-09-24): the frozen P4 prereg
+#### (2026-09-21) is being EXECUTED today.  Universe snapshot
+#### convention declared BEFORE the pull: "the pull window" =
+#### trailing 30 days of daily klines ending at the pull date.
+#### Snapshot script experiments/carry/p4_universe.py writes
+#### data/p4_universe_<date>.json (rule inputs included); the
+#### gate runner experiments/carry/p4_carry.py consumes the
+#### snapshot verbatim (v3 rules AS-IS via funding_carry_v3
+#### imports; P2 bootstrap 30d/B=10k/seed=7).  No universe or
+#### parameter choice follows any P4 look.  Funding fetch
+#### reuses funding_carry_v2.binance_daily_funding (cache
+#### data/funding_binance/) -- no new fetch infrastructure
+#### needed.
+
 # STATUS — what is implemented vs what is needed
 
 Single consolidated summary. Legend: ✅ done · 🔨 in progress / core done · ⬜ not started ·
