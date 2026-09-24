@@ -1,5 +1,45 @@
 # STATUS
 
+
+#### P4-EX EXECUTION PRE-REG (2026-09-24, frozen BEFORE any run;
+#### runner experiments/carry/p4_exec.py).  Question: does P4
+#### survive an honest execution model, or is it a funding-stream
+#### artifact?  All constants frozen ex ante; NOTHING is fitted.
+
+Model (layered on the same panel/streams as the P4 PASS run):
+1. FILL MODEL: each leg-side (perp+spot, entry+exit) fills as
+   maker with probability P_FILL=0.5 (i.i.d., uniform, seed=7,
+   single frozen RNG sequence).  A missed fill retries the NEXT
+   day: entry delay skips the intervening funding; exit delay
+   KEEPS the position (funding during delay accrues, honest).
+   A miss that eventually fills via taker fallback pays
+   SPREAD_HALF_BPS=10 extra per leg-side (half of a frozen 20bp
+   low-cap spread assumption; maker fees already inside
+   MAKER_RT).
+2. BASIS ALLOWANCE: extra BASIS_RT=0.50% cost per completed
+   round trip, all round trips (frozen conservative allowance
+   for spot-perp basis widening at unwind; declared allowance,
+   NOT an estimate -- no spot panel exists for these pairs).
+3. CAPITAL READ-OUT (not gated): v3 convention quotes on perp
+   notional; the capital-adjusted ann (divide by 2 for the two
+   legs' capital) is REPORTED beside it.
+4. STABILITY READ-OUT (not gated): rolling 6m ann% windows --
+   count positive, worst window.
+
+Gates (frozen; any FAIL -> P4 execution-blocked, the P4 PASS
+stands as funding-stream fact):
+  EX-G1: net portfolio Sharpe_NW >= 1.0 on PRIMARY
+  EX-G2: net portfolio Sharpe_NW >= 0.7 on trailing 12m
+  EX-G3: net portfolio maxDD <= 15%
+  EX-G4: net ann CI95 (P2 bootstrap) excludes 0 on PRIMARY
+
+Honest prior (declared): the model costs are severe by design
+-- expected fill delay ~1d on ~5-10bp/day funding, ~20bp extra
+spread drag and 50bp basis allowance per RT.  If EX passes
+anyway, P4 is deployable-subject-to-paper-trading; if it fails,
+the funding-stream PASS is reclassified as an upper bound and
+the track closes without a re-run.
+
 #### P4 RUN DECLARATION (2026-09-24): the frozen P4 prereg
 #### (2026-09-21) is being EXECUTED today.  Universe snapshot
 #### convention declared BEFORE the pull: "the pull window" =
