@@ -5039,6 +5039,31 @@ historical pass (same discipline as R-OB-1).  The others wait;
 running several SVD families at once would be the multiplicity
 error the ledger exists to prevent.
 
+#### R-SSA FAMILY REGISTERED; R-SSA-1 FEASIBILITY FAIL (2026-09-24)
+Per-asset SSA denoising (the original CT-perfusion-inspired idea)
+is a DIFFERENT family from cross-asset R-SVD and was never tested.
+Registered R-SSA-1 (SSA on the AVSL line), R-SSA-2 (SSA on price
+before the OB pivot detector), R-SSA-3 (SSA on signal streams).
+R-SSA-1 feasibility gate (experiments/diagnostics/
+ssa_avsl_check.py, causal SSA W=30 k=3 -- last-point Hankel
+reconstruction, no lookahead; identical frozen entry/exit
+machinery; baseline validated byte-exact: 2941 trades):
+  - cross reduction only 1% (2941 -> 2909); EV/trade +0.217 ->
+    +0.195; total R 639 -> 568; sum per-asset max-DD 341 -> 384R.
+  - GATE FAIL: EV fell, DD rose, crosses did not shrink.
+  - MECHANISM: double-smoothing redundancy.  AVSL is already an
+    SMA(SLOW=345) of adjusted price -- a low-pass filter ~11x
+    wider than the SSA window.  SSA-30 on top of SMA-345 sees an
+    almost-linear segment, keeps it (top-3 components ~= identity)
+    and only perturbs the line; the latency cost lands as pure
+    EV decay.  Denoising an already-denoised signal.
+  - VERDICT: R-SSA-1 PARKED (structural, not tunable: any window
+    < SLOW inherits the argument a fortiori).  The redundancy
+    argument does NOT transfer to R-SSA-2 -- the OB detector
+    pivots on RAW price, which is genuinely noisy -- so R-SSA-2
+    stays the live candidate of this family (feasibility before
+    prereg, same protocol).  R-SSA-3 stays parked (monitoring).
+
 #### R-OB-1 PREREG -- OB LONG-ONLY (frozen 2026-09-23, BEFORE any
 #### run code; the freeze commit hash IS the prereg reference)
 
