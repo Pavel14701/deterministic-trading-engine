@@ -360,6 +360,45 @@
 #### (de-lever/caps) is FORBIDDEN territory (S3/S4) and would
 #### close the passed module for a new dated prereg.
 ####
+#### AVSL-15M PRE-REG (2026-09-24, frozen BEFORE run; intraday
+#### branch test: does the 4H-frozen AVSL wide-TP geometry
+#### transfer to 15m WITH the fee wall accounted?).
+#### STANDING RULE HONORED (STATUS 2026-09-21 15m post-mortem,
+#### "gross edge first"): two-stage prereg.  Stage A gates GROSS
+#### edge on taken trades; Stage B (only if A passes) runs the
+#### S1/gates battery.
+#### DATA (declared): OKX 15m cache (Binance 15m not cached --
+#### declared venue deviation), 10 frozen majors, all present,
+#### density 1.000; common window ~2.84y from 2023-11-14
+#### (100k-row cache cap trims starts; BTC has 103k).
+#### SIGNAL (identical to frozen 4H module, TF-adapted):
+#### AVSL(70,345, stand_div 2.0) close-cross, normal arm both
+#### sides, WARMUP 400 bars, stop max(|close-line|, 2*ATR14),
+#### HORIZON 500 bars (5.2d > slow 3.6d -- fixes prior 15m
+#### breakage (c); breakage (a) line-hugging 7.6 crosses/day
+#### NOT fixable by prereg -- this is the test), fee 10bp RT.
+#### TP: GATED = 5R only.  3R/8R = read-out, cannot rescue a
+#### FAIL (anti-multiple-testing; STATUS 922 prior).
+#### STAGE A (KILL gate, standing rule): per-asset GROSS EV > 0
+#### AND gross WR > break-even (1/6 at 5R) on >= 5/10 assets in
+#### BOTH segments; matched random-entry null (seed 11, 2000
+#### entries/asset, same geometry) reported -- if signal gross
+#### ~= null gross, no conditional drift.  FAIL -> intraday
+#### AVSL branch CLOSED, Stage B not run.
+#### STAGE B: S1 formula clip(0.20/rv100,0.25,2.0) with
+#### annualization adapted to 15m (ANN 35,040 -- declared TF
+#### adaptation; window/target/cap identical); TRUE-grid
+#### portfolio stream; PRIMARY 2/3 / F3 1/3; gates G1'-G5'
+#### identical thresholds (NW_LAGS 500, BOOT_BLOCK 500 bars,
+#### seed 11; G4' 7/10); PF-G4 12m reported NOT gated; KILL any
+#### FAIL.  Fee sensitivity read-out: net EV at 5bp/2bp RT
+#### (maker-ish), informational.
+#### HONEST PRIOR: 10-15% PASS (below proposer's 25-35%):
+#### fee_r ~0.3-0.5R at 15m vs 0.05-0.08R at 4H; line
+#### structurally hugging at 15m (STATUS 938-940); E2: 1H
+#### already failed -- TF lift gradient runs UP toward 4H.
+#### RUNNER: experiments/avsl/avsl_15m_wide_tp.py.
+####
 #### ProSP v2 RESULT (2026-09-24; RUN B, one-shot; runner
 #### prosp_v2.py @ da1d2b3).  Verdict: **CLOSED -- SIGNAL-DEAD**
 #### (two-layer P-2 verdict: no deployable signal in this
