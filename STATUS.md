@@ -1,6 +1,45 @@
 # STATUS
 
 
+#### P4-EX RESULT (2026-09-24; prereg 75ff2ee, frozen before the
+#### run; runner p4_exec.py, one-shot).  Verdict: CLOSED as
+#### execution-blocked (EX-G2 fail).  Per the frozen prereg: no
+#### re-run, no constant changes; the P4 funding-stream PASS is
+#### RECLASSIFIED as an upper bound, not a deployable result.
+
+Numbers under the honest execution model (fill P=0.5, next-day
+retry, +20bp taker fallback after misses, +50bp basis allowance
+per RT):
+- PRIMARY: ann +1.84% (capital-adjusted +0.92% -- BELOW the
+  ~4-5% risk-free), Sharpe_NW +1.51 (EX-G1 pass, barely),
+  maxDD 2.05% (EX-G3 pass).
+- Trailing 12m: ann +0.29%, Sharpe_NW +0.31, CI95
+  [-0.93, +2.11] -- EX-G2 FAIL decisively; the recent regime
+  does not carry honest costs at all.
+- EX-G4 PRIMARY CI95 [+0.23, +3.82] excludes 0 -- PASS.
+- Rolling 6m read-out: 698/913 windows positive (76%), worst
+  -3.73% -- mostly positive but materially negative windows
+  exist.
+
+Reading: the execution layer consumed ~72% of the funding-stream
+ann (+6.58% -> +1.84%), and the surviving margin is below the
+risk-free benchmark on capital-adjusted terms.  The v3 pattern
+repeated one level deeper: majors decayed by crowding, low-caps
+die by execution.  The user's declared prior ("realistic live
+Sharpe 1.5-3") was correct at its bottom edge.  Survivorship
+caveat still applies ON TOP of these numbers.
+
+CONSEQUENCE: P4 is NOT deployable.  The carry family now holds
+two funding-stream PASSes (v3 majors, P4 low-caps) that both
+fail the honest layer, by different mechanisms (crowding decay
+vs execution cost).  The basis-trade feasibility prior is
+DOWNGRADED accordingly: it shares the same spot+perp execution
+structure, so its gross edge must clear the same ~5%/yr honest
+cost stack before it can be considered.  Breadth queue: basis
+trade (downgraded prior), market switch (principal decision),
+ProSP v2 (prereg open, different family).
+
+
 #### P4-EX EXECUTION PRE-REG (2026-09-24, frozen BEFORE any run;
 #### runner experiments/carry/p4_exec.py).  Question: does P4
 #### survive an honest execution model, or is it a funding-stream
