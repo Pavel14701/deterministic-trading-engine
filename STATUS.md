@@ -4989,6 +4989,23 @@ tools, not signal sources.
   arrival.  Pre-reg (when written) must freeze ONE cap rule a
   priori (e.g. cap = historical p90 of net exposure) + gates:
   DD must drop materially, per-trade EV must survive.
+  DD-CONCENTRATION CHECK (2026-09-24, decision gate before
+  prereg): FAILED -- scenario B.  Buckets grouped by |net PC1|
+  quintiles (edges 2/4/6/10); global max-DD episode losses:
+  Q1 19.9% / Q2 12.9% / Q3 18.8% / Q4 14.4% / Q5 34.1% -- Q5 is
+  far below the 50% concentration bar, and LOW-exposure Q1+Q2
+  carry 32.8%.  Restricted (group-only) max DDs are flat across
+  quintiles (1167-1738% of 1%-risk units, LOWEST in Q4/Q5) --
+  factor-exposure level is not the DD engine.  Moreover Q5
+  buckets hold the bulk of PROFIT (+20.7k of ~+31.5k total
+  PnL): a total cap at p90 would clip the strategy's best
+  buckets along with a third of episode losses -- the S3
+  failure mode returns through the back door.  VERDICT: the
+  drafted total-cap prereg is expected to fail its own G1/G2;
+  NOT WRITTEN.  R-SVD-1 moved to PARKED.  A different mechanism
+  (e.g. incremental-exposure cap per new signal) would be a new
+  feasibility question, not a fix of this one; no such prereg
+  is scheduled.
 - R-SVD-2 residual cross-sectional market-neutral (PC1-orthogonal
   spreads, C(10,2) pairs).  Priority MED.  Residual variance is
   33% of total on this universe -- thin but nonzero material.
