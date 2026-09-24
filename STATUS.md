@@ -6040,6 +6040,62 @@ scratch on untouched grounds).  Focus returns to AVSL: pilot
 cadence + the Phase B adjudication of the DD convention finding.
 
 
+#### OPT-INTEGRATION (2026-09-25, step 1 of the options track:
+#### Deribit API + data load; infrastructure only, NO gates,
+#### no backtest claims yet).
+####
+#### API FACTS (hard-won, keep):
+#### - history.deribit.com WITHOUT auth serves expired
+####   instruments AND per-instrument trades (get_last_trades_
+####   by_instrument works for 2016+ instruments); DVOL lives on
+####   www.deribit.com ONLY (get_volatility_index_data, 1D from
+####   2021-03-24).  urllib (python) is blocked at the edge on
+####   both hosts; subprocess curl works.
+#### - get_instruments?expired=true ignores `count` and `offset`
+####   -> one ~77MB response per currency (BTC 122,488 insts
+####   from 2016-07; ETH 124,373 from 2019-03; puts ~61k each).
+####   Response format on history: {"usOut":...,"result":[...]}
+####   -- NO jsonrpc key; on www: {"jsonrpc":"2.0","result":...}
+####   and www truncates to ~82 recent instruments (useless for
+####   history).
+#### - www RESPECTS count but NOT offset on get_instruments.
+#### - THE 400 "Bad request" MYSTERY RESOLVED: it is a
+####   per-URL/IP throttle with a multi-minute cooldown, and it
+####   is RE-TRIGGERED by each retry (my 3-24s retry backoff
+####   kept it alive forever).  Single spaced attempts succeed;
+####   also ~14 zombie retry-loop processes from earlier
+####   run_commands chains were hammering concurrently (killed).
+####   Rule: heavy calls strictly sequential, >=60s quiet before
+####   first attempt, on 400 back off minutes not seconds.
+####
+#### DATA IN CACHE (data/deribit/):
+#### - instruments_BTC.json / instruments_ETH.json: slim lists
+####   (name, expiry, strike, type, settlement, creation);
+####   BTC 122,488 (first expiry 2016-07-15, 61,242 puts),
+####   ETH 124,373 (first 2019-03-29, 62,190 puts).
+#### - dvol_BTC_1D.json / dvol_ETH_1D.json: 2011 daily points
+####   each, 2021-03-24 .. 2026-09-24 (BTC last 36.12, ETH
+####   50.94).  Assembled from per-year www calls
+####   (experiments/options/dvol_merge.py).
+#### Fetcher: experiments/options/deribit_fetch.py (stages
+#### instruments / dvol / trades, checkpoint via cache files).
+####
+#### FEASIBILITY SIZING for the protective-puts overlay
+#### (experiments/options/puts_feasibility.py; rule declared in
+#### the file header: put expiry = first expiry >= entry+27d,
+#### strike band 0.70-0.92 x spot at 4H entry, BTC only,
+#### 2021-04+): 131 AVSL 4H long entries (4 pre-DVOL skipped),
+#### ~764 unique put instruments in the band -> ~1.5k requests
+#### ~10-20 min sequential fetch for the trades stage.
+####
+#### NEXT: (a) trades fetch for the sized subset; (b) decide
+#### fill model: actual trade prints at entry timestamp are
+#### SPARSE for OTM puts -- will measure nearest-print lag and
+#### whether mid-proxy from DVOL+settlements is needed; (c) only
+#### then pre-reg the overlay on frozen AVSL 4H BTC longs (gate:
+#### DD <= 20%, EV >= 80% baseline).
+
+
 
 
 
