@@ -30,6 +30,36 @@
 #### predictions, diluting P-G3.  Gates untouched; code fixed
 #### and committed; RUN B below is the one-shot execution.
 ####
+
+#### AVSR-MIRROR PRE-REG (2026-09-24, frozen BEFORE run; NEW dated
+#### prereg under P-2; the frozen AVSL module is NOT modified).
+#### Hypothesis: AVSR(70,345) = mirror resistance line,
+#### SMA(high + price_v(high) - DeV) on the identical AVS base
+#### (VPC/VPR/VM/VPCI/DeV from close/volume, stand_div 2.0).
+#### Entry semantics IDENTICAL to AVSL (cross above = long,
+#### cross below = short; breakout semantics, NOT reverse).
+#### This is a mirror transfer of a LATENT family, one-shot:
+#### protocol byte-identical to the frozen AVSL battery --
+####   universe 10 Binance majors, 4H resample, WARMUP 400,
+####   stop max(|close-line|, 2*ATR14), TP 5R PRIMARY,
+####   HORIZON 500, fee 10bp RT, PRIMARY = first 2/3 of the
+####   global 4H grid, F3 = rest;
+####   configs S1..S4 exactly as the AVSL overlay prereg
+####   (b6005ca): S1 vol-target clip(0.20/rv100, 0.25, 2.0),
+####   S2 ATR-pct regime x1/x0.5/x0.25 (80/90), S3 caps
+####   (max 5 open, expo < 3x), S4 = S1xS2 with S3 caps;
+####   gates per config per segment G1' Sh_NW >= 1.0, G2' DD
+####   <= 25%, G3' net EV >= 0.10R, G4' >= 7/10 assets positive,
+####   G5' block bootstrap (block 500, B 1000) CI excludes 0.
+#### Verdict rule (frozen): risk-first S3 > S4 > S1 > S2 among
+#### full passers; 0/4 pass => AVSR mirror CLOSED (the AVSL
+#### LATENT verdict is unaffected; a mirror FAIL is evidence
+#### the S1 edge is geometry+low-line specific, not symmetric).
+#### DECLARED PRIOR (low, per analysis): 70% same-as-AVSL-noise
+#### band, 20% worse (high noisier than low), 10% better;
+#### family budget: counts as attempt #2 of the AVS family
+#### (N=3 per P-2).  Runner: experiments/avsr/risk_overlay_mirror.py.
+####
 #### ProSP v2 RESULT (2026-09-24; RUN B, one-shot; runner
 #### prosp_v2.py @ da1d2b3).  Verdict: **CLOSED -- SIGNAL-DEAD**
 #### (two-layer P-2 verdict: no deployable signal in this
