@@ -254,6 +254,34 @@
 #### a genuinely different universe).  Otherwise: vol carry /
 #### market switch per the standing options.
 ####
+#### CACHED-UNIVERSE SVD CHECK (2026-09-24, diagnostic, no gates;
+#### runner experiments/diagnostics/svd_cached_universe.py).
+#### Scope ACTUAL: 29 unique tickers post-dedupe (Binance 30
+#### preferred, OKX 34 fully overlapping; 1 dropped for history
+#### < 2y) -- NOT the hypothesized 70-80: the cache union is
+#### the carry/Binance universe plus OKX mirrors.  Common 4H
+#### grid: 5606 buckets = 2.56 years (latest-listing bound,
+#### ~2024-03..2026-09; the 2022 bear is NOT in this window --
+#### but the 2022 co-crash is already measured on the 10
+#### majors via the DD-overlap analyses above).
+####   PC1 share:          66.8%   (prior was 55-65% -- WORSE)
+####   Eigenvalues > MP:   1       (literally one factor)
+####   MP lambda+:         1.149
+####   Mean pairwise corr: +0.650  (prior 0.5-0.6 -- worse)
+####   Tail corr worst 5%: +0.650  (n=281 days; LOWER than the
+####       0.75-0.85 prior, but equal to the normal-day corr --
+####       no tail diversification to unlock in this window)
+####   Most decoupled: TRX 0.49, TON 0.67, BCH 0.72 (TRX is
+####       the only sub-0.6 idiosyncratic name).
+#### VERDICT (thresholds frozen in the runner): **RANK-ONE
+#### CONFIRMED**.  Decision per the pre-declared rule: do NOT
+#### spend 1-2 days downloading the rest of Binance symbols;
+#### universe expansion on crypto is closed structurally
+#### (one factor in normal days, no tail diversification to
+#### unlock).  Focus: protective puts (Deribit 3-5d) / vol
+#### carry / market switch (FX).  A 40-50 asset PC1-filtered
+#### subset cannot help: only ONE eigenvalue clears MP.
+####
 #### ProSP v2 RESULT (2026-09-24; RUN B, one-shot; runner
 #### prosp_v2.py @ da1d2b3).  Verdict: **CLOSED -- SIGNAL-DEAD**
 #### (two-layer P-2 verdict: no deployable signal in this
