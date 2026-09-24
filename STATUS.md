@@ -29,6 +29,25 @@
 #### (2) the portfolio stream included zero-days without
 #### predictions, diluting P-G3.  Gates untouched; code fixed
 #### and committed; RUN B below is the one-shot execution.
+####
+#### ProSP v2 RESULT (2026-09-24; RUN B, one-shot; runner
+#### prosp_v2.py @ da1d2b3).  Verdict: **CLOSED -- SIGNAL-DEAD**
+#### (two-layer P-2 verdict: no deployable signal in this
+#### family/horizon).  All 16 fits ran; pooled TEST 415 days.
+####   P-G1 (kill): FAIL.  Calibrated Brier model 0.19245 vs
+####      constant class-rate baseline 0.18563 -- the model is
+####      WORSE than the constant on pooled TEST; per-fold wins
+####      up 2/8, dn 0/8 (needed >= 5/8).  Flow/positioning
+####      features add NEGATIVE information about +-2%/24h tails.
+####   P-G2: FAIL.  Tercile net daily EV -0.95bp.
+####   P-G3: FAIL.  Portfolio net Sharpe_NW +0.42 (< 1.0).
+#### Consistent with barrier v1 (Brier 0.21747 > 0.21688) and
+#### TTF v1 (flow divergence anti-signal at 1H): probability
+#### models on flow features do not beat class-rate baselines
+#### out-of-sample.  The ProSP family claim is CLOSED for the
+#### declared feature stack; no re-tuning per prereg.  Ledger
+#### remains 0 false-positive PASS.  Not retroactive to latents
+#### (AVSL S1, E8b OB).
 
 
 #### P4-EX RESULT (2026-09-24; prereg 75ff2ee, frozen before the
