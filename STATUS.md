@@ -223,6 +223,37 @@
 #### the 3/3 budget, principal-level decision.  Execution
 #### layer not reached; no capital.
 ####
+#### FAMILY-DIVERSIFICATION CHECK (2026-09-24, diagnostic, no
+#### gates; runner experiments/diagnostics/avs_ob_portfolio_check.py):
+#### AVSL-cross S1 (A) + AVS-channel S1 (B) + OB E8b S1 (C),
+#### all on the TRUE global grid n=15269.
+####   1. P&L correlation: A<->C +0.18/+0.11 (PRIMARY/F3),
+####      B<->C +0.20/+0.21 -- LOW, real family diversification
+####      at the daily-P&L level (the optimistic-scenario
+####      condition HELD).
+####   2. DD-window overlap: top-5 episode overlap A<->C =100%,
+####      A<->B =80%, B<->C =80% -- REFUTED the key hope.  C's
+####      largest DD (29.3%, 2022-09 -> 2023-08) sits exactly on
+####      the AVS 2022-23 regime hole; C's #2 (2025-03..10)
+####      overlaps A's 2024-08..2025-03 episode.  Low daily
+####      correlation does NOT prevent tail co-drawdowns.
+####   3. Combined: DD improves (A+C 21.3%, B+C 22.6%,
+####      33/33/33 19.3% vs 28.9/31.6/29.3% individual), but
+####      PF-G4 12m negative windows WORSEN with OB:
+####      A+B 75 -> A+C 294 -> B+C 421 -> 33/33/33 345
+####      (individual: A 193, B 778, C 457).  OB's own worst
+####      12m stretch IS 2022-23.
+#### CONCLUSION (per the pre-declared decision rule): the
+#### pessimistic branch -- rank-one regime exposure is
+#### STRUCTURAL across all three families; portfolio
+#### construction fixes DD, not the 2022-23 hole.  Combined
+#### portfolio prereg NOT written (would fail PF-G4 by more
+#### than the AVS-only layer).  Any deployability path must
+#### address the common regime hole first (out-of-sample
+#### regime gate, capital schedule tolerating a -9R year, or
+#### a genuinely different universe).  Otherwise: vol carry /
+#### market switch per the standing options.
+####
 #### ProSP v2 RESULT (2026-09-24; RUN B, one-shot; runner
 #### prosp_v2.py @ da1d2b3).  Verdict: **CLOSED -- SIGNAL-DEAD**
 #### (two-layer P-2 verdict: no deployable signal in this
