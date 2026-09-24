@@ -4910,7 +4910,14 @@ UTC+3 fixed): TINV_AVSL_pilot_update every 4h at 03:20/07:20/
 11:20/15:20/19:20/23:20 local (= 20 min after each 4H close),
 TINV_AVSL_pilot_snapshot weekly Sun 12:00; both append to
 runs/live_pilot/cron_*.log.  Setup script kept at
-runs/live_pilot/setup_cron.ps1 (gitignored).
+runs/live_pilot/setup_cron.ps1 (gitignored).  Same-day fix:
+the registered actions passed `>>`/`2>&1` straight to
+python.exe, but redirects are shell features -- the scheduler
+executes the exe directly, so every run died with 0x800700E0
+and no log.  Actions re-registered via cmd /c wrapper +
+StartWhenAvailable (catch-up after sleep, within the +-30 min
+tolerance); verified end-to-end by a manual task start
+(PARITY OK, LastTaskResult=0, log written).
 
 POST-MORTEM #3 -- parity gate vs recording order (found at the
 first update that closed an in-scope entry; XRP short @124317):
