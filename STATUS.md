@@ -1,6 +1,28 @@
 # STATUS
 
 
+#### ProSP v2 RUN DECLARATION (2026-09-24): the frozen prereg
+#### (2026-09-21) is being EXECUTED.  Prereg-silent details
+#### declared BEFORE the run (conventions, not parameters):
+#### (a) "funding z(3d)" = 3-day mean of DAILY funding, mapped
+####     to 1H bars of the NEXT day (no lookahead), z-scored on
+####     a trailing 90d window (ddof=1);
+#### (b) "tbv_share delta(24)" = share(t) - share(t-24);
+#### (c) z(336) features via polars rolling ddof=1, min 336
+####     completed bars (NaN before warmup);
+#### (d) universe = the 30 carry names mapped to Binance symbols
+####     with cached 1H klines at run time (PEPE absent, TON->
+####     GRAM alias; GRAM contributes only post-2026-07 rows);
+#### (e) P-G1 constant baseline = TEST-fold class rate (the
+####     strongest constant baseline, conservative for the model);
+#### (f) portfolio rows: each asset's LAST completed 1H bar of
+####     day d predicts day d+1 return close(d+1)/close(d)-1;
+####     legs = top/bottom 3 by calibrated P(up)-P(dn); cost
+####     0.15% per leg membership change vs the prior day;
+#### (g) P-G2 tercile spread uses the same 0.15% cost on
+####     tercile membership changes.
+
+
 #### P4-EX RESULT (2026-09-24; prereg 75ff2ee, frozen before the
 #### run; runner p4_exec.py, one-shot).  Verdict: CLOSED as
 #### execution-blocked (EX-G2 fail).  Per the frozen prereg: no
