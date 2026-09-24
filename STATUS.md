@@ -80,6 +80,46 @@
 #### backlog candidate and would be attempt #3).  Frozen AVSL
 #### module untouched throughout.
 ####
+#### AVS-CHANNEL PRE-REG (2026-09-24, frozen BEFORE run; AVS
+#### family attempt #3 of 3 -- a FAIL here closes the family
+#### FINALLY per the confirm-gate convention).  Hypothesis:
+#### AVSL+AVSR form a volatility channel; the edge is in the
+#### BREAKOUT OUT OF THE CHANNEL (regime change), not in either
+#### line alone.  New signal, distinct claim from the AVSL-cross
+#### latent (bounce/support) and the AVSR mirror (resistance).
+#### Frozen spec:
+####   lines      AVSL(70,345) + AVSR(70,345), stand_div 2.0,
+####              both from the frozen formulas; entry bar
+####              requires BOTH lines finite.
+####   trigger    transition into "outside": prev 4H bar close
+####              inside [AVSL, AVSR] AND current close outside
+####              -- close > AVSR => LONG; close < AVSL => SHORT.
+####              No re-entry while outside (state, not level).
+####   entry      close[t] (identical bookkeeping to the frozen
+####              cross tracks).
+####   stop       risk = max(distance to the OPPOSITE line at t,
+####              2*ATR14[t]) -- long: max(cp-AVSL, 2ATR);
+####              short: max(AVSR-cp, 2ATR).  Stop-first
+####              within-bar, conservative (identical to frozen).
+####   exit       TP 5R PRIMARY ONLY (the {3,5,8} scan is not
+####              re-opened; confirm showed narrow TPs dead and
+####              one claim per prereg), HORIZON 500, fee 10bp RT.
+####   universe   the same 10 Binance majors, 4H resample.
+####   segments   PRIMARY = first 2/3 of the global 4H grid, F3.
+####   sizing     the identical S1..S4 battery (S1 vol-target
+####              clip(0.20/rv100,0.25,2.0); S2 ATR-pct x1/x0.5/
+####              x0.25 at 80/90; S3 caps 5-open/3x-expo;
+####              S4 = S1xS2 with caps).
+####   gates      per config per segment, identical: G1' Sh_NW
+####              >= 1.0; G2' DD <= 25%; G3' net EV >= 0.10R;
+####              G4' >= 7/10 assets positive; G5' block boot
+####              (500, B=1000) CI excludes 0.
+####   verdict    risk-first S3 > S4 > S1 > S2 among full
+####              passers; 0/4 => CHANNEL CLOSED and the AVS
+####              family is closed finally (budget exhausted).
+#### DECLARED PRIOR: 25-35% (user).  Run:
+#### experiments/avsr/channel_breakout.py.
+####
 #### ProSP v2 RESULT (2026-09-24; RUN B, one-shot; runner
 #### prosp_v2.py @ da1d2b3).  Verdict: **CLOSED -- SIGNAL-DEAD**
 #### (two-layer P-2 verdict: no deployable signal in this
