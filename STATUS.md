@@ -4917,7 +4917,12 @@ executes the exe directly, so every run died with 0x800700E0
 and no log.  Actions re-registered via cmd /c wrapper +
 StartWhenAvailable (catch-up after sleep, within the +-30 min
 tolerance); verified end-to-end by a manual task start
-(PARITY OK, LastTaskResult=0, log written).
+(PARITY OK, LastTaskResult=0, log written).  Same-day follow-up:
+a >2h sleep caused 2 missed repetitions; StartWhenAvailable
+fired the catch-up correctly on wake (PARITY OK, result=0).
+Battery defaults were also fixed (DisallowStartIfOnBatteries /
+StopIfGoingOnBatteries -> False in setup_cron.ps1) -- a laptop
+on battery would otherwise silently skip runs.
 
 POST-MORTEM #3 -- parity gate vs recording order (found at the
 first update that closed an in-scope entry; XRP short @124317):
