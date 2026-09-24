@@ -4922,7 +4922,13 @@ a >2h sleep caused 2 missed repetitions; StartWhenAvailable
 fired the catch-up correctly on wake (PARITY OK, result=0).
 Battery defaults were also fixed (DisallowStartIfOnBatteries /
 StopIfGoingOnBatteries -> False in setup_cron.ps1) -- a laptop
-on battery would otherwise silently skip runs.
+on battery would otherwise silently skip runs.  LIVE OPS PAUSED
+by principal decision (2026-09-24 evening): both scheduled tasks
+DISABLED (not deleted -- setup intact, re-enable =
+Enable-ScheduledTask or re-run setup_cron.ps1 in a dedicated
+session).  Last state on pause: parity OK, 1 provisional entry
+(XRP 124317 short), no gate fired.  Resume requires a fresh
+session-level go.
 
 POST-MORTEM #3 -- parity gate vs recording order (found at the
 first update that closed an in-scope entry; XRP short @124317):
