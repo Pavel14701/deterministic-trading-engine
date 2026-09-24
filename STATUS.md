@@ -282,6 +282,45 @@
 #### carry / market switch (FX).  A 40-50 asset PC1-filtered
 #### subset cannot help: only ONE eigenvalue clears MP.
 ####
+#### AVSL-EXTENDED PRE-REG (2026-09-24, frozen BEFORE run; NEW
+#### question, distinct from the closed SVD correlation check:
+#### does the FROZEN AVSL-cross S1 signal carry its edge on the
+#### 29-asset cached universe and a 2024-2026 window?).
+#### UNIVERSE (frozen at pre-reg, exactly the 29 post-dedupe
+#### tickers from the SVD run, all Binance cache, >= 2y 1H):
+####   AAVE ADA APT ARB ATOM AVAX BCH BNB BTC DOGE DOT ETC ETH
+####   FIL HBAR INJ LINK LTC NEAR OP SEI SOL SUI TIA TON TRX WIF
+####   XLM XRP
+#### SIGNAL/SIZING (frozen, imported read-only from
+#### engine.passed.avsl_cross_s1): AVSL(70,345) cross entry,
+#### stop max(|close-line|, 2*ATR14), TP 5R, HORIZON 500,
+#### stop-first, fee 10bp RT, WARMUP 400, S1 size
+#### clip(0.20/rv100, 0.25, 2.0).
+#### GRID/SEGMENTS (declared): TRUE global grid = the common
+#### 2.56y window starting 2024-03-01 (latest listing TON);
+#### only trades ENTERING inside the window count; e1 clamped
+#### to grid end; stream = per-bar accrual (identical formula);
+#### PRIMARY = first 2/3, F3 = last 1/3.  DECLARED: NOT the
+#### frozen 6y window; results not comparable to the 10-major
+#### verdict; this is a separate universe/window test.
+#### GATES (identical thresholds, both segments):
+####   G1' Sharpe_NW >= 1.0 (raw Sharpe reported alongside;
+####       known NW-factor degeneracy caveat -- if NW is
+####       degenerate, the raw number governs the read-out
+####       narrative but the GATE stays NW as frozen);
+####   G2' event DD <= 25%;
+####   G3' net EV >= 0.10R;
+####   G4' >= 21/29 assets positive (ceil of 70%);
+####   G5' block bootstrap (block 500, B=1000, seed 11) CI
+####       excludes 0.
+####   PF-G4: trailing 12m negative-window COUNT REPORTED, NOT
+####       gated (declared deviation: ~315 windows only).
+#### KILL: any gate FAIL in either segment -> closed.
+#### PRIOR: 30% optimistic (EV +0.15..0.20R, DD 18-22%),
+#### 50% realistic (EV +0.10..0.15R, DD 24-28%, LATENT),
+#### 20% pessimistic (EV < 0.10R, signal weaker on non-majors).
+#### RUNNER: experiments/avsl/avsl_extended_universe.py.
+####
 #### ProSP v2 RESULT (2026-09-24; RUN B, one-shot; runner
 #### prosp_v2.py @ da1d2b3).  Verdict: **CLOSED -- SIGNAL-DEAD**
 #### (two-layer P-2 verdict: no deployable signal in this
