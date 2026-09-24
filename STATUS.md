@@ -5012,6 +5012,21 @@ tools, not signal sources.
 - R-SVD-3 lambda1(t) rolling regime indicator (factor
   concentration, NOT vol-target; E5 showed vol regime does not
   explain DD).  Priority MED; diagnostic-first like L1.
+  REDEFINED 2026-09-24 as crash detector for halt (after the
+  DD-quintile check showed DD is timing-structural).  Feasibility
+  gate (experiments/diagnostics/lam1_crash_check.py, rolling 30d
+  PC1 share vs top-5 DD episodes): FAILED -- (a) baseline share
+  is ALREADY 0.73 mean (p10-p90 = 0.62..0.83): on a rank-one
+  universe correlations->1 is the permanent state, the signal has
+  no dynamic range; (b) episodes caught only weakly and
+  inconsistently: in-episode mean share at 84th/73rd/58th
+  percentile for the 34R/30R/24.5R episodes -- the 24.5R one at
+  baseline; (c) decile PnL flat (+0.00..+0.05 R/bucket, no
+  monotone structure, D9-D10 hold ~0 PnL) -- a halt keyed at any
+  percentile either misses the episodes or halts a third of the
+  time for no PnL saving.  PARKED, same verdict class as
+  R-SVD-1: the rank-one structure that motivated the SVD family
+  also neuters its regime signal.
 - R-SVD-4 funding-rate SVD / cross-sectional carry revival
   (carry closed at F3 1.45%; SVD regime filter is the revival
   hypothesis).  Priority MED; funding data on disk.
