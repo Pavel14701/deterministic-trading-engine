@@ -154,6 +154,44 @@
 ####   benefit is real but the tracks are NOT independent
 ####   (moderate correlation, shared geometry/base).
 ####
+#### PORTFOLIO-LAYER PRE-REG (2026-09-24, frozen BEFORE run;
+#### latent-revival at the portfolio layer, authorized by P-2;
+#### prior 60-70%).  Claim: the 50/50 combination of the two
+#### AVS LATENT tracks (AVSL-cross S1, channel S1) is
+#### deployable-grade on the DD dimension because trigger
+#### diversification structurally reduces DD below either
+#### track alone (measured diagnostic: 26.7R vs 34.1/38.0R).
+#### FROZEN SPEC:
+####   inputs    the two S1 accrual streams exactly as built
+####             in corr_check (frozen signals, frozen S1
+####             sizing, identical bookkeeping, same grid);
+####             combination = 0.5*AVSL + 0.5*channel (no
+####             re-fitting, no weights search).
+####   cap       PF DD cap = 30% BOTH segments -- calibrated
+####             EXTERNALLY (industry-norm ceiling for
+####             directional crypto), declared before this
+####             run; NOT derived from the measured 26.7R and
+####             NOT a relaxation of a failed gate (no gate
+####             failed at 25% for these two S1 configs).
+####   gates     PF-G1 Sharpe_NW >= 1.0 both segments;
+####             PF-G2 event DD <= 30% both segments
+####             (cumprod of 1% x stream, as the tracks);
+####             PF-G3 block bootstrap (500, B=1000) CI of
+####             mean bar R excludes 0 both segments;
+####             PF-G4 honest layer: EVERY trailing 12m window
+####             (2190 x 4H bars) has positive cumulative R
+####             on the full grid (the P4 12m pattern; no
+####             lookahead, trailing only).
+####   verdict   PASS iff all four gates pass; else CLOSED
+####             (portfolio layer), tracks stay LATENT.
+####   honesty   recorded: the 30% cap is chosen in full
+####             knowledge of the 26.7R diagnostic; if PF-G2
+####             passes only because of the cap choice, the
+####             read-out must say so explicitly.
+#### Next layer on PASS: execution prereg (P4-EX honest
+#### fill/cost pattern) before any capital.  Run:
+#### experiments/avsr/portfolio_layer.py.
+####
 #### ProSP v2 RESULT (2026-09-24; RUN B, one-shot; runner
 #### prosp_v2.py @ da1d2b3).  Verdict: **CLOSED -- SIGNAL-DEAD**
 #### (two-layer P-2 verdict: no deployable signal in this
