@@ -5075,6 +5075,45 @@ machinery; baseline validated byte-exact: 2941 trades):
     stays the live candidate of this family (feasibility before
     prereg, same protocol).  R-SSA-3 stays parked (monitoring).
 
+#### R-SSA-2 FEASIBILITY GATE -- PREREG FROZEN (2026-09-24,
+#### before this code; runner experiments/ob/rsa2_check.py)
+
+Hypothesis: SSA-denoised close (wick shape preserved) reduces
+micro-pivot noise in the OB detector -> fewer false blocks ->
+better signal quality.  Non-redundancy rationale: the ZigZag
+reversal threshold (2.5 x median ATR) is a MAGNITUDE filter,
+not a smoothing filter -- a different operator class from SSA.
+
+Design (ONE config, frozen, no tuning):
+- SSA W=30, k=3, causal last-point Hankel reconstruction
+  (identical machinery to the R-SSA-1 gate; buckets t<30 use
+  raw values -- declared).
+- Variant C: close_ssa = SSA(close);
+  high_ssa = close_ssa + (high - close);
+  low_ssa  = close_ssa - (close - low).
+  OHLC invariant preserved; ZigZag sees a smooth center with
+  raw wick extents.  SSA on high/low separately is REJECTED
+  (can break high >= close >= low).
+- ISOLATION: only the DETECTOR input changes.  Retest-bar
+  entries, stops 3xATR14, TP {3,5,8}R primary 5R, horizon 500,
+  fee 10bp RT, WARMUP 400 are computed on RAW OHLC/ATR exactly
+  as in the frozen E8b frame (ob_risk_overlay._trade_tp).
+- Arms: A = raw OHLC -> R2 detector; B = SSA-OHLC -> R2
+  detector.  R2 preset frozen (research_presets.R2).
+- Matched null (seeds 0..99) DEFERRED to a potential post-gate
+  prereg -- the gate below is a relative A/B and needs no null.
+
+Read-outs: retest-event and trade counts, EV/trade, win rate,
+total R, max DD of the equal-risk cum-R stream, long/short
+split (pooled); per-asset table; SIGNAL LAG: median distance
+in bars from each SSA retest event to the nearest raw retest
+event (critical for interpreting any EV change).
+
+Gate (declared before running): PASS iff B.EV >= A.EV AND
+B.maxDD < A.maxDD.  Otherwise R-SSA-2 PARKED with mechanism;
+the denoising direction for OB is considered closed.  One-shot:
+no W/k search, no post-hoc variants.
+
 #### R-OB-1 PREREG -- OB LONG-ONLY (frozen 2026-09-23, BEFORE any
 #### run code; the freeze commit hash IS the prereg reference)
 
