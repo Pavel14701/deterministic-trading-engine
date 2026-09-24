@@ -399,6 +399,39 @@
 #### already failed -- TF lift gradient runs UP toward 4H.
 #### RUNNER: experiments/avsl/avsl_15m_wide_tp.py.
 ####
+#### AVSL-15M VERDICT (2026-09-24, one-shot, log
+#### runs/avsl_15m_wide_tp.log, code frozen @ f693f1a).
+#### ~27.5k crosses taken (line-hugging confirmed: ~7/day, the
+#### prior 15m breakage (a) reproduced exactly).
+#### STAGE A: formally PASS -- gross EV>0 on 7/10 (PRIMARY) and
+#### 6/10 (F3), WR>BE(16.7%) on 8/10 and 7/10.  BUT the matched
+#### random-entry null (seed 11, 2000/asset, same geometry) is
+#### +0.038R gross: geometry alone is positive at 15m, and the
+#### signal mean (+0.053R) clears it by only ~+0.015R of
+#### CONDITIONAL drift.  WR sits just above BE (17-21%), not at
+#### it -- the wide-TP+2xATR fixes moved WR off break-even,
+#### but the drift above the null is thin.
+#### STAGE B: FAIL 10/10 gates.  Net EV -0.064R PRIMARY /
+#### -0.104R F3 (fee_r 0.07-0.21R swallows the +0.015R drift
+#### with 5x margin); Sh_NW -1.08/-2.69; DD 99.4%/99.9%
+#### (27k clustered trades, no caps); assets+ 3/10 and 1/10;
+#### CI includes 0 both.  FEE SENSITIVITY: at 2bp RT (maker
+#### both sides) EV = +0.004R / -0.018R -- NOTHING even
+#### fee-free-ish; at 1bp +0.027R / +0.010R.  The fee wall is
+#### the binding constraint exactly as pre-declared: the
+#### conditional drift (not fees-free gross) is what the 15m
+#### AVSL cross does not have.
+#### KILL APPLIED: **intraday AVSL branch CLOSED** (both the
+#### 5R gate config and by the declared anti-multiple-testing
+#### rule any 3R/8R rescue).  Reinforces E5: the AVSL lift is
+#### 4H-specific.  For ANY future intraday prereg the bar is
+#### now explicit: demonstrated conditional drift over a
+#### matched geometry null >= ~0.2R per trade BEFORE fee
+#### design matters.  OFI-as-filter (V2) has a DATA GAP: no 1m
+#### taker_buy_volume cached (Binance 1h only; OKX raw lacks
+#### the column) -- parked, requires a download decision.
+#### 5m mean-reversion (V3) parked: needs maker fill model.
+####
 #### ProSP v2 RESULT (2026-09-24; RUN B, one-shot; runner
 #### prosp_v2.py @ da1d2b3).  Verdict: **CLOSED -- SIGNAL-DEAD**
 #### (two-layer P-2 verdict: no deployable signal in this
