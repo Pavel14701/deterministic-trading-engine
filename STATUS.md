@@ -120,6 +120,29 @@
 #### DECLARED PRIOR: 25-35% (user).  Run:
 #### experiments/avsr/channel_breakout.py.
 ####
+#### AVS-CHANNEL RESULT (2026-09-24; one-shot @ 6414aba).
+#### Verdict: **PASS -- S1 selected** (risk-first; passers=[S1]).
+#### 1547 trades (782 long / 765 short), grid n=15269.
+####   S1: PRIMARY 5/5 PASS (Sh +1.13, DD 24%, EV +0.22R,
+####       7/10 assets, CI [+0.0010,+0.0176]); F3 5/5 PASS
+####       (Sh +4.96, DD 10%, EV +0.39R, 7/10, CI
+####       [+0.0120,+0.0306]).
+####   S2 FAIL (PRIMARY DD 51%, CI incl 0); S3 FAIL (F3 5/10
+####   assets, CI [-0.0006,..] incl 0); S4 FAIL (F3 6/10 assets).
+#### P-2 classification: LATENT -- full battery passed one-shot
+#### with low declared prior, but (i) the edge is regime-
+#### concentrated like AVSL (F3 >> PRIMARY), (ii) R here is the
+#### channel width (wider stops than the cross tracks), so the
+#### +0.22/+0.39R EV is NOT comparable to AVSL's +0.17R without
+#### an execution-layer translation, (iii) inherited caveats:
+#### survivorship universe, taker-fill assumption, 2023-24
+#### holdout question inherited from the family decomposition.
+#### Family budget: 3/3 attempts used, family REMAINS OPEN via
+#### the channel (a PASS does not consume the budget into
+#### closure).  Next layer if promoted: execution prereg
+#### (honest fill/cost layer, the P4-EX pattern) before any
+#### capital.  Frozen modules untouched throughout.
+####
 #### ProSP v2 RESULT (2026-09-24; RUN B, one-shot; runner
 #### prosp_v2.py @ da1d2b3).  Verdict: **CLOSED -- SIGNAL-DEAD**
 #### (two-layer P-2 verdict: no deployable signal in this
