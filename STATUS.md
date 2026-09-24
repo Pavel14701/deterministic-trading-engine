@@ -4936,6 +4936,39 @@ All three pilot defects were caught by the pilot's own gates
 (g1 fired twice, fetch failure surfaced as +0/abort) -- no
 silent divergence at any point.  Frozen module untouched.
 
+#### SVD DIAGNOSTIC (LEVEL 1): UNIVERSE IS STRUCTURALLY ONE-FACTOR
+(2026-09-24, diagnostic only -- no frame/gate/sizing change)
+
+experiments/diagnostics/svd_factors.py: eigenspectrum of the 4H
+log-return correlation matrix over the AVSL 10-asset universe,
+13,018 aligned closed 4H buckets (~6y).  Results:
+lambda = [6.70, 0.61, 0.51, 0.45, 0.41, 0.34, 0.32, 0.27, 0.25,
+0.15]; PC1 = 67% of variance; mean pairwise corr +0.63; PC1
+loadings uniform +0.26..+0.35 (classic market factor); corr(PC1
+score, BTC return) = 0.85 -- PC1 IS crypto-beta.  Per-asset corr
+to BTC 0.56 (DOGE) .. 0.83 (ETH).
+
+Naive plan metric n_eff(90%) = 6 would read "multi-factor, do
+portfolio optimization" -- MISLEADING: the tail eigenvalues just
+pool noise (they sum to 33%).  Marchenko-Pastur with q = 1302:
+lambda_plus = 1.056; exactly ONE eigenvalue (6.70) exceeds it --
+under RMT the correlation structure is RANK-ONE.
+
+Consequences (recorded, NOT acted on):
+- Cluster DD (AVSL 29%/23% both S-gates fail; R-OB-1 long-only
+  50%/53%) is structural: 10 positions = 1 bet.  Universe
+  problem, not sizing.  Consistent with shorts having been a
+  partial hedge of the same factor (removing them doubled DD)
+  and with S3's cap cutting signal rather than factor exposure.
+- Sizing/portfolio-layer SVD (levels 2-4: RMT cleaning, SSA,
+  principal portfolios) is DEFERRED: cleaning a rank-one matrix
+  cannot create the diversification that is not there.
+- If a universe decision is ever taken (assets with independent
+  BTC beta), re-run this diagnostic as the entry gate, then
+  re-evaluate levels 2-4 on the new structure.
+- Frozen AVSL/OB frames and the live pilot are untouched; the
+  pilot continues on the current universe per its prereg.
+
 #### R-OB-1 PREREG -- OB LONG-ONLY (frozen 2026-09-23, BEFORE any
 #### run code; the freeze commit hash IS the prereg reference)
 
