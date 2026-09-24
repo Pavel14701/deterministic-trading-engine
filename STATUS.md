@@ -5134,6 +5134,49 @@ right noise operator for pivot detection, and perturbing its
 input strictly degrades it.  Both families remain registered
 for the ledger; no further denoising preregs scheduled.
 
+#### R-SVD-2 FEASIBILITY GATE -- PREREG FROZEN (2026-09-24,
+#### before this code; runner experiments/diagnostics/rsvd2_check.py)
+
+Hypothesis: residuals after PC1 removal contain cross-sectional
+mean-reversion structure tradeable on the 10-asset universe,
+with PnL approximately orthogonal to crypto-beta (hence to the
+AVSL S1 stream, which trades PC1).
+
+Design (ONE config, frozen, no tuning):
+- Returns: 4H log returns, common aligned buckets (as L1).
+- W = 180 bars rolling SVD window of the correlation matrix.
+- PC1 loadings: top eigenvector, sign convention max-|loading|
+  component positive; RECOMPUTED ONLY every 24 bars at rebalance
+  points from R[t-W:t] (strictly past -> causal; also stabilizes
+  loadings and caps turnover).  Between updates the previous
+  loadings apply.
+- Residual: E(tau) = R(tau) - b * (b' R(tau)) with b the current
+  unit loadings vector (orthogonalization w.r.t. PC1); the N-bar
+  signal uses current loadings applied over the trailing N bars.
+- Signal: cumulative residual over N = 30 bars; direction MR:
+  long bottom-3, short top-3, equal weight within baskets,
+  basket notional 1 each.
+- Rebalance: every 24 bars (4 days); positions held over
+  (t, t+24]; period PnL = mean(long rets) - mean(short rets).
+- Fee: 10bp round-trip per side basket -> net period PnL =
+  gross spread - 0.002.  First rebalance at t = W + N.
+- Periods/year for Sharpe annualization: 365/4 = 91.25.
+
+Read-outs: gross and net Sharpe, EV per rebalance, total net,
+max DD of the net stream, long/short basket averages, corr(net
+period PnL, AVSL S1 equal-risk stream aggregated to the same
+rebalance windows), corr(net period PnL, BTC return summed over
+the same windows).
+
+Gate (declared before running):
+- PASS   = net Sharpe >= 1.0 AND corr(AVSL) < 0.3
+- PARKED = net Sharpe < 0.5 OR  corr(AVSL) > 0.5
+- NEUTRAL = in between (post-mortem, no prereg without a new
+  mechanism hypothesis).
+PASS -> full R-SVD-2 prereg with declared arms N in {10, 30, 90}
+(and no other tuning).  PARKED -> structural fail with mechanism
+recorded; the SVD family closes.  One-shot: no W/k/N search.
+
 #### R-OB-1 PREREG -- OB LONG-ONLY (frozen 2026-09-23, BEFORE any
 #### run code; the freeze commit hash IS the prereg reference)
 
