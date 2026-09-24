@@ -5114,6 +5114,26 @@ B.maxDD < A.maxDD.  Otherwise R-SSA-2 PARKED with mechanism;
 the denoising direction for OB is considered closed.  One-shot:
 no W/k search, no post-hoc variants.
 
+VERDICT (2026-09-24, one-shot run of rsa2_check.py): FAIL --
+decisively and with the OPPOSITE sign.  B produced MORE events
+than A (13,941 vs 9,821, +42%), not fewer: the SSA-shifted
+close path crosses the 2.5-ATR reversal threshold at different
+points and triggers MORE ZigZag legs.  Quality collapsed:
+EV/trade +0.1908 -> +0.0566 (-70%), win 0.226 -> 0.199, total R
+1828 -> 770, equal-risk maxDD 105.7 -> 308.6R.  Per-asset: all
+10 assets worse on DD, 8/10 worse on EV -- uniform, structural.
+Signal lag median 3 bars (12h) -- lag alone does not explain a
+70% EV loss; the SSA-shifted pivots are simply worse entry
+geometry (retest bars land at different, degraded locations).
+Baseline A internally consistent (9,585 trades, L/S 4746/4839).
+CONSEQUENCE (per the frozen gate): R-SSA-2 PARKED; the
+denoising direction for OB is CLOSED -- neither cross-asset
+factor tools (R-SVD-1/3) nor per-asset smoothing (R-SSA-1/2)
+improve the frames; the ZigZag magnitude filter is already the
+right noise operator for pivot detection, and perturbing its
+input strictly degrades it.  Both families remain registered
+for the ledger; no further denoising preregs scheduled.
+
 #### R-OB-1 PREREG -- OB LONG-ONLY (frozen 2026-09-23, BEFORE any
 #### run code; the freeze commit hash IS the prereg reference)
 
