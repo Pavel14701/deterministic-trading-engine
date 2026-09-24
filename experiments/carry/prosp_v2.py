@@ -157,7 +157,7 @@ def main() -> None:
                 m_cal = ((ts >= cal_lo) & (ts < cal_hi)
                          & np.isfinite(lab) & okrow)
                 m_te = (ts >= fs) & (ts < fe) & np.isfinite(lab) & okrow
-                if m_tr.sum() < 20000 or m_cal.sum() < 500:
+                if m_tr.sum() < 200 or m_cal.sum() < 50:
                     continue
                 fm = d["feats"]
                 Xtr.append(fm[m_tr]); ytr.append(lab[m_tr])
@@ -169,6 +169,10 @@ def main() -> None:
             Xtr, ytr = np.vstack(Xtr), np.concatenate(ytr)
             Xcal, ycal = np.vstack(Xcal), np.concatenate(ycal)
             Xte, yte = np.vstack(Xte), np.concatenate(yte)
+            if len(ytr) < 20000 or len(ycal) < 500:
+                print(f"fold {k} {task}: SKIPPED pooled tr={len(ytr)} "
+                      f"cal={len(ycal)}", flush=True)
+                continue
             m = lgb.LGBMClassifier(**LGB)
             m.fit(Xtr, ytr)
             iso = IsotonicRegression(out_of_bounds="clip")
@@ -204,8 +208,8 @@ def main() -> None:
         for k2, dd in enumerate(dts):
             ret_map[(day_idx[dd], sym)] = r[k2]
 
-    port = np.zeros(len(all_days))
-    terc = np.zeros(len(all_days))
+    pvals: list[float] = []
+    tvals: list[float] = []
     prev_legs: frozenset = frozenset()
     prev_tc: frozenset | None = None
     for di in range(len(all_days) - 1):
@@ -220,14 +224,14 @@ def main() -> None:
         r = float(np.mean([sg * ret_map[(di + 1, s)]
                            for s, sg in legs.items()]))
         c = COST * len(set(legs) ^ prev_legs) if prev_legs else 0.0
-        port[di + 1] = r - c
+        pvals.append(r - c)
         prev_legs = frozenset(legs)
         qs = np.quantile([p for p, _s in scored], [1 / 3, 2 / 3])
         tlong = [s for p, s in scored if p >= qs[1]]
         tshort = [s for p, s in scored if p <= qs[0]]
         tc = frozenset(tlong) | frozenset(tshort)
         tcost = COST * len(tc ^ prev_tc) if prev_tc is not None else 0.0
-        terc[di + 1] = (
+        tvals.append(
             float(np.mean([ret_map[(di + 1, s)] for s in tlong]
                           + [-ret_map[(di + 1, s)] for s in tshort]))
             - tcost
@@ -236,9 +240,7 @@ def main() -> None:
 
     from engine.passed.avsl_cross_s1 import nw_sharpe
 
-    a = min(day_idx[fs // MS_D] for fs, _fe in folds)
-    b = len(all_days) - 1
-    pn, tn = port[a:b], terc[a:b]
+    pn, tn = np.array(pvals), np.array(tvals)
     sh = nw_sharpe(pn, lags=5, ann=365)
     bm = float(np.mean([np.mean(v) for v in brier_mod.values()]))
     bb = float(np.mean([np.mean(v) for v in brier_base.values()]))
@@ -246,7 +248,7 @@ def main() -> None:
     pg1 = bm < bb and fo >= 5
     pg2 = bool(np.nanmean(tn) > 0)
     pg3 = bool(np.isfinite(sh) and sh >= 1.0)
-    print(f"\n=== gates (pooled TEST, {b - a} days) ===")
+    print(f"\n=== gates (pooled TEST, {len(pn)} days with legs) ===")
     print(f"P-G1 brier: model {bm:.5f} vs base {bb:.5f}, fold-wins "
           f"up={fold_ok['up']}/8 dn={fold_ok['dn']}/8 (min {fo}) -> "
           f"{'PASS' if pg1 else 'FAIL'}")

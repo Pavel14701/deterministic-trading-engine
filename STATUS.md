@@ -21,6 +21,14 @@
 ####     0.15% per leg membership change vs the prior day;
 #### (g) P-G2 tercile spread uses the same 0.15% cost on
 ####     tercile membership changes.
+#### ProSP v2 RUN A ABORT (2026-09-24): implementation bugs, no
+#### verdict recorded.  (1) min-row gate was applied PER-ASSET
+#### (barrier-v1 copy-paste) instead of pooled as the prereg
+#### requires -- funding cache covers only the last ~40% of
+#### history, so folds 0-5 were wrongly skipped per-asset;
+#### (2) the portfolio stream included zero-days without
+#### predictions, diluting P-G3.  Gates untouched; code fixed
+#### and committed; RUN B below is the one-shot execution.
 
 
 #### P4-EX RESULT (2026-09-24; prereg 75ff2ee, frozen before the

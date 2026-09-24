@@ -1,0 +1,11 @@
+universe: 29 assets
+fold 6 up: tr=559251 te=36288 brier 0.14275 vs 0.14369
+fold 6 dn: tr=559251 te=36288 brier 0.17297 vs 0.16142
+fold 7 up: tr=616599 te=14439 brier 0.24855 vs 0.22607
+fold 7 dn: tr=616599 te=14439 brier 0.17361 vs 0.17289
+
+=== gates (pooled TEST, 416 days) ===
+P-G1 brier: model 0.18447 vs base 0.17602, fold-wins up=1/8 dn=0/8 (min 0) -> FAIL
+P-G2 tercile net daily EV: -0.99bp -> FAIL
+P-G3 portfolio net Sharpe_NW: -1.19 -> FAIL
+ProSP v2: CLOSED (gate failed, no re-tuning)
