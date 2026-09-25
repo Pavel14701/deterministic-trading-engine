@@ -7120,3 +7120,37 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### Paper trading of the promoted module proceeds with the
 #### correlated-DD caveat explicit.
 #### ============================================================
+####
+#### ============================================================
+#### FX AVSL D1 -- FIRST BATTERY-V2 FAMILY: ONE-SHOT RUN ->
+#### VERDICT: FAIL (runs/fx_avsl_d1.log, prereg 3dd0b1c).
+#### Family FX-AVSL CLOSED PERMANENTLY per kill rule.
+####
+#### grid 7775 days (union 1996-2026), 1484 trades, split 5183.
+#### PRIMARY: Sharpe_NW +0.26 (plain +1.89 -- NW factor 7x:
+#### the accrual stream is STRONGLY autocorrelated, i.e. slow
+#### FX trends over stay -- the famous FX trend decay), DD 55%,
+#### EV +0.07R, CI_time [-0.015,+0.062] includes 0, pos 7/10,
+#### eff_n 1 (all PnL in 1-2 trades), 9/17 long years negative.
+#### F3 (2014->): Sharpe -0.69, EV -0.10R, CI_xs ENTIRELY
+#### NEGATIVE [-0.101,-0.004] -- the engine LOSES money with
+#### significance on 2014-2026.  pos 2/10.
+#### v2 read-outs (diagnostic, moot on FAIL): ENB 8.9/9.7 --
+#### FX majors/crosses accrual streams are far less correlated
+#### than the USD-factor prior assumed; conc p95 8/10 (>6) and
+#### p50 3/6 (>4): even on FX the book runs regime-clustered.
+#### EV_orth vs DXY-30d: PRIMARY shorts +0.160R (t +1.6) is the
+#### only positive cell, but 10/17 negative years -> noise
+#### profile, NOT declared a finding (no second run allowed).
+####
+#### READ: prior confirmed twice over.  (1) The crypto 1D-death
+#### prior transferred: the AVSL geometry needs the 4H crypto
+#### microstructure; on FX daily it is dead on arrival.
+#### (2) FX daily trend-following decay post-2014 is visible as
+#### a significantly NEGATIVE holdout.  (3) Universe quality is
+#### real (ENB ~9): FX remains a candidate universe for OTHER
+#### signal classes; every future FX prereg starts from this
+#### negative result.
+#### Universe is NOT closed for non-AVSL signal classes; the
+#### FX-AVSL family is.
+#### ============================================================
