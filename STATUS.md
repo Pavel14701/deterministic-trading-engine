@@ -6411,3 +6411,20 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### (FAIL).  Direction-alignment family now 0/2; running per
 #### frozen order: F6 Supertrend next.
 #### ============================================================
+####
+#### F6 VERDICT (2026-09-25, one pass, runs/filter_f6.log):
+#### Trades 2941 -> 1664 (57%).  PRIMARY PASS STRONGLY: DD
+#### 22->12%, EV +0.17->+0.31R, Sharpe 1.66, pos 10/10, neg
+#### 12m windows 0->0.  F3 SEGMENT FAILS ALL THREE: DD 12->15%,
+#### EV +0.35->+0.30R (retention 86% < 90%), pos 6/10; Sharpe
+#### 1.52.  BY FROZEN GATE: FAIL -> F6 CLOSED.
+#### READ-OUT (non-gating, recorded for honesty): the PRIMARY
+#### profile of F6 is the best seen in the filter family and
+#### PF-G4-clean.  Any 'PRIMARY-only deployment' branch does
+#### NOT exist in the frozen program; opening it after seeing
+#### these numbers would be post-hoc.  It can only enter as a
+#### NEW dated prereg with its own holdout story -- parked,
+#### not decided here.  Direction filters now 0/3; the F3
+#### holdout edge concentrates in trades all three remove.
+#### Next per frozen order: F2 ADX x sizing.
+#### ============================================================
