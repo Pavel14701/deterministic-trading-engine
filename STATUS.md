@@ -7061,3 +7061,62 @@ cadence + the Phase B adjudication of the DD convention finding.
 ####   monitor long-side tail p99 ~ +28R profile) + portfolio
 ####   assembly (AVSL-trailing x channel combined DD) or FX.
 #### ----------------------------------------------------------
+####
+#### ============================================================
+#### BATTERY V2 CALIBRATION READ-OUT (single 3-case run,
+#### runs/battery_v2_calibration.log, prereg 4e2cc07):
+####
+#### CASE 1 avsl_cross_s1: v1 FAIL on true grid (known R-OB-1
+#### result: DD 26%, F3 pos 6, NW floor artifact).  prereg
+#### expected "passes v1" -- violated because the parent's
+#### verdict was legacy-grid.  ENB 8.8/7.3, conc p95 25/26.
+#### CASE 2 avsl_trailing_s1: v1 PASS both segments; ENB 7.5/7.7
+#### PASS; **conc p95 11 > 6 -> G-CONC FAIL -> VERDICT:
+#### FAIL-CORR** (signal not distinguishable from beta on this
+#### universe; the UNIVERSE closes, not the hypothesis).
+#### CASE 3 synthetic null: v1 FAIL (Sharpe 0.74, CI includes 0)
+#### -> FAIL.  ENB 9.9 (correct: independent assets by
+#### construction).  EV_orth NaN (factor undefined off-grid).
+####
+#### CALIBRATION ADJUSTMENT (the single one allowed by §8):
+#### ENB moved to ACTIVE bars only -- the full-bar matrix was
+#### 75-95% zero rows and inflated ENB toward the asset count
+#### by construction.  Re-run above; ENB barely moved (7.5->
+#### 7.52) -- the attenuation finding stands recorded, the
+#### residual ENB is the honest accrual-stream estimate.
+#### v2 IS NOW FROZEN for family use: ENB>=2.0, conc p95<=6,
+#### FAIL-CORR semantics active.
+####
+#### FINDINGS AGAINST THE PREREG EXPECTATIONS:
+#### 1. ENB ~7.5, NOT ~1.2-1.5: on this universe the accrual
+####    streams of the 10 majors are far less correlated than
+####    the raw-price prior; the bet-concentration signal lives
+####    in G-CONC, not ENB.  G-ENB cannot discriminate here
+####    (null 9.9 > promoted 7.5): it stays as a universe check,
+####    not a strategy check.
+#### 2. G-CONC p95<=6 fails the PROMOTED book (p95 11): under
+####    v2 semantics the whole 4H crypto-majors book is
+####    formally FAIL-CORR -- one clustered bet, regime-driven
+####    sizing.  Promoted modules KEEP their deployable status
+####    (promoted under v1; v2 governs future families), but
+####    the flag is recorded and live DD must be expected
+####    correlated.
+#### 3. EV_orth (BTC 30d factor): promoted longs +0.816R
+####    (t +2.8) PRIMARY / +0.403R (t +1.7) F3 -- the long edge
+####    SURVIVES orthogonalization to simple BTC momentum.
+####    Longs are not "long BTC beta"; the cross timing adds
+####    residual EV.  Shorts EV_orth +0.03/+0.15 -- noise,
+####    consistent with FINDING 4.
+#### 4. R7 LIMITATION (documented): the frozen cross-sectional
+####    bootstrap definition (date blocks, all assets together)
+####    is mathematically identical to v1's pooled block CI --
+####    CI_xs == CI_time in all cases.  A genuinely cross-
+####    sectional scheme (per-asset residual bootstrap) needs a
+####    new prereg; not changed here.
+####
+#### CONSEQUENCE: next family must change universe (FX/equities)
+#### or factor structure -- v1+G-CONC will re-classify any
+#### 10-asset 4H crypto book as FAIL-CORR by construction.
+#### Paper trading of the promoted module proceeds with the
+#### correlated-DD caveat explicit.
+#### ============================================================
