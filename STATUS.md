@@ -6438,3 +6438,13 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### ADX is dead for AVSL-cross in both gate and sizing forms.
 #### F2 CLOSED (FAIL).  Next per frozen order: F7 structure.
 #### ============================================================
+####
+#### F7 VERDICT (2026-09-25, one pass, runs/filter_f7.log):
+#### Trades 2941 -> 852 (29%).  DD gate PASSES both segments
+#### (PRIMARY 22->12%, F3 12->8%) BUT the F3 EV-retention gate
+#### FAILS: +0.35R -> +0.15R (43% << 90%); Sharpe F3 0.73; neg
+#### 12m windows 0 -> 397.  F7 CLOSED (FAIL).  Direction /
+#### structure filters 0/4.  Next per frozen order: F5
+#### realized-vol regime (sizing), then F4 is DEFERRED -> if F5
+#### fails the program kill rule applies (0 individual passes).
+#### ============================================================
