@@ -6772,3 +6772,30 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### Sharpe is at its resolution ceiling for this class
 #### (eff_n 36/34 of 10179/5090)."
 #### ============================================================
+####
+#### ============================================================
+#### PROMOTION VERDICT (single verify run, 2026-09-25, commit
+#### db06485 frozen BEFORE the run):
+####   P1 --verify: PASS (n=2941 exact; PRIMARY +1.22 / 22% /
+####       +0.49R / pos 9; F3 +1.35 / 20% / +0.38R / pos 10 --
+####       all within tol of the frozen result)
+####   P2 self-contained: PASS (test_no_experiments_imports)
+####   P3 exit-rule regressions: PASS 8/8 (stop intrabar wins,
+####       reverse-cross at close both sides, horizon cap,
+####       no-cross -> final-bar MTM, fee, hygiene, constants)
+####   P4 battery re-assert true grid: PASS (both segments,
+####       bootstrap CI excludes 0)
+####   DISCLOSURES printed: plain_ann +20.4/+16.6, eff_n 36/33,
+####       ex-top-20 EV +0.006R/-0.066R (top20 share 99%/117%),
+####       per-year table with ex-top20 column.
+####   VERDICT: engine/passed/avsl_trailing_s1.py DEPLOYABLE
+####   (second passed strategy).  Parent avsl_cross_s1 stays
+####   FROZEN/retired-exit.  Ledger: PASS->DEPLOYABLE: 2.
+####   Post-verdict fix: _per_year year attribution moved to
+####   true-grid absolute buckets (disclosure-only; gates and
+####   P1-P4 unchanged and re-confirmed after the fix).
+#### Live-scale considerations (carried from due-diligence):
+####   expect long flat stretches between monster trades; NW
+####   Sharpe at ceiling for this class -- monitor plain_ann,
+####   eff_n, ex-top-20 EV, per-year ex-top20 as live read-outs.
+#### ============================================================

@@ -249,7 +249,7 @@ def _per_year(ctxs: dict, trades: list, g0g: int) -> dict:
     out = {}
     for i, tr in enumerate(trades):
         y = dt.datetime.utcfromtimestamp(
-            (g0g + tr["e0"]) * MSEC_4H / 1000).year
+            (ctxs[tr["sym"]]["g0"] + tr["e0"]) * MSEC_4H / 1000).year
         d = out.setdefault(y, {"all": [], "ex": []})
         d["all"].append(tr["net"])
         if i not in top:
