@@ -7030,3 +7030,34 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### DISCLOSURES: concurrency profile of gated shorts,
 #### per-year short EV, ex-top20 EV, eff_n.
 #### ============================================================
+####
+#### ----------------------------------------------------------
+#### READ-OUT (runs/p_s1_1.log, single run 2026-09-25, prereg
+#### 39f3a79 frozen before):
+####   G1 PASS: bear-gated short-leg EV +0.137R >= +0.05R.
+####   PRIMARY: Sharpe +1.18 (<1.2 FAIL), DD 18% (<20% -- the
+####   P-S1 DD blowup is FIXED by the revcross exit: 24->18),
+####   EV +0.73R, CI>0.  F3: Sharpe +1.15 (<1.2 FAIL), DD 21%
+####   (>20% FAIL by 1pp), EV +0.43R, CI>0.
+####   Short-leg per-year still negative 5/7 (-0.31..-0.09);
+####   concurrency p95 = 9 of 10 assets (full-boat shorts in
+####   bear windows).
+####   P-S1.1 VERDICT: FAIL -> per the frozen kill rule the
+####   AVSL variant family CLOSES PERMANENTLY (no P-S1.2).
+####
+#### FINAL FAMILY SYNTHESIS: the user's structural diagnosis
+#### was CORRECT on both mechanism claims -- (1) TP=8R was
+#### truncating a real short tail (forensic: revcross on the
+#### same entries flips 574 stops -> 67 and raises EV), and
+#### (2) the revcross exit fixes the DD geometry (18%/21% vs
+#### 24%/33%).  What remains true: the bear-gated short leg is
+#### a negative-body, 2-good-years strategy (5/7 negative
+#### years at any geometry tested), and its Sharpe cost
+#### (1.18/1.15 vs promoted 1.22/1.35) exceeds its DD benefit
+#### under the frozen gates.  The promoted mix sits at the
+#### optimum: shorts = cheap F3 diversification, not alpha.
+####   Book unchanged: PASS->DEPLOYABLE: 2 (avsl_cross_s1,
+####   avsl_trailing_s1).  Next: paper trading promoted (30d,
+####   monitor long-side tail p99 ~ +28R profile) + portfolio
+####   assembly (AVSL-trailing x channel combined DD) or FX.
+#### ----------------------------------------------------------
