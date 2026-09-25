@@ -6576,3 +6576,95 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### the module docstring's adoption rule.  The passed frozen
 #### module remains untouched until that promotion prereg.
 #### ============================================================
+####
+#### ============================================================
+#### F-TP1 PROMOTION DUE-DILIGENCE CHECKS (2026-09-25, declared
+#### before any run; descriptive read-outs, NOT gates -- the
+#### gates belong to the promotion prereg that follows).
+####
+#### CHK-1 TRUE-GRID ALIGNMENT: recompute BOTH the baseline
+#### (TP=5R) and F-TP1 streams on the TRUE global grid
+#### (absolute 4H bucket minus earliest asset bucket, the
+#### R-OB-1 lesson convention).  Legacy-index numbers (22%/15%)
+#### are expected to move; the relative comparison must survive.
+####
+#### CHK-2 PORTFOLIO NULL FOR TRAILING: E3-D measured the
+#### trailing null on per-trade EV only (+0.415+-0.124 / +0.145
+#### +-0.069).  Here: the SAME E1/E3 random-draw procedure
+#### (seeds 0..99, per-asset entry counts and long/short ratios
+#### matched to the actual trades) with the trailing exit,
+#### S1 sizing, TRUE grid -> portfolio Sharpe/DD/EV null
+#### distribution per segment.  Answers: is the F-TP1 portfolio
+#### profile (Sharpe 1.17 / DD 15%) exit-geometry-universal or
+#### AVSL-specific?  Read-out: F-TP1's percentile within the
+#### null per metric per segment.
+####
+#### CHK-3 DISTRIBUTION DECOMPOSITION: net-R distribution of
+#### F-TP1 vs baseline trades (percentiles, win%, avg win/loss,
+#### hold stats, top-5%-trades PnL share) -- locates the EV gain
+#### and the Sharpe give-up (variance) mechanically.
+#### ============================================================
+####
+#### ----------------------------------------------------------
+#### READ-OUT (single run, runs/tp1_checks.log, 2026-09-25):
+####
+#### CHK-1 TRUE GRID: baseline 26% PRIMARY / 29% F3 DD, Sharpe
+#### +1.22 / (NW artifact, see below), EV +0.16/+0.31; F-TP1
+#### 22% / 20% DD, Sharpe +1.22 / +1.35, EV +0.49 / +0.38,
+#### pos 9 / 10.  Legacy 15% DD -> true 22%: still < cap 25%
+#### but margin 3pp, not 10pp.  Baseline true 26% reproduces
+#### the known true-grid number.  All promotion gates pass on
+#### the true grid.
+####
+#### FINDING 1 (metric artifact, frozen-module known rule):
+#### baseline F3 nw_sharpe exploded to +9123 -- its NW lag-sum
+#### hit the -0.5 floor (factor ~0.0004), the documented floor
+#### behavior of the frozen metric.  Plain annualized Sharpe
+#### for reference: baseline +1.99/+3.72, F-TP1 +8.34/+6.76.
+#### Caveat recorded: F-TP1's daily stream is MORE persistent
+#### (rho2 0.927 vs 0.886) and lower-variance than baseline,
+#### so the NW correction penalizes F-TP1 harder; the NW
+#### comparison (1.22 vs 1.22) is the conservative one, plain
+#### comparison (8.34 vs 1.99) the liberal one.  DD/EV/pos
+#### gaps are metric-independent and all favour F-TP1.
+####
+#### CHK-2 PORTFOLIO TRAILING NULL (100 draws, E1/E3 matched
+#### counts/sides, true grid): PRIMARY null Sharpe +0.93+-0.14
+#### [+0.56,+1.45], DD 19%+-7% [8%,38%], EV +0.44+-0.13;
+#### F-TP1 percentile: Sharpe 96th, DD(favourable) 35th, EV
+#### 67th.  F3 null Sharpe +0.79+-0.31, DD 18%+-6%, EV
+#### +0.16+-0.08; F-TP1 percentile: Sharpe 94th, DD 29th, EV
+#### 100th.
+####
+#### FINDING 2 (edge vs drift, portfolio level): PRIMARY EV is
+#### DRIFT -- random trailing entries average the same +0.44R
+#### (F-TP1 67th pct), replicating E3-D at portfolio level.
+#### The AVSL entry edge shows up as VARIANCE REDUCTION, not
+#### EV: same EV as null but Sharpe 96th pct and DD below null
+#### mean.  On F3 the EV is EDGE (100th pct, +0.38 vs
+#### +0.16+-0.08) and Sharpe 94th pct.  NB: even RANDOM
+#### trailing portfolios sit at 19% mean DD -- most of the DD
+#### relief vs 26% baseline is exit geometry, not entry
+#### selection.  Honest promotion claim: deployable candidate
+#### rests on (a) true-grid gates all pass, (b) entry adds
+#### portfolio quality (Sharpe 94-96th pct of null both
+#### segments), (c) F3 EV is genuine edge, NOT on PRIMARY EV.
+####
+#### CHK-3 DISTRIBUTION: baseline win 21%, avg win +4.80R,
+#### avg loss -1.02R, median -1.02; F-TP1 win 13%, avg win
+#### +6.37R, avg loss -0.45R, median -0.32, max +200.9R (one
+#### multi-month ride), top-5% of trades = 168% of total PnL.
+#### F-TP1 is a right-tail ride: reverse-exit cuts average
+#### loss by half (-1.02 -> -0.45) and lets winners run;
+#### the Sharpe give-up under NW is the price of tail
+#### persistence.  Per-year net EV (legacy grid): 2020 +1.53,
+#### 2021 +0.33, 2022 +0.06, 2023 +0.67, 2024 +0.35, 2025
+#### +0.16, 2026 +0.82 -- positive every year.
+####
+#### CONSEQUENCE FOR PROMOTION PREREG: gates must be declared
+#### on the TRUE grid; PRIMARY EV claim must be phrased as
+#### drift-captured (per CHK-2), portfolio-quality claim via
+#### Sharpe/DD percentiles vs null; F3 EV edge is the
+#### signal-specific claim.  F-TP1 stays the PASS candidate;
+#### nothing invalidated, claims made more precise.
+#### ----------------------------------------------------------
