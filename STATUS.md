@@ -6303,3 +6303,100 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### control); call-skew table thinner than put-side (fewer
 #### prints on the call wing).
 #### ============================================================
+####
+#### ============================================================
+#### AVSL TREND-FILTER PROGRAM PRE-REG (2026-09-25, FROZEN
+#### BEFORE ANY FILTER RUN).  Ablation, one pass per filter,
+#### NO tuning after each freeze.
+####
+#### BASELINE: engine/passed/avsl_cross_s1 (frozen verdict:
+#### PRIMARY Sharpe 1.50 DD 22% EV +0.17R; F3 Sharpe 2.84
+#### DD 12% EV +0.33R).  Baseline is recomputed in-process in
+#### every runner and MUST match the frozen numbers (sanity
+#### gate); any deviation aborts before filter evaluation.
+####
+#### FAMILY BUDGET: this is the filter-family, max 10 pre-regs
+#### (P-2).  Sequential, order frozen below by prior.  A FAIL
+#### closes that filter only; the passed AVSL module is
+#### untouched (adoption of any PASS requires a new dated
+#### prereg per the module docstring).
+####
+#### PROTOCOL (frozen, common to all): each runner imports the
+#### passed engine, rebuilds the identical portfolio stream
+#### (same 1%-unit accrual construction), applies the filter
+#### (direction filters drop trades; sizing filters multiply
+#### the S1 size), recomputes PRIMARY/F3 metrics.  Filter info
+#### may use only data available at the entry bar close.
+####
+#### INDIVIDUAL GATE (frozen, both segments independently):
+####   DD(filter) <= 0.8 x DD(baseline)   [>=20% rel. reduction]
+####   EV(filter) >= 0.9 x EV(baseline)   [<=10% EV give-up]
+####   G4 pos_assets >= 7 in both segments (no asset starvation)
+#### READ-OUTS (non-gating): Sharpe_NW, n trades, trailing 12m
+#### negative-window count (PF-G4 style), per-year EV.
+#### KILL: gate FAIL -> filter closed, next in order.
+#### PHASE 2: combinations only of passed filters (AND logic,
+#### pre-registered then; Bonferroni x k for k candidates).
+#### PROGRAM KILL: 0 individual passes -> program closed,
+#### remaining focus vol-carry / FX.
+####
+#### ORDER + SPECS (frozen now, details per filter):
+####   F1 HTF trend (1D SMA50)      prior 35-45%  <- RUNS FIRST
+####   F3 Multi-TF (4H SMA200 + F1) prior 30-40%
+####   F6 Supertrend direction      prior 25-35%
+####   F2 ADX x sizing              prior 25-35%
+####   F7 Market structure HH/HL    prior 25-35%
+####   F5 Realized-vol regime       prior 20-30%
+####   F4 confidence x strength     DEFERRED (see below)
+####
+#### F1 SPEC (frozen): keep long trade iff close of the last
+#### COMPLETED UTC day (d_c = floor((bar_close_time)/day) - 1,
+#### bar_close_time = 4H bar open + 4h) > SMA50 of the 50 daily
+#### closes ending at d_c; keep short iff <.  Equal -> drop.
+#### Daily closes built from the same 1H source (last 1H close
+#### per UTC day).  No other parameter exists.
+####
+#### F3 SPEC: F1 condition AND 4H close(bar) > SMA200(4H closes
+#### up to and incl. entry bar) for longs (mirrored shorts).
+####
+#### F6 SPEC: standard Supertrend(10, 3.0) on 4H H/L/C (ATR via
+#### the engine's atr_ind; Wilder smoothing; first non-NaN bar
+#### seeds direction long); long kept iff final direction up.
+####
+#### F2 SPEC: size_mult = clip(ADX14(4H)/25, 0.5, 1.5), ADX
+#### Wilder on the entry bar (uses history only).  Distinct
+#### from the failed ADX>25 SKIP gate: sizing, not skipping.
+####
+#### F7 SPEC: 5-bar fractal swings (k=2 neighbors each side)
+#### on 4H; structure up iff last two swing highs HH AND last
+#### two swing lows HL (mirror down); keep aligned trades.
+####
+#### F5 SPEC: vol_d = std(last 90 daily log rets); mult 1.2 if
+#### vol_d < median(vol_d over prior 365d window), else 0.8.
+#### Distinct measurement from S2 (ATR-percentile, FAILED
+#### recorded).  History is a prior-failure warning, not a ban.
+####
+#### F4 DEFERRED: 'stop-head confidence' is an E8b OB-entry
+#### quantity with no frozen AVSL-entry mapping; inventing one
+#### now would be post-hoc.  F4 needs its own confidence
+#### calibration prereg before it can run (parked).
+#### ============================================================
+####
+#### F1 VERDICT (2026-09-25, one pass, runs/filter_f1.log):
+#### BASELINE SANITY OK (PRIMARY 1.49/22%/+0.17R, F3 2.82/12%/
+#### +0.35R -- reproduces frozen within data-drift tolerance).
+#### Trades 2941 -> 1317 (45% kept).  GATE FAIL BOTH SEGMENTS:
+####   PRIMARY: DD 22->21% (gate <=17.6% FAIL), EV +0.17->+0.31R
+####            (PASS), pos 9/10 PASS; Sharpe 1.37.
+####   F3:      DD 12->20% (FAIL), EV +0.35->+0.09R (FAIL),
+####            pos 6/10 (FAIL); Sharpe 2.82->0.59.
+#### READ-OUT: trailing 12m neg windows 0 -> 3127 (filtered
+#### stream is concentrated + flat stretches).
+#### INTERPRETATION: daily-trend alignment keeps the trend-side
+#### trades but THROWS AWAY the F3 (holdout) edge -- consistent
+#### with the E1-E5 map (edge = low-vol 2025+, not trend
+#### direction); the kept cluster is more concentrated, DD does
+#### not improve.  F1 CLOSED (FAIL).  Next: F3 Multi-TF (its F1
+#### component is now measured-dead on F3; expectation lowered,
+#### gate unchanged).
+#### ============================================================
