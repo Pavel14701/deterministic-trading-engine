@@ -6913,3 +6913,72 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### the premium subset (2x dn-cross longs).  Promoted module
 #### unchanged (shorts are harmless-but-dead in it).
 #### ----------------------------------------------------------
+####
+#### ============================================================
+#### PREREG P-L1: LONG-ONLY avsl_trailing_s1 (frozen 2026-09-25
+#### BEFORE run; independent track).  CONFIG: identical to the
+#### promoted module, SHORTS DROPPED (up-cross longs only,
+#### n=1471 expected).  MOTIVATION: FINDING 4 side split --
+#### longs +0.824R, shorts ~0 with net-negative body.
+#### GATES (true grid, both segments): Sharpe_NW >= 1.0; DD <=
+#### 25%; EV >= 0.10R; pos_assets >= 7; block-bootstrap CI > 0.
+#### KILL: battery FAIL -> long-only track closed, promoted
+#### module stands.  DISCLOSURES: eff_n, plain_ann, ex-top-20
+#### EV + share, per-year table, delta vs promoted module.
+####
+#### PREREG P-S1: SHORT REVIVAL (frozen 2026-09-25 BEFORE run;
+#### independent track).  CONFIG: longs = F-TP1 up-cross,
+#### reverse-cross exit (unchanged); SHORTS = AVSL dn-cross,
+#### gated by the 1D bear filter: last COMPLETED daily close <
+#### its 1D SMA(200) at entry time (causal, day-1 data only);
+#### short exit = hard stop OR fixed TP=8R (wide, lets cascades
+#### develop), HORIZON 500, stop-first; sizing S1 as parent.
+#### HYPOTHESIS: shorts need bear-regime (negative drift) AND
+#### wide exit (rare cascade payoff) simultaneously.
+#### GATES (true grid): G-S1 short-leg EV >= +0.05R; G-S2
+#### combined Sharpe_NW >= 1.2 both segments; G-S3 combined DD
+#### <= 20% both segments; G-S4 pos_assets >= 7; G-S5 combined
+#### block-bootstrap CI > 0.  KILL: short-leg EV <= 0 -> short
+#### track closed, long-only / promoted module carry the book.
+#### PRIOR (declared): P-L1 50-60%, P-S1 30-40%.  DISCLOSURES:
+#### same family as P-L1 + short-leg n, share of dn-crosses
+#### surviving the bear filter.
+#### ============================================================
+####
+#### ----------------------------------------------------------
+#### READ-OUTS (single runs 2026-09-25; runs/p_long_only.log,
+#### runs/p_short_revival.log; preregs frozen above):
+####
+#### P-L1 LONG-ONLY: VERDICT FAIL -> TRACK CLOSED (kill rule).
+####   PRIMARY Sharpe +1.11, DD 24%, EV +0.96R, pos 10/10,
+####   CI>0 -- gates PASS; F3 Sharpe +0.98 (<1.0), CI [-0.001,
+####   +0.072] includes 0 -- gates FAIL.  EV rose (+0.96/+0.59
+####   vs +0.49/+0.38 promoted) but the short leg was quietly
+####   DIVERSIFYING F3; without it the holdout Sharpe drops
+####   below gate.  ex-top-20 EV +0.003/-0.276R, top-20 share
+####   100%/145% -- long-only is even more tail-dependent than
+####   the promoted module.  2022 net-negative (-0.235R/year).
+####
+#### P-S1 SHORT REVIVAL: VERDICT FAIL -> TRACK CLOSED.
+####   G-S1 PASS: gated short-leg EV +0.226R >= +0.05R (676 of
+####   1470 dn-crosses survived the 1D SMA200 filter).  The
+####   drift-structure hypothesis was RIGHT directionally:
+####   bear-filter + wide TP revives the short MEAN.
+####   G-S2/G-S3 FAIL: combined DD 24% PRIMARY / 33% F3 vs cap
+####   20% (F3 blown out); Sharpe 1.29/1.64 pass; CI>0 both.
+####   Short-leg per-year: NEGATIVE 5 of 7 years (-1.02 -0.68
+####   -0.50 -0.36 -0.81), positive only 2022 +0.79 and 2026
+####   +1.69 -- the +0.226R mean is two cascade years; TP=8R
+####   made short outcomes lumpier, which is exactly what the
+####   DD gates punish.  Same tail-luck structure, larger
+####   variance.
+####
+#### FAMILY STATE AFTER TODAY: promoted avsl_trailing_s1
+#### (long+short, reverse-cross) remains the ONLY deployable
+#### config; long-only and short-revival tracks CLOSED.  The
+#### shorts are dead weight in EV terms but their absence
+#### breaks F3 Sharpe and their wide-TP revival breaks DD --
+#### the promoted mix sits at the local optimum the battery
+#### selected.  Book: PASS->DEPLOYABLE: 2, family CLOSED for
+#### new variants absent a genuinely new hypothesis.
+#### ----------------------------------------------------------
