@@ -6428,3 +6428,13 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### holdout edge concentrates in trades all three remove.
 #### Next per frozen order: F2 ADX x sizing.
 #### ============================================================
+####
+#### F2 VERDICT (2026-09-25, one pass, runs/filter_f2.log):
+#### ADX14 mult p10 0.61 / med 0.99 / p90 1.50.  ALL TRADES
+#### KEPT, size-scaled.  DD unchanged (PRIMARY 22->22%, F3
+#### 12->11%) -- nowhere near the -20% gate; EV retention ~100%.
+#### ADX strength carries no sizing information for this signal.
+#### Consistent with the E-history ADX>25 skip-gate failure:
+#### ADX is dead for AVSL-cross in both gate and sizing forms.
+#### F2 CLOSED (FAIL).  Next per frozen order: F7 structure.
+#### ============================================================
