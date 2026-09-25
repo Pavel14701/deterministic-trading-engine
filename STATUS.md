@@ -6245,3 +6245,61 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### Remaining standing options per the SVD-closure focus: vol
 #### carry (short-vol on the option market itself -- requires a
 #### NEW prereg and a maker-fill model) / market switch (FX).
+####
+#### ============================================================
+#### VOL-CARRY SHORT-STRANGLE PRE-REG (2026-09-25, FROZEN
+#### BEFORE THE RUN; runner experiments/options/strangle_carry.py,
+#### one pass, log runs/strangle_carry.log).
+####
+#### STRATEGY: monthly short strangle on BTC (standalone vol
+#### carry, NOT an AVSL overlay).  At every Deribit BTC monthly
+#### expiry timestamp (08:00 UTC, settlement_period=month,
+#### 2021-04..2026-08, n=65 rolls): sell 1 put + 1 call of the
+#### NEXT monthly expiry.  WING STRIKES (frozen): grid strike
+#### nearest 0.90x (put) and 1.10x (call) S at roll ts.
+#### CONFLICT RESOLUTION: the sketch's "3% OTM" and "delta
+#### 0.10-0.20" are incompatible on 30d BTC (3% OTM ~ delta
+#### 0.35+); frozen choice = the delta band, i.e. ~10% OTM wings
+#### (the SSRN 3%-OTM variant is recorded as un-run).
+####
+#### SIZING (fixed fraction, frozen): each wing sold on 0.10x
+#### equity of BTC notional (0.20x total strangle notional).
+#### Scaling read-out 0.05x/0.20x.  Deribit inverse conventions:
+#### premiums in BTC, payoff max(K-S_T,0)/S_T.
+####
+#### FILL MODEL (frozen; the only new component, as flagged):
+#### no orderbook history exists on the API, so maker fills are
+#### proxied on the same mark model as the puts prereg:
+#### mid = BS(r=0, DVOL_day(ts) + skew(m)); entry credit =
+#### 0.75 x mid  (25% maker haircut), exit buyback = 1.25 x mid;
+#### maker fees = 0 (Deribit rebates; haircut covers).  Skew
+#### tables: put side = frozen p75 table from the puts prereg;
+#### CALL side = calibrated from the fetched call prints the
+#### same way (table printed by the runner and frozen by this
+#### prereg text reference).  SENSITIVITIES (non-gating):
+#### haircut 0 / 15%.
+#### MANAGEMENT: none -- hold to settlement (print-sparsity
+#### evidence makes reconstruction of any active management
+#### untestable; declared up front).
+####
+#### GATES (evaluated once, daily stream in % equity,
+#### 2021-04..2026-08):
+####   G-V1: Sharpe_NW >= 1.0 (annualized sqrt(365))
+####   G-V2: max DD <= 20%
+####   G-V3: IV premium exists: median(IV30 - RV30) over rolls
+####       > +2 vol pts AND positive in >= 60% of rolls (RV30 =
+####       30d realized vol of Binance daily closes at roll ts;
+####       IV30 = DVOL at roll ts)
+####   G-V4 (ADDED by the repo, disclosed: the sketch had no
+####       tail control; short-vol without it is unfalsifiable
+####       in this book): worst single strangle loss <= 15%
+####       equity AND 2022 calendar-year PnL >= -20% equity.
+#### PASS iff all four.  FAIL -> short-strangle vol carry
+#### CLOSED (one shot).
+####
+#### KNOWN LIMITATIONS (declared, not gating): mark-proxy fills
+#### (no book); settlement uses Binance close of the 08:00 UTC
+#### bar; no margin/liquidation model (G-V4 is the substitute
+#### control); call-skew table thinner than put-side (fewer
+#### prints on the call wing).
+#### ============================================================
