@@ -6499,3 +6499,80 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### Next branch per the book: FX market switch (new pre-reg
 #### required before any run).
 #### ============================================================
+####
+#### ============================================================
+#### AVSL TP-ABLATION PROGRAM PRE-REG (2026-09-25, FROZEN BEFORE
+#### ANY RUN).  Exit-side ablation of the passed module; the
+#### module stays PASSED and untouched (adoption of a PASS
+#### requires a new dated prereg per its docstring).
+####
+#### EVIDENCE BASE (honest summary, deviations from the
+#### proposal noted): E3 arm D (pre-registered amendment,
+#### runs/ablation_rr_d.log) reverse-cross exit EV +0.447/
+#### +0.422 vs frozen +0.172/+0.335 -- BUT D's random-geometry
+#### null is +0.415+-0.124 PRIMARY: the PRIMARY lift is ~all
+#### null (drift capture); the real entry-information lift is
+#### F3-side (+0.277).  E3 measured PER-TRADE EV ONLY -- no
+#### portfolio Sharpe/DD exists for any exit arm.  Trailing on
+#### other TFs failed twice (avsl_trailing.py stop-flip 15m
+#### OKX 0/10; avsl_trail_* logs evN<0, fees) -- 4H Binance
+#### universe was never trailed under portfolio gates.
+#### PRIOR ADJUSTED: 35-45% (proposal said 40-50% before the
+#### null decomposition was priced in).
+####
+#### F-TP1 SPEC (frozen, RUNS FIRST): entry/stop/sizing frozen
+#### (identical to the passed module); exit = first OPPOSITE
+#### cross bar after entry, taken at that bar's close, capped
+#### at HORIZON=500 (semantics identical to E3 arm D,
+#### ablation_rr._trade with revcross=True; stop checked
+#### intrabar and wins).  Trades chain (reverse cross is the
+#### next entry); no same-asset overlap.
+#### F-TP1 GATES (frozen): the passed module's full battery on
+#### BOTH segments (Sharpe_NW >= 1.0, DD <= 25%, net EV >=
+#### +0.10R, pos_assets >= 7, block-bootstrap CI > 0) AND
+#### PRIMARY portfolio DD strictly below the baseline's 22%
+#### (program purpose is DD relief; a PASS with worse PRIMARY
+#### DD is recorded as PASS-no-adopt).  READ-OUTS: vs-baseline
+#### table, neg 12m windows, per-year EV, hold distribution.
+####
+#### F-TP2 (adaptive MFE TP, parked until F-TP1 verdict):
+#### TP = clip(0.8 x MFE_pred, 1.5R, 6R), MFE_pred = LGBM on
+#### entry-time features (D.5 transfer).  Needs its own
+#### calibration pre-reg (features + train/test split) BEFORE
+#### any run.
+#### F-TP3 hybrid 2R-50% + trailing remainder: parked, spec at
+#### freeze time.  F-TP4 structural TP: parked.  F-TP5 no-TP
+#### hold-only: parked (differs from F-TP1 only by horizon;
+#### note E3 D already caps at 500).
+#### PROGRAM: max 3 pre-regs in the family (P-2); F-TP1 FAIL ->
+#### F-TP2 decision; both FAIL -> exit-axis closed, FX next.
+#### ============================================================
+####
+#### F-TP1 VERDICT (2026-09-25, one pass, runs/tp1_revcross.log):
+#### **PASS -- FIRST NEW PASS SINCE THE ORIGINAL MODULE.**
+#### n=2941 (same entries as frozen; only exits differ); hold
+#### med 4 bars / p90 128.
+####   PRIMARY: Sharpe 1.17, DD 15% (baseline 22%), EV +0.44R,
+####            pos 9/10 -- battery 4/4 + DD-relief 5/5.
+####   F3:      Sharpe 3.03, DD 5% (baseline 12%), EV +0.45R,
+####            pos 10/10 -- 4/4.
+####   neg 12m windows 0; per-year net EV positive EVERY year
+####   (2020 +1.11, 2021 +0.08, 2022 +0.44, 2023 +0.45, 2024
+####   +0.15, 2025 +0.40, 2026 +1.57).
+#### INTERPRETATION: confirms the TP-geometry hypothesis at the
+#### portfolio level.  2023-24 was not a dead regime -- the 5R
+#### TP was unreachable there and hold-exits accumulated the
+#### bleed; reverse-cross exit captures the move without the
+#### 5R wait.  EV matches E3-D's descriptive numbers (+0.447/
+#### +0.422) within tolerance; the null caveat stands (PRIMARY
+#### lift over matched null is small) -- the ENTRY information
+#### remains a holdout-side effect, now harvested by an exit
+#### that does not abandon trades before the drift pays.
+#### PER FROZEN PROGRAM: F-TP2 (adaptive MFE TP) is no longer
+#### needed as a rescue; it stays available as an independent
+#### pre-reg if pursued.  NEXT: promotion decision for an
+#### AVSL-cross S1 reverse-exit module (new dated prereg +
+#### engine/passed promotion + live-scale consideration), per
+#### the module docstring's adoption rule.  The passed frozen
+#### module remains untouched until that promotion prereg.
+#### ============================================================
