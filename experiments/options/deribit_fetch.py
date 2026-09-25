@@ -145,6 +145,9 @@ def stage_dvol(currency: str | None = None) -> None:
             if row[0] not in seen:
                 seen.add(row[0])
                 out.append(row)
+        if not out or len(out) < 100:
+            raise RuntimeError(f"dvol {cur}: suspicious payload "
+                               f"({len(out)} pts), NOT writing cache")
         p.write_text(json.dumps(out))
         if out:
             t0 = out[0][0] / 1000

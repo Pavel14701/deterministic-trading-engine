@@ -6094,9 +6094,45 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### whether mid-proxy from DVOL+settlements is needed; (c) only
 #### then pre-reg the overlay on frozen AVSL 4H BTC longs (gate:
 #### DD <= 20%, EV >= 80% baseline).
-
-
-
-
-
-
+####
+#### OPT-DATA-DEPTH (2026-09-25, step 2: trades fetched, fill
+#### model measured; diagnostics only, no backtest claims).
+####
+#### FETCHED: 693/693 puts (band 0.70-0.92 x spot, matched
+#### expiries >= entry+27d) in data/deribit/puts_trades/;
+#### 417/418 puts (band 0.90-0.98) in puts_trades2/.
+#### 9+0 corrupt files (double-write by overlapping retry
+#### loops) re-fetched clean; lesson: never let two retry loops
+#### run on the same file set.
+####
+#### PRINT-LAG VERDICT (experiments/options/puts_depth.py):
+#### **print-based fills are INFEASIBLE for both bands.**
+####   - before-entry print exists: 31/131 entries (deep band);
+####   - next print AT/AFTER entry: 119/131 (deep) and 104/131
+####     (near band), BUT next-print lag median 644-664 HOURS
+####     (~27 days!), p90 2-8 thousand hours.  Median trades per
+####     instrument ~86-101, 57-68 of 693/417 instruments have
+####     ZERO trades ever.  OTM BTC puts trade far too sparsely
+####     for event-driven fills even at 0.90-0.98 moneyness.
+####
+#### SKEW MAP (experiments/options/skew_probe.py, 353,796
+#### prints with iv field; units: BOTH print iv and DVOL are in
+#### percent points; skew := print_iv - DVOL_same_day):
+####   moneyness 0.60-0.65: +10.6 vol pts; 0.80-0.85: +5.6;
+####   0.90-0.95: +2.1; 0.95-1.00: -0.8 (monotone put skew).
+####   MODE DEPENDENCE (the prereg trap): 2021 and 2024-2026
+####   agree within ~2 pts, but 2022 (bear) runs +10-25 pts
+####   higher and stress episodes of 2023 even more (deep OTM
+####   2023 median +133 on thin prints).  A flat-average skew
+####   proxy UNDERSTATES hedge cost exactly in drawdown epochs.
+####
+#### CONSEQUENCE FOR THE OVERLAY PRE-REG (options, any of them):
+#### fills must be mark-proxy: premium = BS(spot, K, DVOL(t) +
+#### skew(m)), with skew frozen per moneyness bucket.  To be
+#### decided at prereg time: (i) skew calibration = per-year or
+#### conservative-high (use the bear-regime quantile, i.e. pay
+#### the stress price always), or (ii) exclude 2022-2023 from
+#### the test window (unacceptable: kills the bear evidence).
+#### RECOMMENDATION: conservative-high skew + explicit
+#### sensitivity read-out at skew-0 (ATM).  No overlay run until
+#### this fill model is frozen in the prereg text.
