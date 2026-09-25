@@ -6724,3 +6724,51 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### exit (avg loss -0.45R, t~3) + occasional trend capture;
 #### NOT a smooth-Sharpe product".
 #### ----------------------------------------------------------
+####
+#### ============================================================
+#### PROMOTION PREREG: AVSL-cross S1 + reverse-cross exit ->
+#### engine/passed/avsl_trailing_s1.py  (frozen 2026-09-25,
+#### BEFORE any module run; parent avsl_cross_s1 stays FROZEN).
+####
+#### CONFIG (frozen, identical evidence chain as F-TP1): entry
+#### close crosses AVSL(70,345) stand_div 2.0, normal arm,
+#### WARMUP 400; stop max(|close-line|, 2xATR14) at entry bar;
+#### exit FIRST OPPOSITE-cross bar close, stop intrabar wins,
+#### MTM at HORIZON 500; TP NONE; taker 10bp RT; sizing S1
+#### clip(0.20/rv100, 0.25, 2.0); universe BTC AVAX BNB DOGE
+#### ETH LINK LTC NEAR SOL XRP (Binance 1H -> 4H); segments
+#### PRIMARY 2/3, F3 1/3; grid = TRUE global grid (declared
+#### convention, R-OB-1 lesson).
+####
+#### PROVENANCE: F-TP1 prereg 032726e, verdict 902400d;
+#### due-diligence 8e2654b (CHK-1/2/3); post-mortem 1285c56.
+####
+#### FROZEN RESULT (runs/tp1_checks.log -- the numbers the
+#### module must reproduce): n=2941; PRIMARY Sharpe_NW +1.22,
+#### DD 22%, EV +0.49R, pos 9/10; F3 Sharpe_NW +1.35, DD 20%,
+#### EV +0.38R, pos 10/10.
+####
+#### PROMOTION GATES (all must PASS):
+#### P1 --verify: reproduce frozen numbers at printed
+####     precision (Sharpe +-0.005, DD +-0.005, EV +-0.005,
+####     pos exact, n exact).
+#### P2 self-contained: no imports from experiments/ (test).
+#### P3 exit-rule regression tests pass (stop intrabar wins,
+####     reverse-cross at close, horizon clamp, fee, both
+####     sides) -- synthetic arrays, no data dependency.
+#### P4 battery re-assert on true grid: Sharpe_NW >= 1.0,
+####     DD <= 25%, EV >= 0.10R, pos >= 7, both segments.
+####
+#### REQUIRED DISCLOSURES (always printed, read-outs not
+#### gates, per due-diligence FINDINGS 1-3): plain_ann Sharpe
+#### and NW eff_n per segment; ex-top-20 EV per segment;
+#### per-year EV and per-year ex-top-20 table.
+####
+#### DEPLOYABLE THESIS (frozen wording): "loss-cutting exit
+#### (avg loss -0.45R vs -1.02R, per-trade t~3, distributed)
+#### + episodic trend capture (top-20 trades ~99% of PnL,
+#### ex-monster EV ~0).  NOT a smooth-Sharpe product: expect
+#### long flat/negative stretches between monsters; NW
+#### Sharpe is at its resolution ceiling for this class
+#### (eff_n 36/34 of 10179/5090)."
+#### ============================================================
