@@ -6982,3 +6982,51 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### selected.  Book: PASS->DEPLOYABLE: 2, family CLOSED for
 #### new variants absent a genuinely new hypothesis.
 #### ----------------------------------------------------------
+####
+#### ----------------------------------------------------------
+#### FORENSIC (descriptive, declared 2026-09-25 before run; no
+#### gates; read-only on the FROZEN P-S1 config): leg
+#### decomposition of the P-S1 ledger.  (1) standalone true-grid
+#### streams: long-only / short-only / combined -> Sharpe_NW,
+#### DD, EV per segment (question: is the 33% F3 DD the short
+#### leg, the long leg, or their overlap?); (2) short-leg
+#### per-year: EV, n, mean concurrent shorts, exit mix;
+#### (3) short concurrency profile (max/p95/mean per year);
+#### (4) exit attribution: PnL by stop / TP=8R / MTM for P-S1
+#### shorts, and stop / reverse-cross / final-MTM for the
+#### promoted module's shorts (baseline: does the short leg
+#### have any tail under the adaptive exit?).  DECISION RULE
+#### (declared): if short-leg standalone DD contributes the DD
+#### breach AND exit attribution shows TP=8R truncated a real
+#### short tail -> P-S1.1 prereg (ONE frozen config: bear
+#### filter + reverse-cross exit, no TP + short-size 0.5xS1 +
+#### short concurrency cap 3); else family closes with
+#### evidence.
+#### ----------------------------------------------------------
+####
+#### ============================================================
+#### FORENSIC READ-OUT (runs/ps1_forensic.log, 2026-09-25):
+#### (1) DD IS THE SHORT LEG: standalone short-only DD 35%
+#### PRIMARY / 47% F3 (Sharpe +0.11/+0.41); long-only 24%/18%.
+#### (2) SHORT TAIL LIVES IN TP HITS: P-S1 shorts = 574 stops
+#### (-587.8R, 85% of trades) vs 81 TPs (+645.9R) + 21 MTM
+#### (+94.5R); maxConc 33 (2022) -- clustering real but the
+#### bleeding years are 1-25 concurrent stops in chop.
+#### (3) SAME 676 ENTRIES, REVCROSS EXIT: EV +0.137R, sum +92R,
+#### only 67 STOPS (line catches price before stop), max +17R
+#### (runs past where TP=8R capped).  TP=8R truncated a real
+#### short tail -- declared decision rule MET -> P-S1.1.
+####
+#### PREREG P-S1.1 (frozen 2026-09-25 BEFORE run; ONE change
+#### from the promoted module, no cap, no size change -- single
+#### lever): shorts (dn-cross, reverse-cross exit, S1) taken
+#### ONLY IF the P-S1 1D bear filter holds (last completed
+#### daily close < 1D SMA200); longs unchanged.
+#### GATES (true grid): G1 bear-short-leg EV >= +0.05R; G2
+#### combined Sharpe_NW >= 1.2 both segments; G3 combined DD
+#### <= 20% both segments; G4 pos >= 7; G5 CI > 0 both.
+#### KILL: any gate FAIL -> AVSL family closes PERMANENTLY
+#### (no P-S1.2; the variant space is exhausted).
+#### DISCLOSURES: concurrency profile of gated shorts,
+#### per-year short EV, ex-top20 EV, eff_n.
+#### ============================================================
