@@ -6668,3 +6668,59 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### signal-specific claim.  F-TP1 stays the PASS candidate;
 #### nothing invalidated, claims made more precise.
 #### ----------------------------------------------------------
+####
+#### ----------------------------------------------------------
+#### DIAGNOSTIC (descriptive post-mortem, declared 2026-09-25
+#### before run; no gates): WHY DID SHARPE FALL under the
+#### frozen NW metric (1.49 -> 1.17 legacy PRIMARY)?  Plan:
+#### (a) NW factor decomposition (lag-sum, factor, effective
+#### sample size) for baseline vs F-TP1 daily streams, true
+#### grid; (b) per-trade Sharpe (mean/std of net R) -- the
+#### entry economics without stream autocorrelation; (c) hold
+#### duration and tail sensitivity (per-trade Sharpe with top
+#### wins removed).  Question answered: metric artifact vs
+#### economic deterioration.
+#### ----------------------------------------------------------
+####
+#### ----------------------------------------------------------
+#### READ-OUT (runs via experiments/avsl/sharpe_postmortem.py,
+#### single descriptive run, true grid, 2026-09-25):
+####
+#### Q: WHY DID SHARPE FALL (1.49 -> 1.17 legacy PRIMARY)?
+#### A: METRIC ARTIFACT -- the NW long-memory penalty, not the
+#### economics.  Decomposition (PRIMARY): plain_ann Sharpe
+#### ROSE 4.87 -> 20.44; the NW lag-sum grew +7.4 -> +139.2
+#### (k<=500), factor 4.0 -> 16.7, effective sample size
+#### 643 -> 36 of 10179 4H bars.  NW = plain/factor pins both
+#### strategies at ~1.22: for this persistence class the
+#### frozen metric has a resolution CEILING (~1.2); it cannot
+#### express the improvement.  Same entries both sides; the
+#### difference is exit-side hold structure (median hold 4 vs
+#### 23 bars; winners ride to the 500-bar horizon).
+####
+#### FINDING 3 (material, changes the claim): EV CONCENTRATION.
+#### F-TP1 top-20 trades (of 1847) = 99% of PRIMARY PnL (F3:
+#### 117%); ex-top-20 mean EV +0.006R (PRIMARY) / -0.066R
+#### (F3).  Baseline ex-top-20 stays +0.111R.  Per-year
+#### (legacy grid, global top-20 removed): 2020 +0.42, 2021
+#### -0.01, 2022 +0.06 (0 monsters), 2023 +0.04 (6), 2024
+#### -0.05 (5), 2025 +0.10, 2026 +0.55.  So "2023-24 alive"
+#### must be re-phrased: alive VIA 5-6 monster trends per
+#### year; ex-monster EV ~0.  The per-trade t-stat (3.2 vs
+#### 3.0 baseline) and avg-loss cut (-1.02 -> -0.45R) are
+#### real, distributed, and are the robust part of the edge;
+#### the EV level is tail-dependent.
+####
+#### PROMOTION PREREG CONSEQUENCES (updating the CHK-1/2/3
+#### guidance): (i) headline NW Sharpe is unfit for this
+#### class -- gate on it anyway (it passes, 1.22/1.36) but
+#### read plain_ann and eff_n as declared sensitivities;
+#### (ii) add concentration read-outs as REQUIRED disclosures,
+#### not gates: EV ex-top-20 per segment, per-year ex-top-20
+#### table, eff_n; (iii) DD 22% claim carries the fragility
+#### caveat: live path depends on catching rare extreme
+#### trends; expect long flat/negative stretches between
+#### monsters; (iv) deployable thesis re-stated: "loss-cutting
+#### exit (avg loss -0.45R, t~3) + occasional trend capture;
+#### NOT a smooth-Sharpe product".
+#### ----------------------------------------------------------
