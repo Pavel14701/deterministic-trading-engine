@@ -7154,3 +7154,35 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### Universe is NOT closed for non-AVSL signal classes; the
 #### FX-AVSL family is.
 #### ============================================================
+####
+#### ============================================================
+#### EXPLORATION (screen, NO verdict, NO promotion path):
+#### AVSL-revcross D1 on 12 liquid US stocks -- user-requested
+#### look, runs/avsl_stocks_screen.log.
+####
+#### Universe: today's mega-caps (SURVIVORSHIP -- upward bias,
+#### declared); yf auto-adjust prices; engine reused from FX
+#### module (trade_fx, S1, HORIZON 100, fee 0.5bp -- equity
+#### costs higher, not tuned).
+####
+#### RESULTS (2x42y grid, 16292 bars):
+#### dollar-volume: PRIMARY Sharpe +0.17 DD 37% EV +0.03R;
+#### F3 +0.23 DD 47% EV +0.08R; CI includes 0 everywhere.
+#### vol=ones control: Sharpe +0.12/+0.23 -- volume input moves
+#### the trade SET (2996 vs 2413 trades) but NOT quality.
+#### STRUCTURE (both variants): longs +0.24/+0.46R vs shorts
+#### -0.19/-0.31R (neg_years 21-34/42): long leg = equity
+#### drift, short leg = pure bleed.  ex-top20 longs ~0 --
+#### NO monster tail (unlike crypto p99 +28R profile).
+#### Survivorship visible: 1966-71 "positive" years = 3-ticker
+#### sample of companies known to survive 60y -- discard.
+####
+#### READ: stocks D1 are not the AVSL home either.  The crypto
+#### 4H tape (continuous, real volume, extreme drift episodes)
+#### remains the only universe where the geometry earns.
+#### Volume quirk measured: raw-share volume vs dollar volume
+#### vs ones -- portfolio metrics insensitive; the AVSL volume
+#### input is NOT the amplifier on equities.
+#### Next (if any): 4H equity intraday data (paid) would be
+#### needed for a real test; not scheduled.  No family opened.
+#### ============================================================
