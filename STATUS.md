@@ -6466,3 +6466,36 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### not move DD.  Next focus per the book: vol carry (in
 #### flight) / FX market switch.
 #### ============================================================
+####
+#### VOL-CARRY SHORT-STRANGLE VERDICT (2026-09-25, one pass,
+#### runs/strangle_carry.log): VERDICT FAIL -> SHORT-STRANGLE
+#### VOL CARRY CLOSED.
+#### CALL SKEW TABLE (measured, frozen read-out): calls trade
+#### BELOW DVOL near the money: 0.95-1.05 median -2.9 vol pts,
+#### 1.10-1.15 -1.9, 1.20-1.30 ~+0.25, >1.35 +3..+4 (n=828k
+#### prints).  The call wing is sold CHEAP vs DVOL; the put wing
+#### rich (+13.8 at 0.90).  Net credit exists, tails eat it.
+#### PRIMARY RUN (scale 1.0, haircut 25%): Sharpe -0.19, DD
+#### 77.8%, total -71.2% equity over 2021-04..2026-08; NEGATIVE
+#### EVERY YEAR: 2021 -2.8 / 2022 -10.8 / 2023 -16.7 / 2024
+#### -6.2 / 2025 -2.5 / 2026 -12.9.  Worst single leg -8.3%.
+#### GATES: G-V1 FAIL, G-V2 FAIL, G-V3 PASS (IV30-RV30 median
+#### +8.6 vol pts, positive in 82% of rolls -- the variance
+#### risk premium EXISTS and is still not enough), G-V4 PASS
+#### (sizing cap did its job; the loss is a slow bleed, not a
+#### single blowup).
+#### SENSITIVITIES: haircut 15% -> -66.4%; haircut 0% -> -58.5%
+#### (fills are NOT the problem); scale 0.5x -> -35.6%; 2.0x ->
+#### -98.2%.  No sizing knob rescues a negative-expectancy
+#### stream.  2023 is the worst year (grind-up + vol spikes:
+#### call wing pays, put wing decays uncollected).
+#### CONCLUSION: BTC 30d variance risk premium (+8.6 pts) is
+#### real but structurally smaller than the wing payoff drain
+#### at any frozen fixed-fraction short-strangle shape.
+#### Consistent with the puts-overlay closure: the tails are
+#### not payable from premium.  SHORT-STRANGLE VOL CARRY CLOSED
+#### (family; not just these parameters -- any fixed monthly
+#### short-wings shape shares this arithmetic).
+#### Next branch per the book: FX market switch (new pre-reg
+#### required before any run).
+#### ============================================================
