@@ -6854,3 +6854,62 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### NOT to be run inside this program (kill-rule: no
 #### combinations/mining on the same read-out).
 #### ----------------------------------------------------------
+####
+#### ----------------------------------------------------------
+#### DIAGNOSTIC (descriptive, declared 2026-09-25 before run;
+#### no gates): WHY SHORTS ARE DEAD -- four-hypothesis
+#### discrimination.  For every eligible AVSL cross (both
+#### directions, WARMUP..n-1, all 10 assets):
+####   (a) forward return sign & mean at H in {1,4,12,48,168}
+####       bars, conditional on up-cross / dn-cross / all bars
+####       (unconditional control -- distinguishes H4 pullback
+####       timing from H1 pure drift);
+####   (b) MFE/MAE in R-risk units (strategy risk denominator)
+####       over H=48, per direction;
+####   (c) from the walker trades: hold duration and win-tail
+####       (p99, max) split long vs short.
+#### Interpretation map: P(+|up) > P(+|dn) with both > control
+####   -> H4 (pullback timing, cross informative for longs);
+####   P(+|up) ~ P(+|dn) ~ control -> H1 (pure drift, cross =
+####   nothing); same P but different MFE/hold/tails -> H2/H3
+####   (vol-shape asymmetry).
+#### ----------------------------------------------------------
+####
+#### ----------------------------------------------------------
+#### READ-OUT (runs/shorts_hypotheses.log, single run,
+#### 2026-09-25, declared above):
+####
+#### (a) SIGN: P(+|up) 0.480-0.503, P(+|dn) 0.523-0.550 at
+####     H=1..12 (up-cross is mildly CONTRARIAN short-term --
+####     buying after the pop), both ~control 0.504 at H>=48.
+####     H4 (pullback timing) REJECTED in sign form: the cross
+####     does NOT raise up-probability.  MEANS: forward 168-bar
+####     return +844bp | up-cross, +559bp | dn-cross, control
+####     +790bp -- up-cross drift-conditions ABOVE control,
+####     dn-cross BELOW.
+#### (b) OPPORTUNITY IS SYMMETRIC at H=48: MFE med +1.43R | up
+####     vs +1.44R | dn, p90 +5.25 vs +4.17R.  H2 (cascade too
+####     fast for shorts) REJECTED at trade level: short-side
+####     opportunity equals long-side; hold med 4 bars BOTH
+####     sides, p90 111 (long) vs 149 (short) -- shorts are NOT
+####     stopped faster.
+#### (c) THE ASYMMETRY LIVES IN THE FAR TAIL: trade p99 win
+####     +28.4R | long vs +9.5R | short; max +200.9 vs +18.3R;
+####     top-20 share 85% | long vs 241% | short -- ex-top-20
+####     SHORTS ARE NET NEGATIVE (they only look ~0 because of
+####     ~20 cascade wins).
+####
+#### VERDICT: H1 (drift) + H3 (bounded short payoff) SUPPORTED;
+#### H2, H4 REJECTED.  Mechanism: longs ride the unbounded
+#### positive-drift tail (+790bp/4wks control drift; up-cross
+#### conditions it up, dn-cross down -- a weak MAGNITUDE
+#### conditioner, not a sign signal); shorts face bounded,
+#### rare payoffs that do not cover costs, and loss-cutting
+#### flattens them to ~0 (ex-tail negative).
+####
+#### CONSEQUENCE: LONG-ONLY variant is now evidence-backed as
+#### the next independent prereg candidate (removes a body-
+#### negative side whose EV is tail-luck); up-cross longs are
+#### the premium subset (2x dn-cross longs).  Promoted module
+#### unchanged (shorts are harmless-but-dead in it).
+#### ----------------------------------------------------------
