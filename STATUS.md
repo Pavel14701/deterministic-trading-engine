@@ -6400,3 +6400,14 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### component is now measured-dead on F3; expectation lowered,
 #### gate unchanged).
 #### ============================================================
+####
+#### F3-FILTER VERDICT (2026-09-25, one pass, runs/filter_f3.log):
+#### Trades 2941 -> 1120 (38%).  PRIMARY GATE PASS (DD 22->17%,
+#### EV +0.17->+0.48R, Sharpe 1.60, pos 10/10) BUT HOLDOUT F3
+#### SEGMENT FAILS ALL THREE (DD 12->19%, EV +0.35->+0.08R,
+#### pos 6/10; Sharpe 0.60).  Same failure mode as F1: the 4H
+#### SMA200 + daily-trend confirmation removes exactly the
+#### trades that carry the F3 holdout edge.  F3-FILTER CLOSED
+#### (FAIL).  Direction-alignment family now 0/2; running per
+#### frozen order: F6 Supertrend next.
+#### ============================================================
