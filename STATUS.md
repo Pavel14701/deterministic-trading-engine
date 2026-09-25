@@ -6136,3 +6136,112 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### RECOMMENDATION: conservative-high skew + explicit
 #### sensitivity read-out at skew-0 (ATM).  No overlay run until
 #### this fill model is frozen in the prereg text.
+####
+#### ============================================================
+#### PUTS-OVERLAY PRE-REG (2026-09-25, FROZEN BEFORE THE RUN;
+#### runner: experiments/options/puts_overlay.py, one pass, log
+#### runs/puts_overlay.log; decision on PRIMARY gates below).
+####
+#### QUESTION: does a protective-put overlay on the BTC leg of
+#### the FROZEN AVSL 4H S1 portfolio cut portfolio DD below the
+#### 20% gate while keeping >= 80% of baseline EV?
+####
+#### HEDGE SCOPE: BTC longs only (the only leg with an options
+#### market deep enough); every AVSL 4H BTC long entry with
+#### entry_ts >= 2021-04-01 (DVOL inception + margin).  Short
+#### entries and all other assets: un-hedged (no instrument).
+####
+#### CONTRACT SELECTION (frozen): per entry, expiry = first
+#### Deribit BTC put expiry >= entry + 27d; strike = grid strike
+#### nearest 0.90 x S0 (S0 = Binance 1H close at entry_ts);
+#### T = (expiry - entry)/365d.
+####
+#### FILL MODEL (frozen; the measured print sparsity rules out
+#### print fills): premium AND exit marks are Black-Scholes puts
+#### (r = 0), sigma_entry = DVOL_day(entry) + skew(K/S0),
+#### sigma_exit = DVOL_day(exit) + skew(K/S_exit); DVOL_day =
+#### last DVOL print <= ts.  SKEW TABLE (PRIMARY,
+#### conservative-high, frozen from the p75 of the measured
+#### per-bucket print skew): piecewise-linear nodes
+####   m:    0.60   0.675  0.725  0.775  0.825  0.875  0.925  0.975
+####   sk:  12.74  19.38  20.64  18.86  14.09  13.23  13.75  7.00
+#### clamped to [0.60, 1.00] moneyness (outside: flat).
+####
+#### SIZING/NOTIONAL (frozen): put notional covers put_frac=1.0
+#### of the entry spot exposure implied by the frozen account
+#### convention: N/equity = 1% x size / (risk_frac), risk_frac =
+#### 2 x 10bp x S0 / fee_r (fee_r from the frozen trade table).
+#### Hedge PnL in equity % = (P_exit - P_entry)/S0 x N/equity,
+#### accrued EVENLY over [entry..exit] bars, added to the frozen
+#### 1%-unit bar stream.  Hedge exit ts = min(AVSL exit, expiry);
+#### at expiry: intrinsic with S_exp = Binance 1H close of the
+#### 08:00 UTC bar (Deribit settlement).
+####
+#### GATES (evaluated ONCE on the overlay portfolio stream,
+#### 2021-04-01 .. data end, BTC+9 assets, S1 sizing, fees as
+#### frozen):
+####   G-P1: portfolio max DD <= 20%
+####   G-P2: portfolio net EV >= 0.80 x baseline EV (baseline =
+####         frozen stream, no hedge)
+####   G-P3: portfolio Sharpe_NW >= baseline Sharpe_NW - 0.10
+#### PASS iff all three.  FAIL -> options overlay CLOSED (one
+#### shot; no re-runs, no skew/strike/frac edits afterwards).
+####
+#### READ-OUTS (non-gating): total premium paid (% equity);
+#### hedge PnL by calendar year; 2022-epoch DD overlay-vs-
+#### baseline; sensitivity at put_frac 0.5, skew=median table,
+#### skew=0; strikes actually selected; n hedged trades.
+####
+#### ============================================================
+####
+#### ============================================================
+#### PUTS-OVERLAY RESULT (2026-09-25; prereg frozen above, one
+#### pass; log runs/puts_overlay.log; runner
+#### experiments/options/puts_overlay.py).
+####
+#### DISCLOSURE: three implementation bugs were fixed BEFORE the
+#### first complete successful run (hedge-grid broadcast,
+#### nw_sharpe double-centering returning ~0, risk_frac formula
+#### carrying a stray S0 multiplier).  No model/rule/gate edits
+#### after the freeze; gates evaluated on the first run that
+#### executed end-to-end.
+####
+#### BASELINE (2021-04..2026-09 window, full 10-asset S1
+#### portfolio): DD 21.5%, EV +0.0233 %/bar, Sharpe_NW 1.93.
+####
+#### OVERLAY (PRIMARY: put_frac 1.0, skew p75): DD 21.6%,
+#### EV +0.0232, Sharpe_NW 1.93; n=131 hedged legs, mean
+#### moneyness 0.935; total premium 141.0% of equity over 5.5y.
+#### Hedge PnL by year (% equity): 2021 -5.8, 2022 -10.8,
+#### 2023 -33.9, 2024 -18.6, 2025 -13.7, 2026 -2.3 -- ALL
+#### negative; 2023 premium burn -34% on flat/sideways BTC with
+#### DVOL high.
+####
+#### GATES:
+####   G-P1 DD <= 20%:  FAIL (21.6%; DD unchanged vs baseline,
+####       2022-epoch DD 14.8% in BOTH -- the AVSL stop exits the
+####       spot leg within days while the put keeps bleeding time
+####       value; the protection never overlaps the actual
+####       drawdown epochs enough to matter)
+####   G-P2 EV >= 0.8x baseline: PASS (marginal: 0.98x)
+####   G-P3 Sharpe >= baseline-0.10: PASS (unchanged 1.93)
+####
+#### VERDICT: **FAIL -> PUTS-OVERLAY CLOSED** (one shot; no
+#### re-runs, no skew/strike/frac/exit edits; the whole
+#### protective-puts-on-AVSL family is closed, not just these
+#### parameters).
+####
+#### POST-MORTEM (recorded, does not reopen anything):
+#### 1. Structural: AVSL's stop truncates the spot exposure to
+####    days; a 27-90d put held only that long pays almost never
+####    (the crash must happen INSIDE the trade window) while the
+####    premium bleed is continuous.  Portfolio insurance on a
+####    stop-based strategy is paying twice for the same tail.
+#### 2. Even at skew=0 the overlay does not reduce DD (read-out)
+####    -- this is geometry, not pricing.
+#### 3. The DD gate failure sits in non-BTC-hedgeable epochs
+####    anyway (2022 epoch DD only 14.8%; max DD driven by the
+####    rest of the book + BTC legs outside hedge windows).
+#### Remaining standing options per the SVD-closure focus: vol
+#### carry (short-vol on the option market itself -- requires a
+#### NEW prereg and a maker-fill model) / market switch (FX).
