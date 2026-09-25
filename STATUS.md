@@ -6448,3 +6448,21 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### realized-vol regime (sizing), then F4 is DEFERRED -> if F5
 #### fails the program kill rule applies (0 individual passes).
 #### ============================================================
+####
+#### F5 VERDICT (2026-09-25, one pass, runs/filter_f5.log):
+#### mult share hi 59% / lo 27% / neutral 14%.  DD WORSENS on
+#### PRIMARY (22->25%); F3 12->10%.  EV retention ~100%.
+#### Realized-vol regime sizing carries no DD relief -- second
+#### vol-scaling failure (with S2 ATR-percentile).  F5 CLOSED
+#### (FAIL).
+####
+#### PROGRAM KILL RULE APPLIED (2026-09-25): individual record
+#### F1 FAIL / F3 FAIL / F6 FAIL / F2 FAIL / F7 FAIL / F5 FAIL
+#### (F4 deferred -- no frozen confidence mapping).  0/6 PASS
+#### -> AVSL TREND-FILTER PROGRAM CLOSED.  Combinations phase
+#### not run (no passes to combine).  The passed AVSL-cross S1
+#### module is UNCHANGED.  Direction/structure filters
+#### consistently remove the F3 holdout edge; sizing filters do
+#### not move DD.  Next focus per the book: vol carry (in
+#### flight) / FX market switch.
+#### ============================================================
