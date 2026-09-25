@@ -6799,3 +6799,58 @@ cadence + the Phase B adjudication of the DD convention finding.
 ####   Sharpe at ceiling for this class -- monitor plain_ann,
 ####   eff_n, ex-top-20 EV, per-year ex-top20 as live read-outs.
 #### ============================================================
+####
+#### ----------------------------------------------------------
+#### DIAGNOSTIC (descriptive, declared 2026-09-25 before run;
+#### no gates): MIRROR TEST -- the avsl_trailing_s1 config with
+#### entry direction inverted (up-cross -> SHORT, dn-cross ->
+#### LONG), exit/stop/sizing/grid unchanged.  Question: how
+#### much of the edge is long-only (crypto drift)?  Read-outs:
+#### per-segment Sharpe_NW / plain_ann / DD / EV / pos on the
+#### true grid, per-year EV.  Expectation: mirrored shorts sell
+#### drift -> EV should collapse (the E1/E3 nulls say entries
+#### carry little direction info; the +EV comes from the long
+#### side riding drift).  If the mirror is ALSO positive, the
+#### "edge" is exit geometry, not positioning -- that would be
+#### a material caveat for the deployable thesis.
+#### ----------------------------------------------------------
+####
+#### ----------------------------------------------------------
+#### READ-OUT (runs/tp1_mirror.log + side-split follow-up,
+#### single run, 2026-09-25, declared above):
+####
+#### FINDING 4 (MIRROR IS ALSO POSITIVE -- material caveat):
+#### inverted-direction config: PRIMARY Sharpe_NW +1.27, DD
+#### 19%, EV +0.22R, win 38%; F3 +1.13, DD 12%, EV +0.24R;
+#### per-year positive every year; top-20 share 99%, ex-top-20
+#### EV +0.002R -- the mirror would pass the same battery
+#### (EV gate included).  Same 2941 entries.
+####
+#### SIDE DECOMPOSITION (both configs, all 2941 entries):
+####   ORIGINAL  LONG  (up-cross):  EV +0.824R, max +200.9R
+####   ORIGINAL  SHORT (dn-cross):  EV +0.066R, max +18.3R
+####   MIRROR    LONG  (dn-cross):  EV +0.427R, max +74.6R
+####   MIRROR    SHORT (up-cross):  EV +0.025R, max +19.4R
+####
+#### INTERPRETATION: (1) the long side captures crypto drift,
+#### the short side is DEAD WEIGHT (EV ~0, win 13%, loss-
+#### cutting keeps it from bleeding); (2) the cross DIRECTION
+#### carries real long-side selection -- up-cross longs earn
+#### 2x dn-cross longs (+0.82 vs +0.43) -- but it is a
+#### magnitude, not a sign, effect; (3) the deployable edge is
+#### best described as "LONG drift capture at AVSL-cross
+#### moments + loss-cutting exit", NOT "a directional signal".
+#### The gate battery cannot distinguish original from mirror
+#### (both pass) -- G3 EV >= 0.10R does not certify
+#### directional content; side-split disclosure is mandatory
+#### for this strategy class going forward.
+####
+#### CONSEQUENCES: promoted module stands (original dominates
+#### mirror on EV +0.49/+0.38 vs +0.22/+0.24 and F3 Sharpe);
+#### thesis wording in the module docstring stays ("episodic
+#### trend capture"), now understood as long-side drift.  A
+#### LONGS-ONLY variant (drop the dead shorts, n=1471) is a
+#### legitimate candidate for a FUTURE independent prereg --
+#### NOT to be run inside this program (kill-rule: no
+#### combinations/mining on the same read-out).
+#### ----------------------------------------------------------
