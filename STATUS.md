@@ -6,7 +6,9 @@
 > снапшот-указатель.  Инвентаризация всех экспериментов:
 > [`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md).  Методология
 > измерения: [`docs/BATTERY.md`](docs/BATTERY.md).  Данные:
-> [`docs/DATA.md`](docs/DATA.md).
+> [`docs/DATA.md`](docs/DATA.md).  Быстрый завод новых теорий
+> (yaml + DSL, без питон-скрипта):
+> [`docs/THEORY.md`](docs/THEORY.md).
 
 ## Состояние на 2026-09-25
 

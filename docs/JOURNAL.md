@@ -7385,3 +7385,20 @@ battery_v2: назначение, frozen-дефолты, правило бит-�
 
 Верификация: pytest 273 passed / 2 skipped; import-check 122/122 OK;
 compileall clean.
+## 2026-09-26 — DSL-теории: yaml -> ранер -> метрики -> регистрация
+
+Прокинута оценка в DSL: эксперимент теперь можно завести без питон-скрипта.
+`dsl/theory.py` — схема Theory (yaml: DSL-условия входа, риск-модель,
+таймфрейм, гейты), сканер индикаторов, SeriesProvider (серии ->
+контекст DSL, NaN на краю истории = False). `experiments/infra/
+theory_runner.py` — универсальный ранер: бины 1H -> timeframe,
+предвычисление avsl/sma/atr, симуляция 1:1 с frozen (вход по close,
+консервативный within-bar, stop-wins, MTM, fee в R), метрики строго через
+engine.core/battery_v2, гейты G1'--G5' (дефолты BATTERY.md, переопределяются
+в теории), отчёт runs/theory_<name>.json, --register заводит
+experiments/<family>/<experiment>/ с EXPERIMENT.md. Канонический пример
+theories/avsl_cross_4h.yaml (реплика frozen AVSL-cross): на реальных данных
+PASS 5/5, EV +0.261R, NW-Sh 1.67, DD 21.8% — порядок confirm-ных вердиктов.
+Дока docs/THEORY.md. Тесты: dsl/tests/test_theory.py,
+engine/tests/core/test_theory_runner.py.
+
