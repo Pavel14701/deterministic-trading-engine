@@ -17,9 +17,9 @@ put-skew нестабилен по годам (2021 отрицательный),
 |---|---|---|---|---|
 | 1.4 | A3: DVOL-фильтр short vol | **CLOSED (FAIL G-A1, 2026-09-26)** | — | фильтр смягчает (-41%→-15%) но знак не меняет |
 | 1.5 | IV−RV timer | **CLOSED (не валидирован, 2026-09-26)** | — | не монотонен: t3−t1 = −1.6pt |
-| 1.1 | Delta-hedged short put | BUILD (hedging engine) | 40% | только real-print legs |
-| 1.2 | Delta-hedged short straddle | BUILD | 35% | |
-| 1.3 | Var-swap replication | BUILD + chain-fetch | 35% | deep OTM нужен |
+| 1.1 | Delta-hedged short put | **CLOSED (FAIL G-H1/H3, 2026-09-26)** | — | IV−RV +8.5pt полностью съеден гамма-дренажем |
+| 1.2 | Delta-hedged short straddle | ЗАМОРОЖЕНО (механика 1.1 опровергнута) | 10% | тот же гамма-дренаж |
+| 1.3 | Var-swap replication | ЗАМОРОЖЕНО (механика 1.1 опровергнута) | 10% | |
 | 1.6 | Gamma scalping | BUILD | 30% | microstructure |
 
 ## Класс 2: Skew (форма smile)
