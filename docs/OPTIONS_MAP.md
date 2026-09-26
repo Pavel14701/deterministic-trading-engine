@@ -145,7 +145,7 @@ frozen гейты, failed = closed. Никаких «попробуем ещё �
 | Vol-of-vol / dispersion | 10% | Нужны инфра + данные |
 | Gamma scalping | 10% | 1.1 показал gamma drain |
 | Delta-hedged straddle (1.2) / var-swap (1.3) | 10% | Заморожены после 1.1 |
-| Calendar spreads | 10% | Wave-3 read-out: структуры нет |
+| Calendar spreads | -> B3 открыта | Wave-3: структуры нет; НО crush-сигнал жив (см. B1/B3, прил. 2) |
 | Deribit vs other venues arb | 5% | Нет данных других venue |
 
 ### B. Не сделанные диагностики
@@ -195,15 +195,37 @@ Calmar -- это BTC с косметикой, не стратегия.
 
 ### Класс B: event-driven
 
-**B1. Wave 5 events.**
-Гипотеза: IV crush вокруг известных событий; short vol T-1 -> T+1.
-Данные: календаря НЕТ -- блокер. События-кандидаты: halvings,
-ETH Merge/Shanghai, FOMC (~8/год), CPI (~12/год), Deribit monthly
-expiry. Prereg: вход T-1, выход T+1, short strangle/straddle,
-фильтр IV pct > 50, hold 2-3d. Gates: G-EV1 Sharpe >= 1.0;
-G-EV2 DD <= 20%; G-EV3 n >= 30 событий; G-EV4 positive EV на 2 из 3
-type. Prior 25-35%. Стоимость: 1д календарь + 1д ран. Календаря
-нет -- не строить (p-hacking source).
+**B1. Wave 5 events.** -- **CLOSED (2026-09-26, форма).**
+Вердикт с разделением: **сигнал жив, форма не платит.** Crush
+реален и знак-стабилен 5/6 лет (mean -1.51pt, 75%<0; yearly
+медианы -2.5/-3.6/-1.7/-2.3/-0.8/-0.7 -- режимное ослабление,
+не исчезновение; `runs/b1_candidate_checks.log`). Short
+strangle/straddle T-1 -> T+1 закрыт по costs: gross $147 vs
+round-trip $2956, ratio 0.05 при гейте >=3.0
+(`runs/followup_checks.log`). Монетизация сигнала -- новая
+карта B3 (calendar spread), НЕ рестарт B1.
+
+**B3. Event calendar spread (event-driven structures).**
+Открыта 2026-09-26. Гипотеза: crush differential (front expiry,
+пересекающий событие: -1.5pt vs back: малый) монетизируется
+calendar spread'ом при net premium 20-30% от outright -> cost
+gate проходим. Prereg-скелет: вход T-1; short front expiry,
+long back expiry, ATM/delta-matched; выход T+1 или до экспирации
+front; costs = round-trip на net premium (ИЗМЕРИТЬ, не
+предполагать -- урок D1); BTC-опционы European -- early exercise
+нет, pin risk на front остаётся. Gates: G-CS1 Sharpe >= 1.0;
+G-CS2 DD <= 20%; G-CS3 gross >= 3x cost; G-CS4 yearly split
+PASS (по differential, не по outright crush).
+
+Дешёвые гейты ДО фриза prereg (порядок обязателен):
+1. Coverage: >= 30 событий с prints обеих ног (нужен фетч
+   btc_full, идёт). Меньше -- insufficient без рана.
+2. Cost math на измеренном net premium: gross differential-vega
+   >= 3x round-trip. Провал = карта закрыта как и B1.
+3. Yearly split crush differential (front - back) по годам.
+Только 1-3 PASS -> frozen prereg -> один ран. Любой FAIL =
+CLOSED без пререга и без "другой структуры" (multiple
+comparison).
 
 **B2. Post-liquidation IV crush.**
 Гипотеза: после каскада ликвидаций RV/IV spike -> crush; short vol
