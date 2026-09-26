@@ -172,3 +172,130 @@ fetcher; event calendar; cross-venue data.
 vol-предикторов), flow/dealer-gamma (только при появлении данных).
 Ресурсы трека сохранены: hedge engine (300 тестов), ETH trades
 327k, DVOL/RV-инфраструктура, все логи one-shot ранов.
+
+## Приложение 2: очередь нетронутых треков (2026-09-26, frozen)
+
+Развёртка приложения 1 в план: каждый пункт закрывается одним
+раном. Структура карточки: данные -> prereg -> gates -> prior ->
+стоимость -> блокер/решение. Дисциплина та же: пререг ДО кода,
+один ран, failed = closed. Порядок запуска -- раздел "Очередь".
+
+### Класс A: deployable beta (не alpha)
+
+**A1. Covered calls (D1).**
+Гипотеза: BTC long + систематическая продажа OTM calls даёт yield
+поверх beta. Данные: есть. Движок: есть (strangle_runner без put
+ноги). Prereg: BTC spot 1.0 notional; short call 30d, delta 0.20-0.30
+(m ~ 1.10-1.15); monthly roll; haircut 25%; 2021-04..2026-09.
+Gates: G-D1a Sharpe >= 0.8 (beta, не alpha); G-D1b DD <= 40%;
+G-D1c Calmar портфеля > Calmar BTC buy-hold; G-D1d yield >= 2%
+годовых. Read-out: cumulative vs BTC, yield by year, capped-upside
+frequency. Prior 30%. Стоимость 2-3 ч. Если не бьёт buy-hold по
+Calmar -- это BTC с косметикой, не стратегия.
+
+### Класс B: event-driven
+
+**B1. Wave 5 events.**
+Гипотеза: IV crush вокруг известных событий; short vol T-1 -> T+1.
+Данные: календаря НЕТ -- блокер. События-кандидаты: halvings,
+ETH Merge/Shanghai, FOMC (~8/год), CPI (~12/год), Deribit monthly
+expiry. Prereg: вход T-1, выход T+1, short strangle/straddle,
+фильтр IV pct > 50, hold 2-3d. Gates: G-EV1 Sharpe >= 1.0;
+G-EV2 DD <= 20%; G-EV3 n >= 30 событий; G-EV4 positive EV на 2 из 3
+type. Prior 25-35%. Стоимость: 1д календарь + 1д ран. Календаря
+нет -- не строить (p-hacking source).
+
+**B2. Post-liquidation IV crush.**
+Гипотеза: после каскада ликвидаций RV/IV spike -> crush; short vol
+на T+1. Данные: liquidation data (Coinglass free tier?) -- НЕ
+проверено. Prereg: trigger 24h liq > 3x trailing median; вход T+1
+close, short strangle 7d; выход at expiry/+3d. Gates: G-LQ1
+Sharpe >= 1.0; G-LQ2 n >= 20; G-LQ3 DD <= 25%. Prior 20-30%.
+Стоимость 2-3д. Риск: событий мало, n < 20 -> insufficient.
+
+### Класс C: order flow / microstructure
+
+**C1. Dealer gamma estimation (GEX).**
+Гипотеза: GEX предсказывает spot-поведение (positive GEX -> mean
+reversion, negative -> trending). Данные: OI by strike+expiry --
+Deribit API, НЕ скачано. Prereg: GEX = sum(gamma*OI*spot^2*0.01)
+by strike; тотал GEX, zero-gamma level. Read-out: IC(GEX, fwd ret)
+при h {1,3,6,24}ч; conditional AVSL EV по терцилям GEX. Gates
+(если пререг): G-GEX1 IC > 0.05, t > 2; G-GEX2 EV spread > 0.15R;
+G-GEX3 стабильность PRIMARY/F3. Prior 20-25%. Стоимость 2-3д
+(fetch OI + compute). Риск: в equities сигнал известен, крипто-OI
+структура другая -- возможен trap.
+
+**C2. Options taker flow.**
+Гипотеза: агрессивные покупки calls vs puts предсказывают spot.
+Данные: ЕСТЬ -- в trades есть direction и iv. Prereg: flow =
+(buy call vol - sell call vol) - (buy put vol - sell put vol),
+агрегаты 1H/4H/24H; сигнал: extreme flow (>90 pct) -> direction.
+Gates: G-OF1 IC > 0.05; G-OF2 EV spread > 0.15R; G-OF3 n >= 100
+extreme events. Prior 15-25%. Стоимость 1-2д. Риск: vol-proxy
+trap -- flow может коррелировать с RV.
+
+### Класс D: cross-asset / relative
+
+**D1. BTC/ETH IV spread.**
+Гипотеза: DVOL_BTC - DVOL_ETH mean-reverting; торгуем экстремум
+(|z| > 2, окно 60d): short vol на rich, long на cheap, delta-
+hedged; hold до реверса или max 30d. Данные: ЕСТЬ. Gates:
+G-IV1 Sharpe >= 1.0; G-IV2 n >= 30; G-IV3 DD <= 20%. Prior
+20-25%. Стоимость 3-4д (hedge engine есть). Риск: корреляция
+IV ~0.9, после costs spread может быть слишком узким.
+
+**D2. BTC put skew / ETH call skew spread.**
+Гипотеза: skew divergence B4-типа: long ETH call (m 1.10-1.15) +
+short BTC put (m 0.85-0.90), vega-neutral, monthly roll. Gates:
+G-SK1 Sharpe >= 1.0; G-SK2 vega-net ~ 0; G-SK3 PnL не объясняется
+BTC direction. Prior 10% (ETH skew режимный). Стоимость 2д.
+Решение: только если B/C закрыты и есть свободный ресурс.
+
+### Класс E: инфраструктурные
+
+**E1. Multi-expiry fetcher + полная term structure.**
+Read-out, не стратегия: IV кривая по тенорам 7d/30d/60d/90d,
+slope/curvature/dynamics, predictive content для spot и RV.
+Gates нет. Prior 10% (wave-3: покрытие 2-5 пар/год). Стоимость
+2д. Только если предыдущие треки закрыты.
+
+**E2. Realistic cost model.**
+Read-out: bid-ask by moneyness/TTM/DVOL-режим, market impact
+proxy (size vs book depth). Нужны order book snapshots. Gates
+нет. Полезно всем стратегиям, alpha не открывает. Стоимость 2д.
+Делать в конце.
+
+**E3. Event calendar.**
+Инфра под B1: halving dates, FOMC schedule, CPI releases из
+публичных источников. Gates нет. Стоимость 1д. Делать ДО B1 --
+без календаря Wave 5 не открывается.
+
+### Класс F: altcoin options
+
+**F1. SOL / XRP options.**
+Гипотеза: меньшая эффективность рынка -> больше dislocation.
+Данные: Deribit SOL options с 2024+? НЕ проверено. Prereg:
+аналог B1 (short put с фильтром) на SOL. Gates: G-A1 Sharpe >=
+1.0; G-A2 n >= 50; G-A3 DD <= 25%. Prior 15%. Стоимость 2-3д.
+Только если данные есть и предыдущие треки закрыты.
+
+### Очередь запуска (frozen)
+
+| # | трек | prior | стоимость | блокер |
+|---|---|---|---|---|
+| 1 | A1 covered calls | 30% | 2-3 ч | нет |
+| 2 | E3 event calendar | N/A | 1д | нет |
+| 3 | B1 wave 5 events | 25-35% | 1д run | календарь (= E3) |
+| 4 | C2 options taker flow | 15-25% | 1-2д | нет |
+| 5 | C1 dealer gamma (GEX) | 20-25% | 2-3д | OI fetch |
+| 6 | D1 BTC/ETH IV spread | 20-25% | 3-4д | нет (engine есть) |
+
+НЕ делать: D2 (10%), E1 (10%), F1 (данных нет, не проверено),
+B2 (liq data не подтверждены), E2 (не alpha). Приоритет:
+A1 почти наверняка бета, не alpha; B1 и C1 -- единственные с
+шансом на новый кластер; C2 дёшев, но вероятен vol-proxy trap.
+
+**Гейт очереди: сначала component diagnostic** -- единственная
+открытая alpha-линия; всё выше -- параллельные треки, не
+конкурируют за неё.
