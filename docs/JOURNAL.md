@@ -7742,3 +7742,29 @@ differential при меньшем net premium. Это НОВАЯ гипотез
 (301+/5791, идёт). Прерывание фетча не требуется: гейты 2-3
 считаются на том, что уже скачано, coverage -- после. Фетч не
 перезапускать.
+## 2026-09-26 (последний акт) — Component diagnostic: 0 ALIVE, все descriptive
+
+`runs/component_diagnostic.log` (prereg PREREG_COMPONENT_DIAG
+2026-09-26, 074c847; 10 активов x C1/C2/C3/C5/C6, C4 skipped --
+нет бесплатных liquidation-данных; CPU ~3ч). Вердикт по prereg
+section 7 (нужно ВСЁ: sign >= 8/10, stab >= 80%, mono >= 0.5,
+EV spread > +0.15R):
+
+- C1 (H100/H200): mean IC +0.000, sign 8/10, stab 25/50 (50%),
+  EV spread -0.26R -> descriptive.
+- C2 (funding z30): mean IC -0.008, sign 2/10 -> descriptive.
+- C3 (OI chg): mean IC +0.084, sign 9/10, НО stab N/A (OI
+  покрытие 1 месяц), EV nan -> descriptive + данные недостаточны.
+- C5 (taker buy imbalance): mean IC -0.002, sign 0/10 -> descriptive.
+- C6 (BTC lag): mean IC -0.008, sign 9/9, stab 27/45 (60%),
+  EV +0.07R < 0.15R -> descriptive.
+
+Ни один компонент не прошёл ни один из четырёх критериев
+одновременно; типичный профиль дня: знак есть -- стабильности и
+EV нет. Диагностика согласуется с опционным треком: всё
+"descriptive", ничего "tradeable".
+
+**Состояние на конец дня:** опционный трек закрыт полностью
+(0 живых), диагностический блок закрыт (0 ALIVE). Единственная
+живая линия -- карта **B3 event calendar spread**, ждёт фетч
+btc_full (идёт, ~3ч) и три дешёвых гейта до фриза prereg.
