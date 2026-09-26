@@ -30,7 +30,10 @@ execution-пререг.
 ## Пререги (frozen, у корня)
 
 `PREREG_BATTERY_V2.md`, `PREREG_FX_AVSL_D1.md` (отозван),
-`PREREG_STOCKS_AVSL_D1.md`, `PREREG_FX_AVSL_4H.md`.
+`PREREG_STOCKS_AVSL_D1.md`, `PREREG_FX_AVSL_4H.md`,
+`PREREG_COMPONENT_DIAG_2026-09-26.md` (покомпонентная
+диагностика крипто-4H: Hurst/funding/OI/taker/BTC-lead-lag;
+код — `experiments/avsl/component_diagnostic/`).
 Исторические пререги (AVSL, risk-overlay, live-scale и т.д.)
 хранятся текстом в журнале.
 
