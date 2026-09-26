@@ -103,10 +103,27 @@ def validate_block_candidates(
                     if next_confirm is not None and next_confirm < break_idx:
                         if next_extreme_idx - idx <= cfg.min_extreme_gap:
                             continue
-        # Market structure filter
+        # Market structure filter.  Online mode is confirm-guarded:
+        # a pivot may only participate once it was FINAL by bar ``idx``
+        # (its confirmation bar is at or before the pivot bar of the
+        # candidate) -- otherwise the classification reads pivots that
+        # were not knowable at decision time (look-ahead leak, fixed
+        # 2026-09-22).  Offline mode keeps the legacy bar-index filter.
         if cfg.use_market_structure_filter:
-            rel_peaks = [p for p in peak_list if p <= idx]
-            rel_valleys = [v for v in valley_list if v <= idx]
+            if pivot_confirm is not None:
+                rel_peaks = [
+                    p
+                    for p in peak_list
+                    if p <= idx and pivot_confirm.get(p, idx + 1) <= idx
+                ]
+                rel_valleys = [
+                    v
+                    for v in valley_list
+                    if v <= idx and pivot_confirm.get(v, idx + 1) <= idx
+                ]
+            else:
+                rel_peaks = [p for p in peak_list if p <= idx]
+                rel_valleys = [v for v in valley_list if v <= idx]
             struct_label, trend_dir = classify_market_structure(
                 rel_peaks,
                 rel_valleys,
@@ -225,6 +242,17 @@ def _find_retest(
     cfg: OrderBlockConfig,
 ) -> bool:
     """Search the first valid retest; append the block when found."""
+    # Zone freshness: if between the breakout and the retest window the
+    # price re-pierced the zone beyond its far edge, the zone is dead --
+    # no retest can validate it (classic SMC guard, added 2026-09-22).
+    if cfg.require_zone_intact:
+        pierce = cfg.max_zone_penetration * (zone_high - zone_low)
+        limit = min(end_idx, len(high))
+        for k in range(break_idx + 1, limit):
+            if is_supply and high[k] > zone_high + pierce:
+                return False
+            if not is_supply and low[k] < zone_low - pierce:
+                return False
     for j in range(break_idx + 1, end_idx):
         # Zone entry
         if not check_zone_entry(

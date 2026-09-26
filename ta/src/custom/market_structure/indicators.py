@@ -98,16 +98,13 @@ def compute_lookback(
     indicators: dict[str, np.ndarray],
     cfg: OrderBlockConfig,
 ) -> int:
-    """Breakout lookback derived from median ATR, clamped to bounds."""
-    if not cfg.use_dynamic_lookback:
-        return cfg.lookback_min
-    median_atr = np.nanmedian(indicators["atr"])
-    if not np.isfinite(median_atr):
-        return cfg.lookback_min
-    lookback = int(
-        min(
-            cfg.lookback_max,
-            max(cfg.lookback_min, median_atr * cfg.lookback_atr_multiplier),
-        )
-    )
-    return max(1, lookback)
+    """DEPRECATED, ignored by the pipeline (kept for import compat).
+
+    The previous implementation derived a BAR count from a PRICE-valued
+    median ATR (``median_atr * lookback_atr_multiplier``) and clamped
+    it to ``[lookback_min, lookback_max]`` -- a disguised constant that
+    also read the full ATR series (look-ahead).  The breakout scan now
+    always covers ``[lookback_min, lookback_max)`` bars after the
+    pivot; this function just returns ``cfg.lookback_min``.
+    """
+    return cfg.lookback_min

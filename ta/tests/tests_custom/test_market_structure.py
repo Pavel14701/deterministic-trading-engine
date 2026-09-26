@@ -16,6 +16,7 @@ Covers:
 """
 
 from datetime import datetime, timedelta
+from itertools import pairwise
 
 import numpy as np
 import polars as pl
@@ -333,6 +334,9 @@ def test_zone_source_body_matches_source_bar_body() -> None:
         atr_period=5,
         zone_atr_multiplier=0.0,
         zone_source="body",
+        # zero-width body zones give the freshness guard no allowance;
+        # this test targets zone GEOMETRY, not freshness
+        require_zone_intact=False,
     )
     out = identify_order_blocks(df, cfg=cfg)
     assert out.height >= 1
@@ -598,3 +602,242 @@ def test_timeframe_presets_end_to_end(tf: str) -> None:
     df, _, _ = make_ohlcv(400, seed=5)
     out = identify_order_blocks(df, cfg=TIMEFRAME_CONFIGS[tf])
     assert_valid_block_frame(out)
+
+
+# -----------------------------------------------------------------------------
+# 2026-09-22 detector fixes: regression tests
+# -----------------------------------------------------------------------------
+@pytest.mark.custom
+def test_causal_reversal_threshold_ignores_future_bars() -> None:
+    """Warmup-median reversal: mutating the far future changes nothing."""
+    df, _, _ = make_ohlcv(1500, seed=9)
+    cfg = OrderBlockConfig(
+        use_online_extremes=True,
+        reversal_atr_multiple=1.5,
+        reversal_warmup_bars=300,
+        atr_period=14,
+    )
+    out_full = identify_order_blocks(df, cfg=cfg)
+    # overwrite every bar after the warmup window with fresh noise
+    # (same dates); a causal threshold cannot see this, so blocks fully
+    # inside the warmup prefix must be identical
+    rng = np.random.default_rng(123)
+    close = df["close"].to_numpy().copy()
+    high = df["high"].to_numpy().copy()
+    low = df["low"].to_numpy().copy()
+    volume = df["volume"].to_numpy().copy()
+    spread = np.abs(rng.normal(0.4, 0.15, 500))
+    close[1000:] = close[999] + np.cumsum(rng.normal(0, 0.8, 500))
+    high[1000:] = close[1000:] + spread
+    low[1000:] = close[1000:] - spread
+    volume[1000:] = rng.gamma(2.0, 50.0, 500)
+    df_future = df.with_columns(high=high, low=low, close=close,
+                                volume=volume)
+    out_mut = identify_order_blocks(df_future, cfg=cfg)
+    cutoff = df["date"][1000]
+    full_pre = out_full.filter(pl.col("retest") < cutoff)
+    mut_pre = out_mut.filter(pl.col("retest") < cutoff)
+    assert full_pre.height >= 1  # the property is tested on real data
+    assert full_pre["start"].to_list() == mut_pre["start"].to_list()
+    assert full_pre["retest"].to_list() == mut_pre["retest"].to_list()
+
+
+@pytest.mark.custom
+def test_breakout_window_scans_lookback_range() -> None:
+    """Breakout inside [lookback_min, lookback_max) is always found."""
+    n = 120
+    close = np.full(n, 100.0)
+    high = close + 1.0
+    low = close - 1.0
+    # retest volume gate needs volume > 20-bar SMA: a low head + high
+    # tail keeps the SMA below the late-bar volume
+    volume = np.concatenate([np.full(20, 1000.0), np.full(n - 20, 6000.0)])
+    # one peak pivot at bar 20, breakout at bar 27 (7 bars later --
+    # inside [5, 50); the old fixed-bar bug only checked idx + a
+    # clamped constant, typically 50 bars after the pivot)
+    high[20] = 110.0
+    high[19] = 104.0
+    high[21] = 104.0
+    close[27] = low[27] = 95.0  # breaks below the pivot's low
+    dates = np.array(
+        [datetime(2024, 1, 1) + i * timedelta(hours=1) for i in range(n)]
+    )
+    df = pl.DataFrame(
+        {
+            "date": dates,
+            "high": high,
+            "low": low,
+            "close": close,
+            "volume": volume,
+        }
+    )
+    base = dict(
+        use_online_extremes=True,
+        online_reversal=2.0,
+        atr_period=5,
+        breakout_volume_threshold=0.0,  # volume gate off
+        require_zone_intact=False,
+    )
+    out = identify_order_blocks(
+        df, cfg=OrderBlockConfig(lookback_min=5, lookback_max=50, **base)
+    )
+    from_pivot = out.filter(pl.col("start") == dates[20])
+    assert from_pivot.height == 1
+    assert from_pivot["block_type"][0] == "supply"
+    assert from_pivot["break"][0] == dates[27]
+    # a window that ends before the breakout misses this pivot
+    out_early = identify_order_blocks(
+        df, cfg=OrderBlockConfig(lookback_min=5, lookback_max=6, **base)
+    )
+    assert out_early.filter(pl.col("start") == dates[20]).height == 0
+
+
+def _validation_env() -> tuple[dict, dict, "np.ndarray"]:
+    """Minimal arrays for direct ``validate_block_candidates`` tests."""
+    n = 60
+    high = np.full(n, 101.0)
+    low = np.full(n, 99.0)
+    close = np.full(n, 100.0)
+    volume = np.full(n, 2000.0)  # above avg -> retest volume gate passes
+    dates = np.array(
+        [datetime(2024, 1, 1) + i * timedelta(hours=1) for i in range(n)]
+    )
+    indicators = {
+        "avg_volume": np.full(n, 1000.0),
+        "zone_low": np.full(n, 105.0),
+        "zone_high": np.full(n, 110.0),
+        "atr": np.full(n, 2.0),
+    }
+    env = dict(high=high, low=low, close=close, volume=volume, dates=dates)
+    return env, indicators, dates
+
+
+@pytest.mark.custom
+def test_zone_intact_guard_rejects_rebroken_zone() -> None:
+    from ta.src.custom.market_structure.validation import (
+        validate_block_candidates,
+    )
+
+    env, indicators, dates = _validation_env()
+    candidates = [{
+        "idx": 30,
+        "break_idx": 40,
+        "block_type": "supply",
+        "strength": 1.0,
+        "start_date": dates[30],
+    }]
+    peaks = np.array([], dtype=np.int64)
+    valleys = np.array([], dtype=np.int64)
+    common = dict(
+        high=env["high"], low=env["low"], close=env["close"],
+        volume=env["volume"], dates=env["dates"],
+        cfg=OrderBlockConfig(), indicators=indicators,
+        peak_indices=peaks, valley_indices=valleys, existing_blocks=[],
+    )
+    # retest bar 45 wicks into the zone, closes well below it
+    env["high"][45] = 107.0
+    env["close"][45] = 100.0
+    out = validate_block_candidates(candidates=candidates, **common)
+    assert len(out) == 1  # clean zone -> valid retest
+    # now the zone is re-pierced at bar 42 (high 115 > far edge + 0.5
+    # span): the zone is dead, the retest must be rejected
+    env["high"][42] = 115.0
+    out = validate_block_candidates(candidates=candidates, **common)
+    assert len(out) == 0
+    # opt-out restores the old (leaky) behaviour
+    common["cfg"] = OrderBlockConfig(require_zone_intact=False)
+    out = validate_block_candidates(candidates=candidates, **common)
+    assert len(out) == 1
+
+
+@pytest.mark.custom
+def test_structure_filter_confirm_guarded_online() -> None:
+    from ta.src.custom.market_structure.validation import (
+        validate_block_candidates,
+    )
+
+    env, indicators, dates = _validation_env()
+    # structure: peaks 5, 10 confirmed early; peak 30 (the block's own
+    # pivot) confirms only at bar 50 -- AFTER the candidate's pivot bar
+    env["high"][5] = 100.0
+    env["high"][10] = 105.0
+    env["high"][30] = 103.0
+    env["low"][20] = 95.0
+    env["low"][25] = 98.0
+    env["high"][45] = 107.0  # retest bar: wicks into the zone [105, 110]
+    candidates = [{
+        "idx": 30,
+        "break_idx": 40,
+        "block_type": "supply",
+        "strength": 1.0,
+        "start_date": dates[30],
+    }]
+    peaks = np.array([5, 10, 30], dtype=np.int64)
+    valleys = np.array([20, 25], dtype=np.int64)
+    cfg = OrderBlockConfig(
+        use_market_structure_filter=True,
+        structure_lookback=10,
+        min_structure_extremes=2,
+    )
+    # ONLINE: pivot 30 is unconfirmed at bar 30, so the classification
+    # may only see peaks [5, 10] -> HH + HL -> trend up -> a supply
+    # block is REJECTED (misaligned).  The old code read the unconfirmed
+    # peak 30 (LH), flipped the trend to unknown and accepted the block.
+    out = validate_block_candidates(
+        high=env["high"], low=env["low"], close=env["close"],
+        volume=env["volume"], dates=env["dates"],
+        candidates=candidates, cfg=cfg, indicators=indicators,
+        peak_indices=peaks, valley_indices=valleys, existing_blocks=[],
+        pivot_confirm={5: 7, 10: 12, 20: 22, 25: 27, 30: 50},
+    )
+    assert len(out) == 0
+    # OFFLINE legacy mode (no confirm info): unchanged behaviour
+    out = validate_block_candidates(
+        high=env["high"], low=env["low"], close=env["close"],
+        volume=env["volume"], dates=env["dates"],
+        candidates=candidates, cfg=cfg, indicators=indicators,
+        peak_indices=peaks, valley_indices=valleys, existing_blocks=[],
+    )
+    assert len(out) == 1
+
+
+@pytest.mark.custom
+def test_liquidity_tolerance_is_relative_to_price() -> None:
+    """Scaling ALL prices by k must not change detected blocks."""
+    df, _, _ = make_ohlcv(300, seed=3)
+    cfg = dict(use_online_extremes=True, reversal_atr_multiple=2.5,
+               atr_period=5)
+    out_small = identify_order_blocks(df, cfg=OrderBlockConfig(**cfg))
+    df_big = df.with_columns(
+        pl.col("high") * 50.0,
+        pl.col("low") * 50.0,
+        pl.col("close") * 50.0,
+    )
+    out_big = identify_order_blocks(df_big, cfg=OrderBlockConfig(**cfg))
+    assert out_small.height == out_big.height
+    assert out_small["start"].to_list() == out_big["start"].to_list()
+    assert out_small["retest"].to_list() == out_big["retest"].to_list()
+
+
+@pytest.mark.custom
+def test_online_pivot_indices_are_strictly_increasing() -> None:
+    """Pivot bar indices are strictly increasing (audit batch 2, R7).
+
+    ``pivot_confirm`` / ``pivot_next_extreme`` are dicts keyed by
+    ``p.idx``; two pivots sharing a bar would silently collide.  That
+    is impossible by construction: a pivot is confirmed at bar
+    ``confirm_idx > pivot.idx`` and the next leg starts AT the confirm
+    bar, so every later pivot index is strictly greater.
+    """
+    rng = np.random.default_rng(11)
+    n = 2000
+    close = 100.0 + np.cumsum(rng.normal(0, 1.0, n))
+    spread = np.abs(rng.normal(0.5, 0.2, n))
+    high = close + spread
+    low = close - spread
+    zz = OnlineZigZag(reversal=2.0)
+    pivots = zz.update_series(high, low)
+    assert len(pivots) >= 10
+    idxs = [p.idx for p in pivots]
+    assert all(a < b for a, b in pairwise(idxs))
+    assert all(p.confirm_idx > p.idx for p in pivots)

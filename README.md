@@ -1,122 +1,129 @@
-# Deterministic Trading Engine — BTC/ETH/SOL trading research pipeline
+# t_inv_rag — исследовательский пайплайн: детерминированное ядро + DSL + теории
 
-Research codebase behind a validated, live-defensible EV estimate for a
-zone-geometry trading strategy (stop geometry is universal across assets;
-direction is not predictable). The champion stack converts backtest EV into
-portfolio EV: walk-forward validation → nested CV → portfolio capping →
-rank-based admission. Full evidence trail: **STATUS.md**.
+Quant-research репозиторий: детерминированное движок-ядро (индикаторы,
+ресемпл, симуляция, метрики, батареи гейтов), декларативный DSL условий,
+yaml-теории поверх DSL и каталог экспериментов по семьям — с
+пререгистрацией, frozen-версиями и журналом доказательств.
+Рынки: крипто (Binance 1h/15m), FX (Dukascopy), акции (Sharadar —
+трек заморожен решением пользователя).
 
-## Headline numbers (stage D, pessimistic R)
+Единственная доказательная база — **[docs/JOURNAL.md](docs/JOURNAL.md)**
+(хронология с вердиктами) и снапшот текущего состояния —
+**[STATUS.md](STATUS.md)**. Карта всех док — [docs/README.md](docs/README.md).
 
-| metric | value |
-|---|---|
-| EV per taken trade | +0.44…+0.46 R pess (walk-forward, nested-CV discounted −2.2%) |
-| With REPLACE-low admission (D.11) | **+466 R / 14.4 mo (~32 R/mo)** |
-| Max drawdown | 2.44 R event-basis (~2.4% equity at 1R = 1%) |
-| Walk-forward | B wins 6/8 pooled folds (BTC 7/8, ETH 6/8, SOL 5/8) |
-| Portfolio cap | 2 concurrent (one crypto cluster; price corr 0.83–0.87, strategy corr 0.08–0.23) |
-| Live rule | cap 2 · 1R = 1% equity · kill-switch armed 4R · REPLACE-low admission |
+## Живые результаты
 
-## Repository layout
+| трек | статус | цифры |
+|---|---|---|
+| `engine/passed/avsl_cross_s1` (AVSL-cross 4H) | **SURVIVOR, промоучен, frozen** (regression-контракт бит-в-бит) | PASS 5/5: EV +0.17/+0.33R, NW-Sharpe 1.50→2.84 (усиление на holdout), DD 22/12%, CI excl 0 |
+| `experiments/carry/funding_carry_v3` | SURVIVOR по пререгу, **затухает** (crowding), параметры frozen | F1 +13.5% → F2 +3.75% → F3 +1.45%/год — закрывающееся окно, не долговременная стратегия |
+| AVS-channel S1 (`experiments/avsl/channel/`) | **LATENT** (PASS, ждёт следующего слоя) | для промоушена нужен execution-пререг (P4-EX: честный fill/cost слой) |
+| DSL-теории (`theories/`, runner в `experiments/infra/`) | скрининг-слой, не evidence | `avsl_cross_4h.yaml` — реплика frozen: PASS 5/5, EV +0.261R, NW-Sh 1.67, DD 21.8% |
 
+> ⚠️ Цифры +0.44R / +466R в старых документах относятся к ВЫВЕДЕННОМУ
+> ИЗ ЭКСПЛУАТАЦИИ champion stack (артефакт сквозь-стоп в симуляторе,
+> фикс D.13g). Единственные живые подтверждённые результаты — таблица
+> выше. Подробно: `experiments/README.md`, `engine/passed/README.md`.
+
+## Структура репозитория
+
+```text
+engine/       ядро и библиотека исследований, тесты рядом (engine/tests/):
+  core.py       параметрическое ядро метрик: AVSL(fast/slow), ресемпл,
+                S1-сайзинг, accrual-поток, NW-Sharpe, block bootstrap, DD;
+                дефолты = frozen-значения; эквивалентность с passed — тестом
+  battery_v2.py замерная батарея v2: гейты G1'–G5', ENB, concurrency,
+                xs-bootstrap, ortho_ev, leg-разборы (пороги — docs/BATTERY.md)
+  passed/       ПРОМОУЧЕННЫЕ стратегии: avsl_cross_s1, avsl_trailing_s1;
+                изменение = аннулирование PASS (engine/passed/README.md)
+  infra/ features/ structure/ sim/ backtest/ model/ ensemble/
+  metrics/ datasets/ data/   — инфраструктура и исторические подсистемы
+  tests/        core / passed / legacy
+
+dsl/          dte-dsl: декларативный DSL условий (см. dsl/README.md):
+              tokenizer → parser → AST → interpreter, контекст + провайдеры;
+  theory.py     yaml-схема Theory, сканер индикаторов, SeriesProvider
+  tests/        в дефолтном прогоне pytest и CI
+
+theories/     yaml-теории (DSL-условия входа): theories/avsl_cross_4h.yaml
+
+experiments/  каталог экспериментов: семья/ → эксперимент/ → скрипты
+              с __version__; реестр и вердикты — docs/EXPERIMENTS.md:
+  avsl/         семейство AVS: baseline … channel (LATENT), portfolio_layer
+  carry/        funding_carry v1→v3, p4, prosp_v2, barrier_prob
+  donchian/     breakout, quattro, overlay (семья закрыта)
+  ob/ zscore/ ttf/ options/ fx/ stocks/  — прочие треки
+  infra/        загрузчики (Binance/OKX/YF/Duka), sharadar, live-инфра
+  panel/        champion stack — HISTORICAL (не импортировать, не цитировать)
+  debug/        диагностика, не эксперименты
+
+ta/           vendored-библиотека индикаторов (upstream)
+configs/      configs/engine.yaml — движковые конфиги
+scripts/      утилиты (audit_sim_gaps.py)
+PREREG_*.md   пререги у корня (battery v2, FX AVSL 4H/D1, stocks AVSL D1)
+docs/         вся документация (карта — docs/README.md)
+legacy/       архив former-монорепо (см. legacy/MANIFEST.md перед касанием)
+data/ runs/   parquet-данные и артефакты прогонов (gitignored)
 ```
-engine/      research library, subpackaged by function, tests co-located:
-               infra/       config, datatypes, parquet I/O, marketdata (OKX)
-               features/    indicators, MTF resampling, panels, DSL
-                            feed/spec/provider, MFE/MAE event collector
-               structure/   zones, entry-candidate detectors
-               sim/         event sim, maker entries, state machine,
-                            admission policies
-               backtest/    walk-forward protocol (folds, ranker, replay)
-               model/       LGBM ranker head, feature builders, rule tables
-               metrics/     per-trade R performance metrics
-               datasets/    dataset assembly pipelines (OKX -> panels)
-               passed/      PRODUCTION-FROZEN strategies (cleared their
-                            full pre-registered battery; frozen numbers
-                            are a regression contract - see passed/README)
-               experiments/ reproducible experiment drivers
-               tests/       the unit suite (simulator, maker entry, zones,
-                            library) — one package, one home
-ta/          vendored indicator library (upstream; excluded from default run)
-dsl/         dte-dsl package: declarative trading-conditions DSL
-             (tokenizer -> parser -> AST -> interpreter, manifest providers);
-             ta/src/provider builds on its provider interface; own suite in
-             dsl/tests, part of the default run and CI
-legacy/      archived dead code of the former monorepo — see
-             legacy/MANIFEST.md before touching anything in there
-data/ runs/  parquet data and experiment artifacts (d-prefixed filenames are
-             historical and referenced from STATUS.md)
-```
 
-## Run
+## Запуск
 
 ```bash
-uv sync --all-packages
-uv run pytest                 # unit suite (engine/tests + dsl/tests)
+# тесты (по умолчанию: engine/tests + dsl/tests; legacy и тяжёлое — deselected)
+uv run pytest                # сейчас: 434 passed / 6 skipped / 69 deselected
 uv run ruff check engine dsl experiments
 uv run mypy engine experiments
 
-# experiments (each writes JSON/parquet artifacts into runs/):
-uv run python -m experiments.panel.walk_forward_ab      # walk-forward A/B
-uv run python -m experiments.panel.admission_policies   # REPLACE-low vs FCFS
-uv run python -m experiments.panel.maker_entry          # maker-entry study
-uv run python -m experiments.loaders.load_binance       # Binance kl+OI sweep
-uv run python -m experiments.carry.funding_carry_v3     # live carry track
+# DSL-теория: прогон + (опционально) регистрация эксперимента
+uv run python -m experiments.infra.theory_runner --theory theories/avsl_cross_4h.yaml
+
+# эксперименты (общий вид; каждый пишет артефакты в runs/)
+uv run python -m experiments.<семья>.<эксперимент>.<скрипт> [args]
 ```
 
-## Experiments
+Нюансы окружения:
 
-Every experiment is a runnable module in `experiments/` (top-level, moved out of the engine package) — runnable,
-pinned to its data variant / encoding / metrics, writing artifacts into
-`runs/` and logging its verdict in **STATUS.md**. Full catalog with
-per-track status (active / survivor / closed / historical): see
-**`experiments/README.md`**.
+- **ruff имеет `fix = true` в pyproject** — `ruff check` может молча
+  править чужие файлы. Перед коммитом проверяй `git diff`; для
+  просмотра без правок — `--no-fix`.
+- `uv run` в этой сети упирается в корпоративный TLS — инструменты
+  брать из `.venv/Scripts/` напрямую (`.venv/Scripts/python.exe -m pytest`).
 
-| group | modules | state |
-|---|---|---|
-| **Live tracks** | `funding_carry_v3` (PASS, params frozen); preregs pending implementation: TTF v1 (taker-flow divergence), ProSP v2 (tail-probability portfolio), order-flow collector | one survivor + three pending |
-| **Data loaders** | `load_okx`, `load_yf`, `load_binance` (klines + OI merge-append) | infra, resumable |
-| **Carry & probability** | `funding_carry`, `funding_carry_v2`, `barrier_prob` | closed per prereg |
-| **Entry families** | `avsl_baseline`, `avsl_price_cross`, `avsl_trailing`, `donchian_breakout`, `quattro_donchian` | all closed: gross edge ≈ 0 net of costs |
-| **Order-Block rework** | `ob_raw_ev`, `ob_wf_ev`, `ob_delay_curve`, `ob_holdout_assets`, `ob_ldgrid`, `ob_lookback13`, `ob_lookback_grid`, `ob_struct_diagnostics` | closed: OB-retest track closed per prereg |
-| **Champion stack (historical)** | `walk_forward_ab`, `matrix_2x2`, `nested_cv`, `admission_policies`, `portfolio`, `robustness`, `execution_costs`, `maker_entry`, `cost_cap`, `ranker_only`, `ranking_baselines`, `feature_family`, `joint_rank`, `adaptive_tp`, `ablation`, `ablation_diag`, `regime_diag` | 🏛️ pre-D.13g artifacts INVALIDATED (sim gap-through-stop artifact); protocol designs remain the standard |
-| **Current-panel diagnostics** | `ensemble_ab` | closed: keep LightGBM-only |
+## Правила доказательности
 
-> ⚠️ The headline numbers above quote the retired champion stack — they
-> were produced before the D.13g simulator fix and are retained as
-> history, not as live-defensible estimates. The live-defensible result
-> is `funding_carry_v3` (see STATUS.md).
+1. **Пререг → замер → вердикт.** Гейты frozen до прогона (пороги —
+   `docs/BATTERY.md`); вердикт пишется в `docs/JOURNAL.md`.
+2. **Версии:** `v1.0.0` = evidence-версия, изменять запрещено; правка
+   = новая версия + запись в `EXPERIMENT.md`.
+3. **Frozen бит-в-бит:** модули в `engine/passed/` — regression-контракт;
+   `engine/core.py` обязан воспроизводить их числа тестом.
+4. **Отрицательные результаты сохраняются:** закрытый трек закрыт по
+   своему пререгу; оживление — только через НОВЫЙ пререг.
+5. **DSL-теория ≠ evidence:** PASS yaml-теории — скрининг; evidence
+   требует датированного пререга и frozen-пайплайна (`docs/THEORY.md`).
 
-## Validation protocol (why the numbers are defensible)
+## Документация
 
-- **Walk-forward**: 8 folds × 56d, expanding train, 7d embargo, pre-registered 6+/8 rule.
-- **Nested CV**: outer = the same 8 WF folds, inner = last 25% of fold-train (3d gap);
-  selection-bias discount measured at −2.2%.
-- **Portfolio**: block bootstrap (1000 sims) on daily P&L, p95 DD « 30% flag;
-  drawdown quoted on trade-event basis (daily aggregation is ~30% optimistic).
-- **Admission**: REPLACE-low (new signal displaces the worst-score open position;
-  displaced trades realize negative mean R) beats FCFS by +28% EV at flat DD.
-- **Negative results are kept**: transformer parked (data volume does not help
-  tabular features, D−C = 0), maker entries rejected (total adverse selection,
-  −0.41 R/signal), kill-switch at 2R is pure EV loss.
+| дока | что там |
+|---|---|
+| [docs/README.md](docs/README.md) | карта репозитория: ядро, промоученное, пререги |
+| [docs/JOURNAL.md](docs/JOURNAL.md) | доказательная база: хронология, вердикты, negative results |
+| [STATUS.md](STATUS.md) | снапшот текущего состояния (done / in-progress / next) |
+| [docs/CORE.md](docs/CORE.md) | движок-ядро: контракты, инварианты, гоча |
+| [docs/BATTERY.md](docs/BATTERY.md) | пороги гейтов G1'–G5' и семантика батареи v2 |
+| [docs/THEORY.md](docs/THEORY.md) | yaml-теории: схема, симуляция, границы DSL-вердикта |
+| [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md) | полный реестр треков со статусами |
+| [docs/DATA.md](docs/DATA.md) | данные: источники, схемы, ресемпл |
+| [engine/passed/README.md](engine/passed/README.md) | frozen-стратегии и их числа |
+| [experiments/README.md](experiments/README.md) | каталог экспериментов, легенда статусов |
+| [dsl/README.md](dsl/README.md) | DSL: синтаксис, провайдеры, yaml-теории, API |
 
-## Documentation
+## История
 
-- **STATUS.md** — the single evidence trail: what is implemented, every
-  experiment's verdict, negative results kept on purpose.
-- `engine/` module docstrings — the API reference; the package layout is
-  described in `engine/__init__.py`.
-- `legacy/MANIFEST.md` — the archive manifest: what died, why, and how
-  to revive it. Read it before touching anything under `legacy/`.
-- `legacy/dev_docs/` — archived design docs: TZ-00…TZ-15 specs, the
-  indicator baseline report, the quant checklist, testing conventions.
-
-## History
-
-The repo started as a deterministic trading engine monorepo (DSL strategies,
-RAG strategy generation, T-Bank/OKX adapters, service infrastructure — the
-archived `TZ-*` docs under `legacy/dev_docs/`). After the geometry pivot the
-whole monorepo was archived under `legacy/` (documented in
-`legacy/MANIFEST.md`); only the research library and the data path survived.
-The OKX adapter design lives in `legacy/packages/okx/` and is the starting
-point for the future live-execution layer.
+Репозиторий начинался как детерминированный торговый монорепо-движок
+(DSL-стратегии, RAG-генерация стратегий, адаптеры T-Bank/OKX,
+сервисная инфраструктура — архивные ТЗ в `legacy/dev_docs/`).
+После geometry-pivot монорепо ушло в `legacy/` (описано в
+`legacy/MANIFEST.md`); выжили research-библиотека, data path и DSL.
+Дизайн OKX-адаптера (`legacy/packages/okx/`) — стартовая точка для
+будущего live-execution слоя.

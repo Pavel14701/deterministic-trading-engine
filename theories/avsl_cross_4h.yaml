@@ -1,0 +1,25 @@
+# Каноническая DSL-теория: репликация frozen AVSL-cross 4H
+# (engine/passed/avsl_cross_s1; прereg b6005ca).  Используется как
+# smoke-валидация ранера: метрики должны выйти на порядок confirm-ных
+# (NW-Sharpe ~1-2 на S1, EV ~ +0.1..0.3R).
+name: avsl-cross-4h
+version: 1.0.0
+family: avsl
+experiment: cross_dsl_replica
+universe: [BTC, ETH, SOL, XRP]
+timeframe: 4h
+warmup: 400
+entry_long: >-
+  close > avsl(fast=70, slow=345)
+  and close[1] <= avsl(fast=70, slow=345)[1]
+entry_short: >-
+  close < avsl(fast=70, slow=345)
+  and close[1] >= avsl(fast=70, slow=345)[1]
+k_atr: 2.0
+stop_line: "avsl(fast=70, slow=345)"
+targets: [3, 5, 8]
+primary: 5
+horizon: 500
+fee_bps: 5
+sizing: s1
+segments: 2

@@ -44,17 +44,33 @@ class OrderBlockConfig:
     online_reversal: float | None = None
     online_reversal_pct: float | None = None
     #: Reversal threshold as a multiple of the median ATR; wins over
-    #: ``online_reversal``/``online_reversal_pct`` when set (keeps the
-    #: reversal/ATR ratio constant across timeframes and vol regimes).
+    #: ``online_reversal``/``online_reversal_pct`` when set.  The median
+    #: is taken over the FIRST ``reversal_warmup_bars`` bars only, so
+    #: the threshold is causal: it never reads bars after the warmup
+    #: window and is reproducible live (estimate once at stream start).
     reversal_atr_multiple: float | None = None
+    #: Leading window (bars) for the causal ATR-median calibration of
+    #: the online ZigZag reversal threshold.
+    reversal_warmup_bars: int = 500
     min_extreme_gap: int = 0
     require_complete_window: bool = False
 
     # Breakout & lookback
     lookback_min: int = 5
     lookback_max: int = 50
-    lookback_atr_multiplier: float = 2.0
+    #: DEPRECATED, IGNORED (units bug, fixed 2026-09-22): the "dynamic"
+    #: lookback multiplied a PRICE-valued median ATR by a multiplier and
+    #: used the result as a BAR count -- for any asset priced above
+    #: roughly ``lookback_max / multiplier`` the value always clamped to
+    #: ``lookback_max``.  The breakout scan now always covers the window
+    #: ``[lookback_min, lookback_max)`` bars after the pivot; the first
+    #: valid breakout in that window wins.
     use_dynamic_lookback: bool = True
+    lookback_atr_multiplier: float = 2.0
+    #: DEPRECATED, IGNORED (semantics bug, fixed 2026-09-22): the flag
+    #: never produced multiple signals per zone -- both branches took
+    #: the first valid breakout and stopped; ``False`` additionally
+    #: restricted the check to the single bar ``idx + lookback``.
     multiple_breakouts: bool = False
     breakout_volume_threshold: float = 1.0
     breakout_impulse_multiplier: float = 0.0
@@ -97,6 +113,12 @@ class OrderBlockConfig:
     # Mitigation / closure filter
     require_closure_outside: bool = False
 
+    # Zone freshness: reject a retest if between the breakout and the
+    # retest bar the zone was re-pierced beyond its far edge (with the
+    # same ``max_zone_penetration`` allowance as the retest bar itself).
+    # A re-broken zone is no longer a zone -- classic SMC freshness.
+    require_zone_intact: bool = True
+
     # Displacement (strong reaction) filter
     displacement_multiplier: float = 0.0
 
@@ -128,6 +150,10 @@ class OrderBlockConfig:
     # Volume & liquidity
     volume_window: int = 20
     liquidity_window: int = 10
+    #: Relative tolerance: the pivot extreme must lie within this
+    #: FRACTION OF PRICE from the rolling window extreme
+    #: (0.001 = 0.1%).  Was an absolute price delta before the
+    #: 2026-09-22 fix, which made it a no-op for high-priced assets.
     liquidity_tolerance: float = 0.001
 
     # Strength calculation options
@@ -184,6 +210,21 @@ class OrderBlockConfig:
             raise ValueError(
                 "reversal_atr_multiple must be positive; "
                 f"got {self.reversal_atr_multiple}"
+            )
+        if self.reversal_warmup_bars < 1:
+            raise ValueError(
+                "reversal_warmup_bars must be >= 1; "
+                f"got {self.reversal_warmup_bars}"
+            )
+        if self.lookback_min < 1:
+            raise ValueError(
+                f"lookback_min must be >= 1; got {self.lookback_min}"
+            )
+        if self.lookback_max < self.lookback_min:
+            raise ValueError(
+                "lookback_max must be >= lookback_min; "
+                f"got lookback_max={self.lookback_max}, "
+                f"lookback_min={self.lookback_min}"
             )
         if self.zone_source not in ("range", "body", "close_band"):
             raise ValueError(

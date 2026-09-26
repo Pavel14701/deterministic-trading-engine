@@ -1,4 +1,13 @@
-# avsl — AVSL / Donchian entry-signal family (all CLOSED)
+# avsl — семейство AVS (AVSL-cross + зеркало/канал)
+
+> **2026-09-25, перестройка каталога:** Donchian-модули переехали в
+> [`experiments/donchian/`](../donchian/); зеркало/канал/портфель-слой
+> (бывш. `experiments/avsr/`) теперь здесь: `risk_overlay_mirror.py`,
+> `channel_breakout.py` (LATENT PASS 5/5), `portfolio_layer.py`;
+> диагностика (_dd_diag, grid_alignment_check, sharpe_postmortem,
+> battery_v2_calibration, corr_check) — в [`experiments/debug/`](../debug/).
+> Журнальные записи и frozen-докстринги ссылаются на старые пути;
+> маппинг — [docs/EXPERIMENTS.md](../../docs/EXPERIMENTS.md).
 
 All: gross edge ≈ 0 net of costs.
 
@@ -93,3 +102,8 @@ Evidence: `runs/donchian_overlay.log`. Подтверждённые треки: 
 | OB-retest (E8) | KILL — 0-й перцентиль на PRIMARY |
 
 0 PASS за всю семью — бюджет ложных срабатываний не потрачен. Подтверждённый трек один: AVSL-cross 4H S1.
+
+## Следующий этап: live-scale (2026-09-22)
+
+Прег заморожен в STATUS («AVSL LIVE-SCALE PREREG», до любого live-кода): только sizing/venue/monitoring — сигнал, геометрия и S1 не двигаются (`engine/passed/avsl_cross_s1.py` read-only). Phase A — paper-forward shadow ≥90 дней и ≥50 закрытых сделок; Phase B — малый реальный капитал только после PASS. Хард-гейт паритета сигнал↔модуль на каждом закрытом 4H-баре; мониторинг (не фильтры): rolling Sharpe 90d, ATR-перцентиль/режим, corr(vol, size), паритет частоты сделок; механический disaster brake (rolling Sharpe < 0 → пауза новых входов); K=4R/14d backstop armed but idle. Заранее объявлено: 50 сделок не судят EV-значимость. Код (после фриза): `experiments/live/parity_check.py`, `experiments/live/pilot_tracker.py`.
+

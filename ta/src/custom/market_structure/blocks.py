@@ -20,14 +20,19 @@ def effective_online_reversal(
     cfg: OrderBlockConfig,
     atr: np.ndarray,
 ) -> float:
-    """Resolve the online ZigZag reversal threshold.
+    """Resolve the online ZigZag reversal threshold (CAUSAL).
 
     Precedence:
 
-    1. ``reversal_atr_multiple * median(ATR)`` - ATR-calibrated, keeps
-       the reversal/ATR ratio constant across timeframes and volatility
-       regimes;
+    1. ``reversal_atr_multiple * median(ATR)`` over the FIRST
+       ``cfg.reversal_warmup_bars`` finite ATR values -- the threshold
+       never reads bars after the warmup window, so it is reproducible
+       live (estimate once from the stream head and freeze);
     2. static ``online_reversal`` (or the min-prominence fallback).
+
+    Historical note (fixed 2026-09-22): the median used to run over the
+    FULL ATR series, which leaked future volatility into the pivot
+    detection threshold.
 
     """
     if cfg.reversal_atr_multiple is not None:
@@ -37,6 +42,7 @@ def effective_online_reversal(
                 "reversal_atr_multiple requires a valid (positive, "
                 "finite-median) ATR series"
             )
+        finite_atr = finite_atr[: max(1, cfg.reversal_warmup_bars)]
         median_atr = float(np.median(finite_atr))
         if not np.isfinite(median_atr) or median_atr <= 0:
             raise ValueError(

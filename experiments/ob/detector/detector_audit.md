@@ -1,0 +1,406 @@
+# Detector audit: market_structure (OB pipeline) — 2026-09-22
+
+External review claimed ~19 structural defects in the OB detector.
+Every claim was verified against the code
+(`ta/src/custom/market_structure/`) before touching anything.
+Verdicts below; the confirmed defects are FIXED in the same commit,
+the refuted ones are documented here so the "fix everything" sweep
+does not silently re-litigate them.
+
+## CONFIRMED (fixed)
+
+**A1 — `compute_lookback` UNITS BUG (the "fat" claim).**
+The "dynamic" lookback multiplied a PRICE-valued median ATR by a
+multiplier and used the result as a BAR count, clamped to
+`[lookback_min, lookback_max]`.  Any asset priced above roughly
+`lookback_max / multiplier` (all 10 research assets except DOGE)
+always clamped to `lookback_max=50`.  "Dynamic lookback" was a
+disguised constant.  It also read the FULL ATR series (look-ahead).
+**FIX:** the "dynamic" concept is deprecated.  The breakout scan now
+ALWAYS covers the window `[idx+lookback_min, idx+lookback_max)` bars
+after the pivot; the first valid breakout wins.
+`use_dynamic_lookback` / `lookback_atr_multiplier` are ignored (kept
+for config compat).
+
+**A2 — `multiple_breakouts` SEMANTICS BUG.**
+The flag never produced multiple signals per zone: both branches take
+the first valid breakout and stop.  `False` additionally restricted
+the check to the SINGLE bar `idx+lookback` — with A1 this pinned the
+breakout delay at exactly 50 bars (R1: every block broke at
+pivot+50; DOGE at pivot+5).  R2's docstring ("a zone may re-signal
+after each new breakout") was factually wrong.
+**FIX:** folded into A1 — one honest window, first breakout wins.
+The flag is ignored (kept for config compat); R2 == R1 now.
+
+**A3 — `effective_online_reversal` LOOK-AHEAD.**
+The ATR-calibrated reversal threshold =
+`multiple * median(ATR over the WHOLE series)`: future volatility
+leaked into the pivot detector.
+**FIX:** median over the FIRST `reversal_warmup_bars` (default 500)
+finite ATR values only.  Causal and live-reproducible (estimate once
+at stream start, freeze).
+
+**A4 — market-structure filter read UNCONFIRMED pivots.**
+Validation used `p <= idx` by bar index, ignoring `confirm_idx`: a
+pivot whose confirmation bar was after the candidate's pivot bar
+could still classify the trend.  (Contrast: `check_orderflow_shift`
+was already confirm-guarded.)
+**FIX:** online mode now requires `pivot_confirm[p] <= idx`.
+NOTE: research presets R1-R3 (and therefore E8) run with the
+structure filter OFF — this leak did NOT affect E8.
+
+**A5 — `liquidity_tolerance` was ABSOLUTE price units (default
+0.001): a no-op for any asset above ~$25 (BTC: 0.000002%).**
+**FIX:** relative fraction of price (0.001 = 0.1% of the pivot
+price).  Default value kept, semantics now scale-free.
+
+**A6 — NO zone-pierce guard between breakout and retest:** the zone
+could be fully re-broken after the breakout and the first wick back
+into it still counted as a "retest" of a dead zone.
+**FIX:** new config flag `require_zone_intact` (default ON): no bar
+between the breakout and the retest may pierce the zone beyond its
+far edge + `max_zone_penetration * span` (same allowance as the
+retest bar itself).
+
+## REFUTED (no code change, documented)
+
+**R1 — "avg_vol[j] includes volume[j] and thereby WEAKENS the volume
+filter exactly on high-volume bars."**  Direction is wrong.  With SMA
+window w and prior sum S, the pass condition
+`v_j > (S+v_j)/(w+1)` ⟺ `v_j*w > S`, i.e. the bar must exceed
+`S/(w-1)` — STRICTER than the shifted `S/w` by the factor `w/(w-1)`
+(5% at w=20).  Inclusion makes the gate tighter, not weaker.
+Left as-is.
+
+**R2 — "confirmation_window=36 on 4H = 6 days."**  The "4h" preset
+uses the default `confirmation_window=10` (~1.7 days); 36 is
+5m/15m only.
+
+**R3 — "zone_atr_multiplier=0.2 is a fixed absolute fraction, not
+ATR-scaled."**  It multiplies ATR by construction
+(`zone_low = low - m*ATR`).
+
+**R4 — "check_breaker mutates a list during iteration."**  It
+iterates a slice and returns a bonus; no mutation anywhere.
+
+**R5 — "`_empty_block_frame` pl.Datetime schema mismatch."**
+`pl.Datetime` defaults to `Datetime("us")`, exactly what the
+non-empty path builds from python datetimes.  Compatible.
+
+## DESIGN / POLICY (confirmed as described, deliberately NOT changed)
+
+Strategy semantics that any future prereg must choose explicitly —
+not library bugs:
+
+- **P1** `zone_entry_mode="wick"` (touch, not rejection).  A "close"
+  mode and `require_closure_outside` exist but are off in ALL
+  presets.
+- **P2** breakout by pivot wick (`low[brk] < low[idx]`), not close.
+- **P3** `max_zone_penetration=0.5` allows an overshoot of half the
+  zone span beyond the far edge and still calls it a retest.
+- **P4** `is_block_aligned_with_trend(None) -> True`: unknown
+  structure does not filter.  Matters only when the structure filter
+  is ON.
+- **P5** `min_extreme_gap` is a pivot-to-next-extreme
+  STRUCTURE-MATURITY gap (not an entry delay) and is applied
+  causally (only when the next extreme was already confirmed at the
+  breakout) — the "inconsistency" is the look-ahead-safe direction,
+  by design.
+- **P6** `check_displacement`: an ATR path exists
+  (`displacement_multiplier`); default 0 leaves the fixed
+  `min_reaction_size=0.2%` path active.
+- **P7** `strength` is not used as a GATE (only recorded and consumed
+  by the breaker bonus, which is off by default).
+
+## CONSEQUENCES (read before citing any OB number)
+
+- Every previously recorded OB number — port-check block counts,
+  R1-R3 acceptance (~273-1146 blocks/asset), the ablation, the delay
+  curve, and E8 itself — was measured on the OLD detector, whose
+  PRIMARY behaviour was "fixed 50-bar delay + wick-touch retest".
+- E8's verdict (KILL) stands AS A VERDICT ABOUT THAT DETECTOR AND
+  STRATEGY AS TESTED.  The OB research track remains CLOSED.  No
+  re-run of closed preregs; a revival (new detector semantics) needs
+  a NEW dated prereg plus fresh acceptance on the fixed code.
+- The live-preset regression baselines ("1h"=131, "4h"=10 blocks)
+  are stale.  Post-fix smoke on the 4H grid ("4h" preset, first 5
+  research assets): BTC 64, AVAX 83, BNB 32, DOGE 30, ETH 44 blocks.
+  Regression baselines must be re-derived before any further
+  live-preset work.
+
+## TESTS
+
+`ta/tests/tests_custom/test_market_structure.py`: batch 1 added 5 new
+regression tests (causal reversal threshold, breakout window scan,
+zone-intact guard, structure-filter confirm guard, price-scale
+invariance of the relative liquidity tolerance) on top of the 29
+tests the file already collected.  Full suite: green.  ruff clean,
+mypy clean.
+
+=====================================================================
+SECOND REVIEW BATCH (same day, 2026-09-22)
+=====================================================================
+
+A second review batch arrived (17 + 5 items).  Same protocol: every
+claim checked against the code.  NO new code defects were found --
+the batch is either (a) already covered by the batch-1 fixes, or
+(b) refuted, or (c) policy items now documented below.  One guard
+test added (strictly increasing pivot indices).
+
+ALREADY FIXED IN BATCH 1 (credited, no new work):
+
+- "Fixed-offset breakout: `multiple_breakouts=False` + lookback=50
+  checks EXACTLY the bar idx+50" -- that is A1+A2 verbatim (the
+  quoted code is the OLD code); the pipeline now scans
+  [idx+lookback_min, idx+lookback_max).
+- "No zone re-pierce check between breakout and retest" -- A6
+  (`require_zone_intact`), exactly the suggested guard.
+- "`multiple_breakouts` semantics", "None-trend pass-through",
+  confirmation-window default-10-on-4h, strength knobs, E8
+  cross-asset lookback offsets -- A2, P4, R-2, P7 and the
+  CONSEQUENCES section respectively.
+
+REFUTED (batch 2):
+
+R6  "`min_reaction_size=0.002` is absolute, no scale calibration
+     (BTC $100 vs $0.002 on a $1 token)".  Wrong: it applies to
+     `reaction_pct = reaction_abs / ref_price` (filters.py
+     compute_reaction) -- a FRACTION OF PRICE.  0.002 = 0.2% on
+     BTC and on the $1 token alike; the quoted $100/$0.002 numbers
+     ARE the scale-free behaviour.  (Contrast with the true units
+     bug A1.)  The "negative reaction_abs works by accident" add-on
+     is also wrong: close beyond the zone's far edge means no
+     rejection reaction, and rejecting that is the coherent
+     semantic, not an accident.
+
+R7  "Pivot dicts keyed by p.idx can collide (items #9/#17)" --
+     impossible by construction.  OnlineZigZag confirms a pivot at
+     bar c > pivot.idx and starts the next leg AT bar c, so every
+     later pivot index is strictly greater than all previous ones;
+     dict keys are unique.  Locked by a new test
+     (test_online_pivot_indices_are_strictly_increasing).
+
+R8  "`cluster_blocks` glues blocks in flats -- and R1-R3 run with
+     cluster on".  The mechanism exists but the flag is FALSE by
+     default and is not enabled ANYWHERE in the repo (grep: no
+     `cluster_blocks=True`); all six live presets have it off and
+     research R1-R3 inherit the "4h" preset (off).  Dormant, no
+     trigger.
+
+R9  "`OrderBlock` is not frozen; `list.copy()` is shallow so
+     clustering mutations leak into the caller's list" -- no live
+     path: `identify_order_blocks` passes `existing_blocks=[]` and
+     `validate_block_candidates` copies it before appending only
+     NEWLY created blocks; clustering runs on that private list
+     after validation.  Freezing the dataclass is a future
+     robustness nicety, not a bug.
+
+R10 "`atr_period=14` is not scaled per timeframe" -- ATR period is
+     in BARS by definition; the bar itself carries the timeframe
+     scale, which is exactly why every threshold in the pipeline is
+     ATR-multiple calibrated (and why the price-scale invariance
+     test passes).
+
+R11 "`_empty_block_frame` pl.Datetime is generic / falls apart" --
+     repeat of R-5: pl.Datetime defaults to Datetime("us"), same
+     as the non-empty path; both branches compatible (covered by
+     the empty-frame tests).
+
+R12 "avg_vol including volume[j] makes the filter pass exactly the
+     high-volume bars it should reject" -- repeat of R-1 with a new
+     conclusion.  Direction still wrong (inclusion TIGHTENS the
+     lower bound).  The new part -- "huge retest volume should be
+     REJECTED" -- is a two-sided volume CAP, which was never
+     specified anywhere; see P9 below.
+
+ADDITIONAL POLICY ITEMS (batch 2; confirmed as described,
+deliberately unchanged):
+
+P8  Zones are anchored to the PIVOT-bar ATR (`atr[idx]`): the zone
+    is fixed at formation time and is NOT rescaled by retest-time
+    volatility.  Causal and standard for OB definitions; if a
+    future prereg wants volatility-following zones it must choose
+    the `atr[j]/atr[idx]` scaling explicitly.
+
+P9  The retest volume gate is ONE-SIDED (lower bound: volume[j] >
+    avg_vol[j]); there is no upper cap.  "Retest on huge volume is
+    bearish for the setup" is a strategy hypothesis to be prereg'd,
+    not implemented.
+
+P10 The RSI/MACD gate (dead code, off in ALL presets -- grep clean)
+    requires rsi >= overbought at a SUPPLY retest, i.e. it gates on
+    momentum CONTINUATION, not rejection.  Known and already
+    documented in configs.py's rationale as the reason it is off;
+    if ever enabled, its semantics must be chosen deliberately.
+
+P11 `min_structure_extremes=3` (live 4h/1d presets where the
+    structure filter is ON) classifies only mature trends -- late
+    entries by design.  Research presets (and E8) run with the
+    filter OFF.
+
+P12 `require_complete_window=True` (4h/1d) drops candidates whose
+    confirmation window crosses the end of history -- a documented,
+    deliberate backtest-hygiene choice.
+
+P13 `zone_source="range"` builds the zone from the pivot's FULL
+    [low, high] (sweep wicks included); "body" and "close_band"
+    modes exist but are off in all presets.  Body-based zones are a
+    strategy variant a future prereg may choose; also note the
+    wick-touch entry (P1) interacts with this: touching the
+    wick-end of a range zone counts.
+
+Updated TESTS line: batch 2 added one guard test (strictly
+increasing pivot indices); the market_structure test file now
+collects 35 tests (34 before).  FULL MONOREPO suite
+(`pytest ta/tests engine/tests dsl/tests`; the root `pytest -q`
+only runs engine+dsl per ``testpaths``): 2543 passed / 6 skipped,
+ruff and mypy clean.
+
+=====================================================================
+THIRD REVIEW BATCH (same day, 2026-09-22)
+=====================================================================
+
+Headline claim: "zone_source is DEAD -- precompute_indicators always
+builds close +/- m*ATR, so every OB test (incl. E8) tested a
+close_band, the OB concept was never tested".  The claim is FALSE
+for the current code but carries an important TRUE historical core;
+both halves are documented below.
+
+R13  "`zone_source` is never applied (killer)".  REFUTED for the
+     current code: indicators.py dispatches all three modes
+     (lines 47-57: range / body / close_band), the default in
+     config and all presets is "range", and three dedicated tests
+     pin each mode (test_zone_source_range_matches_source_bar,
+     _body_, _close_band_backcompat) plus a preset assertion
+     (cfg.zone_source == "range").  The quoted code is the OLD
+     code.  HISTORICALLY TRUE CORE: before commit d4565c0
+     (2026-09-20 19:10, "OB honest rework: structural zones") the
+     pipeline built close +/- m*ATR unconditionally and
+     zone_source did not exist in the config at all.  LEDGER
+     CONSEQUENCE (added to CONSEQUENCES below): the EARLY OB
+     kills -- OB-retest 15m/1h and the D.13/D.15-era closure track
+     (commits up to 09-20 before d4565c0) -- are verdicts about
+     "close_band + wick-touch + volume filter", NOT about
+     structural OB zones.  Everything AFTER the rework -- R1-R3
+     acceptance, the port-check, the E8 prereg (7105724) and the
+     E8 run (26759a5), all 09-22 -- ran with zone_source="range".
+     Cross-check that corroborates range zones at E8 time: the
+     acceptance measured zone width 1.56-2.09 ATR, which is
+     (high-low) + 0.4*ATR -- impossible for a close_band
+     (fixed 0.4*ATR) and exactly what range zones produce.  So:
+     "E8 tested close_band" is FALSE; "the OB concept was never
+     tested" is FALSE; "the earliest OB kills predate structural
+     zones" is TRUE.
+
+R14  "check_fvg reads bar break_idx+1 -- look-ahead".  REFUTED.
+     The 3-candle FVG is DEFINED on bars i-1, i, i+1; bar brk+1 is
+     part of the pattern, not a future peek.  The emitted signal is
+     dated at the RETEST bar j, and the retest loop starts at
+     j = brk+1, so bar brk+1 is never in the future at decision
+     time (when j == brk+1 it is the decision bar itself).  No
+     leak relative to any emitted signal.
+
+R15  "min_extreme_gap is a filter-on-a-subset (only fresh pivots
+     escape it)".  CONFIRMED as described, and it is batch-1 P5
+     verbatim: the gap filter is applied only when the next extreme
+     was already confirmed at the breakout bar.  That asymmetry is
+     the look-ahead-safe direction -- applying it on hindsight
+     (rejecting a pivot for a next extreme that did not exist yet)
+     WOULD be the leak.  Deliberate; unchanged.
+
+R16  avg_vol / liquidity_tolerance / min_reaction_size items --
+     repeats: R-1/R12 (volume-gate direction, P9 for the missing
+     cap), A5 ALREADY FIXED (relative `liquidity_tolerance *
+     high[idx]`, locked by the price-scale invariance test; the
+     quoted absolute comparison is the OLD code), and R6
+     (min_reaction_size is a fraction of price).  No new content.
+
+R17  "penetration 0.5 x zone width 0.4*ATR = 0.2 ATR overshoot" --
+     premise false (zones are range-based, not close_band; see
+     R13); the penetration allowance itself is policy P3.
+
+R18  pivot-idx collision -- repeat of R7, impossible by
+     construction, locked by a test.
+
+R19  "_empty_block_frame is latent, nobody triggers the empty
+     flow" -- repeat of R-5/R11, and the premise is false: the
+     empty branch IS exercised by test_empty_output_schema (flat
+     series -> empty frame, full schema asserted, pl.Datetime
+     columns included).
+
+R20  structure numba early-return (total_len <= 1) -- the reviewer
+     himself concludes "OK, not a bug"; noted, no action.
+
+CONSEQUENCES (amendment): split the historical OB record by detector
+era.  PRE-d4565c0 (before 2026-09-20 19:10): close_band zones --
+early 15m/1h kills and the D-era closure track are verdicts about
+the close_band variant, and any future revival of a "close band
+around pivot close" strategy may cite them as prior evidence.
+POST-d4565c0: structural (range) zones -- R1-R3 acceptance, port
+check and E8.  E8 additionally predates the 59ac42d audit fixes
+(fixed-offset breakout, look-ahead reversal median, etc.), as
+already documented above.  The OB track remains CLOSED regardless
+of era; any revival needs a new dated prereg on the current code.
+
+BATCH 4 (2026-09-22, post-fix follow-up): the reviewer's "tails"
+list adjudicated, plus funnel diagnostics, detector performance,
+and a full post-fix acceptance re-run.
+
+T1  wick entry without close confirmation -- repeat of P1 (policy).
+    With require_closure_outside=False everywhere it never rejects
+    on a wick-touch alone; documented, unchanged.
+T2  min_reaction_size semantics -- repeat of R6 (0.2% of price,
+    intended).  The "negative reaction_pct when close_j is beyond
+    the far edge" observation is coherent, not fragile: for supply,
+    close_j > zone_high means the retest bar CLOSED back above the
+    zone; displacement then fails by construction (r_abs < 0), so
+    the bar cannot confirm a rejection.  Working as specified.
+T3  volume-gate algebra -- the reviewer's own derivation
+    (v > avg_vol[j]  <=>  v > typical volume excluding j, up to the
+    w/(w-1) tightening) matches R-1/P9; the missing high-volume cap
+    stays open as policy P9.  No new defect.
+T4  is_block_aligned_with_trend(None) -> True -- repeat of P4.
+T5  cluster_order_blocks mutates OrderBlock.start in place --
+    repeat of R9: clustering runs on a freshly created private
+    list, no upstream shared reference.  Robustness nicety only.
+T6  _empty_block_frame pl.Datetime without unit -- repeat of
+    R-5/R11; the premise "nobody triggers the empty branch" is
+    false: test_empty_output_schema exercises it and pins the
+    schema.  Neither latent nor untriggered.
+
+T7  performance of the new breakout-window scan.  Synthetic 500k
+    4H-like bars, "4h" cfg, warm end-to-end 79 s: OnlineZigZag
+    2.2 s, the numba candidate scan (the feared O(n x lookback_max)
+    loop) 1.1 s, indicators ~0 s.  The remaining ~75 s is the
+    pure-Python validation pass, dominated by the structure
+    filter's per-candidate rebuild of confirmed pivot lists
+    (O(#candidates x #pivots)) -- PRE-EXISTING, not introduced by
+    the window fix.  At production scale (4H grid, ~15k bars) the
+    full detector runs ~1.5 s per asset.  No action.
+
+FUNNEL DIAGNOSTICS (new experiments/ob/detector_funnel.py; exact
+mirror of the validation guard order -- cross-checked: funnel
+confirmed == identify_order_blocks count on every run):
+
+  BTC 4H, live "4h" preset:  pivots 6035 -> candidates 1897.
+    min_extreme_gap=8 rejects 83.0% of candidates, structure
+    filter 6.5%, confirm-guard 1.8%, zone-intact 1.7%,
+    no-retest 3.7% -> 64 confirmed.  THE dominant post-fix cutter
+    on the live preset is min_extreme_gap, NOT the zone-intact
+    guard (the reviewer's hypothesis is refuted by measurement).
+  BTC 4H, R1:  pivots 7451 -> candidates 2109.  zone-intact 22.0%,
+    no-retest 25.3%, all other stages ~0 -> 1110 confirmed.
+
+POST-FIX ACCEPTANCE RE-RUN (research_preset_check; full log
+runs/ob_research_check_postfix.log): R1/R2/R3 pass A1-A5 on ALL
+10 assets -- n = 889-1110 (frozen floor [200, 2000]), zone-width
+median 1.69-1.82 ATR14, retest delay median 2 / p90 6-7 bars,
+supply share 47-53%, byte-identical reruns (A5).  The only FAIL
+is A6, and it fails as EXPECTED: its frozen references ("1h"=131,
+"4h"=10) are outputs of the pre-fix buggy detector, already
+declared stale in batch 1.  Verdict: the research acceptance
+criterion SURVIVES the audit fixes.  The earlier "smoke 30-83
+blocks = acceptance FAIL" claim was a category error: it compared
+the LIVE "4h" preset (never gated by the 200-2000 research floor)
+against the R1-R3 criterion.
+

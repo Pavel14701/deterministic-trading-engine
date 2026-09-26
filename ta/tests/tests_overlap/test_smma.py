@@ -127,7 +127,7 @@ def test_smma_numba_basic(
 def test_smma_numba_offset_fillna(
     prices_random_walk: npt.NDArray[np.float64],
 ) -> None:
-    """Test offset and fillna by comparing with manually applied shift+fillna."""  # noqa: E501
+    """Test offset and fillna by comparing with manually applied shift+fillna."""
     close = prices_random_walk
     length = 10
     offset = 3
