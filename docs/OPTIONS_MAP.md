@@ -37,7 +37,7 @@ put-skew нестабилен по годам (2021 отрицательный),
 
 | # | Стратегия | Статус | Prior |
 |---|---|---|---|
-| 3.1 | Calendar spread | FETCH (~2–3ч) | 30% |
+| 3.1 | Calendar spread (term slope) | READ-OUT DONE, структуры нет | 10% | slope +1.1pt мед., знак нестабилен (n=22); предиктивность rho=-0.32 есть, но не находит VRP |
 | 3.2 | Roll-down harvest | FETCH | 30% |
 | 3.3 | Front-back IV slope | FETCH | 25% |
 | 3.4 | Event-vol | EVENT | 35% |
