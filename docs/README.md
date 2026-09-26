@@ -17,7 +17,7 @@
 | `engine/passed/avsl_trailing_s1.py` | S1 vol-target для trailing-модификации | там же |
 
 LATENT (PASS, но не промоучен): **AVS-channel S1** — runner в
-`experiments/avsr/`, R = ширина канала; для промоушена нужен
+`experiments/avsl/channel/`, R = ширина канала; для промоушена нужен
 execution-пререг.
 
 ## Эксперименты (`experiments/`)

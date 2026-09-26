@@ -66,7 +66,7 @@ uv run python -m experiments.<семья>.<эксперимент>.<скрипт
 
 | трек | что нужно для промоушена |
 |---|---|
-| AVS-channel S1 (`experiments/avsr/`) | execution-пререг (P4-EX паттерн: честный fill/cost слой) до капитала |
+| AVS-channel S1 (`experiments/avsl/channel/`) | execution-пререг (P4-EX паттерн: честный fill/cost слой) до капитала |
 
 ### Закрыто недавно (2026-09-24/25)
 
