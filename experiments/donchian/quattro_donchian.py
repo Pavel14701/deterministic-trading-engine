@@ -14,7 +14,7 @@ import numpy as np
 from engine.backtest.protocol import wf_folds
 from experiments.avsl.avsl_baseline import DAY
 from experiments.avsl.avsl_trailing import REPO, TAKER_FEE, _read_okx
-from experiments.avsl.donchian_breakout import ASSETS, _roll
+from experiments.donchian.donchian_breakout import ASSETS, _roll
 from ta.src.volatility.atr import atr_ind
 
 

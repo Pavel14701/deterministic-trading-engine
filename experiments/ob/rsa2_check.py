@@ -25,7 +25,7 @@ from engine.passed.avsl_cross_s1 import (
     resample_4h,
 )
 from experiments.avsl.retest_entry import WARMUP
-from experiments.diagnostics.ssa_avsl_check import (
+from experiments.debug.ssa_avsl_check import (
     SSA_W,
     ssa_denoise_line,
 )

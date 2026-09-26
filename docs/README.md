@@ -37,8 +37,8 @@ execution-пререг.
 ## Данные (`data/`)
 
 См. [`docs/DATA.md`](DATA.md).  Кэши resumable, фетчеры —
-`experiments/loaders/`, `experiments/fx/duka_fetch.py`,
-`experiments/sharadar/fetch_sharadar.py`, `experiments/options/deribit_fetch.py`.
+`experiments/infra/loaders/`, `experiments/fx/duka_fetch.py`,
+`experiments/infra/sharadar/fetch_sharadar.py`, `experiments/options/deribit_fetch.py`.
 
 ## Прогоны (`runs/`)
 

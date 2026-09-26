@@ -9,7 +9,7 @@ short).  Configs S1..S4 and gates G1'..G5' byte-equivalent to
 experiments/avsl/risk_overlay.py; the frozen engine module is
 imported read-only (helpers only, never modified).
 
-Run:  python -m experiments.avsr.risk_overlay_mirror
+Run:  python -m experiments.avsl.risk_overlay_mirror
 """
 from __future__ import annotations
 

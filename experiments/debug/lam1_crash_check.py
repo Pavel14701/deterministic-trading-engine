@@ -20,7 +20,7 @@ Read-outs (no thresholds tuned here):
      in buckets above each decile of lambda1 share.
 
 Diagnostic ONLY: reads frozen loaders, gates nothing.
-Run:  uv run python -m experiments.diagnostics.lam1_crash_check
+Run:  uv run python -m experiments.debug.lam1_crash_check
 """
 
 from __future__ import annotations

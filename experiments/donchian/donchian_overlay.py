@@ -12,7 +12,7 @@ Configs:
 Gates G1'-G5' on BOTH segments; risk-first selection (lowest PRIMARY
 DD among full passers).
 
-Run:  uv run python -m experiments.avsl.donchian_overlay
+Run:  uv run python -m experiments.donchian.donchian_overlay
 """
 
 from __future__ import annotations

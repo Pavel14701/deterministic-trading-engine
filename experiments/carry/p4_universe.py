@@ -19,7 +19,7 @@ import niquests
 
 from experiments import REPO
 from experiments.carry.funding_carry import UNIVERSE
-from experiments.loaders.load_binance import SYMBOL_ALIASES
+from experiments.infra.loaders.load_binance import SYMBOL_ALIASES
 
 
 BASE = "https://fapi.binance.com"

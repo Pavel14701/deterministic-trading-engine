@@ -17,7 +17,7 @@ Declared conventions: 4H epoch-aligned buckets, last close per
 bucket, common-bucket intersection across ALL tickers, >= 2 years
 of 1H bars per ticker, dedupe by ticker with Binance preferred.
 
-Run:  python -m experiments.diagnostics.svd_cached_universe
+Run:  python -m experiments.debug.svd_cached_universe
 """
 
 from __future__ import annotations

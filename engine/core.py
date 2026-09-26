@@ -72,7 +72,10 @@ def resample_bars(ts: np.ndarray, hp: np.ndarray, lp: np.ndarray,
                   msec: int = MSEC_4H) -> tuple:
     """Детерминированный агрегат 1H -> msec-бары (first/max/min/last/sum).
 
-    Эквивалентна frozen resample_4h при msec=14_400_000.
+    Семантически эквивалентна frozen resample_4h при
+    msec=14_400_000.  Оговорка: поларсовский group_by-sum
+    параллелен, поэтому float-суммы (vol) могут отличаться от
+    frozen-копии на последний бит — это не влияет на вердикты.
     """
     import polars as pl
 

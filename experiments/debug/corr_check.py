@@ -9,7 +9,7 @@ sized_accrual_stream); identical global 4H grid.  Read-outs:
 Pearson + Spearman per segment, stream stats, 50/50 combined
 stream diagnostic.  Diagnostic only -- no prereg, no verdict.
 
-Run:  python -m experiments.avsr.corr_check
+Run:  python -m experiments.debug.corr_check
 """
 from __future__ import annotations
 
@@ -26,8 +26,8 @@ from engine.passed.avsl_cross_s1 import (
     resample_4h,
     sized_accrual_stream,
 )
-from experiments.avsr.risk_overlay_mirror import _sizing_inputs
-from experiments.avsr.channel_breakout import collect_channel_trades
+from experiments.avsl.risk_overlay_mirror import _sizing_inputs
+from experiments.avsl.channel_breakout import collect_channel_trades
 
 
 def _s1_sizes_from_rv(rv: np.ndarray) -> np.ndarray:

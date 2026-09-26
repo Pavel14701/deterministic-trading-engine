@@ -27,7 +27,7 @@ from engine.passed.avsl_cross_s1 import (
     resample_4h,
     s1_sizes,
 )
-from experiments.avsr.risk_overlay_mirror import (
+from experiments.avsl.risk_overlay_mirror import (
     NW_LAGS,
     _block_boot_mean_ci,
     _nw_sharpe,

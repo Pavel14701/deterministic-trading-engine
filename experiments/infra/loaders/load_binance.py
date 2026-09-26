@@ -31,7 +31,7 @@ from engine.infra.marketdata.binance_fetch import (
 )
 from experiments import REPO
 from experiments.carry.funding_carry import UNIVERSE
-from experiments.loaders.load_yf import _stats
+from experiments.infra.loaders.load_yf import _stats
 
 
 CACHE = REPO / "data" / "binance"

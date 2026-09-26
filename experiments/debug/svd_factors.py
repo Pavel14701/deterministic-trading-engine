@@ -15,7 +15,7 @@ Metrics printed:
     effective count, robust to the 90% threshold choice);
   - mean off-diagonal pairwise correlation;
   - PC1 loadings (who sits on the main factor).
-Run:  uv run python -m experiments.diagnostics.svd_factors
+Run:  uv run python -m experiments.debug.svd_factors
 """
 
 from __future__ import annotations

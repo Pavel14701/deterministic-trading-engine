@@ -12,7 +12,7 @@ tracks.  Sizing battery S1..S4 and gates G1'..G5' byte-
 equivalent to the frozen overlay; 0/4 pass closes the AVS
 family finally.
 
-Run:  python -m experiments.avsr.channel_breakout
+Run:  python -m experiments.avsl.channel_breakout
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ from engine.passed.avsl_cross_s1 import (
     repo_root,
     resample_4h,
 )
-from experiments.avsr.risk_overlay_mirror import (
+from experiments.avsl.risk_overlay_mirror import (
     CONFIGS,
     PICK_ORDER,
     _apply_config,

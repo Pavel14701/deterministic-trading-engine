@@ -13,7 +13,7 @@ Read-outs requested by the principal:
      (NW degeneracy caveat: lags=500 factor can blow up),
      PF-G4 trailing-12m negative-window counts.
 
-Run:  python -m experiments.diagnostics.avs_ob_portfolio_check
+Run:  python -m experiments.debug.avs_ob_portfolio_check
 """
 from __future__ import annotations
 
@@ -22,8 +22,8 @@ import datetime as dt
 import numpy as np
 
 from engine.passed.avsl_cross_s1 import ASSETS, MSEC_4H
-from experiments.avsr.corr_check import _avsl_stream, _channel_stream
-from experiments.avsr.portfolio_layer import _grid
+from experiments.debug.corr_check import _avsl_stream, _channel_stream
+from experiments.avsl.portfolio_layer import _grid
 from experiments.ob.ob_risk_overlay import (
     apply_arm,
     base_trades,

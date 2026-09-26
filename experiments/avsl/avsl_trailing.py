@@ -26,7 +26,7 @@ import polars as pl
 from engine.backtest.protocol import FOLD_DAYS, N_FOLDS, wf_folds
 from experiments import REPO
 from experiments.avsl.avsl_baseline import DAY, WARMUP
-from experiments.loaders.load_yf import TICKERS
+from experiments.infra.loaders.load_yf import TICKERS
 from ta.src.custom.avs_base import (
     _avs_base,
     _compute_len_v,
@@ -376,7 +376,7 @@ def run() -> None:
         # stuck at $0.017 after a fake -99.5% 1H print, Aug 2025).
         universe = [t for t in TICKERS if t != "TON"]
     else:
-        from experiments.loaders.load_okx import ALL  # 34 okx spot assets
+        from experiments.infra.loaders.load_okx import ALL  # 34 okx spot assets
 
         universe = [f"{s}-USDT" for s in ALL]
     syms = [

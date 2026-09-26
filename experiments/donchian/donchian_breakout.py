@@ -104,7 +104,7 @@ def run() -> None:
     tfs = [a for a in args if a != "all34"] or ["4H"]
     universe = ASSETS
     if all34:
-        from experiments.loaders.load_okx import ALL
+        from experiments.infra.loaders.load_okx import ALL
 
         universe = tuple(ALL)
     print(

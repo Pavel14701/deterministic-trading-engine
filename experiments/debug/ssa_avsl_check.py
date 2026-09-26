@@ -21,7 +21,7 @@ the equal-risk cum-R stream, median lag of SSA crosses vs baseline.
 Gate (declared here, before running): SSA arm is interesting only if
 EV/trade >= baseline AND max DD < baseline; a large cross reduction
 with EV collapse is a fail (latency ate the edge).
-Run:  uv run python -m experiments.diagnostics.ssa_avsl_check
+Run:  uv run python -m experiments.debug.ssa_avsl_check
 """
 
 from __future__ import annotations

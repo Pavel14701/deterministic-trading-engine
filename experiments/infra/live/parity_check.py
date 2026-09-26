@@ -23,8 +23,8 @@ Only CLOSED 4H buckets are considered (a bucket is closed when a
 later bucket exists in the series).  Any violation -> exit 1.
 
 Run:
-  uv run python -m experiments.live.parity_check             # with fetch
-  uv run python -m experiments.live.parity_check --no-fetch  # cache only
+  uv run python -m experiments.infra.live.parity_check             # with fetch
+  uv run python -m experiments.infra.live.parity_check --no-fetch  # cache only
 """
 
 from __future__ import annotations
@@ -67,13 +67,13 @@ def frozen_sha(repo: Path) -> str:
 def refresh_cache(repo: Path) -> None:
     """Append fresh 1H klines via the existing loader (kl only).
 
-    The loader is experiments.loaders.load_binance and takes FULL
+    The loader is experiments.infra.loaders.load_binance and takes FULL
     Binance symbols (BTCUSDT), not the bare ASSETS tags; a bare tag
     falls through its symbol filter and silently triggers a fetch of
     its entire default universe (fixed 2026-09-23, STATUS).
     """
     subprocess.run(
-        [sys.executable, "-m", "experiments.loaders.load_binance",
+        [sys.executable, "-m", "experiments.infra.loaders.load_binance",
          *(s + "USDT" for s in ASSETS), "kl"],
         check=False, cwd=str(repo),
     )

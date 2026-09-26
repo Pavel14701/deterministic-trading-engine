@@ -22,7 +22,7 @@ import sys
 
 from engine.infra.marketdata.okx_fetch import fetch_candles
 from experiments import REPO
-from experiments.loaders.load_yf import _stats
+from experiments.infra.loaders.load_yf import _stats
 
 
 CACHE = REPO / "data" / "okx21"

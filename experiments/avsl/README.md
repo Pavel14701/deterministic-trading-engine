@@ -1,4 +1,13 @@
-# avsl — AVSL / Donchian entry-signal family (all CLOSED)
+# avsl — семейство AVS (AVSL-cross + зеркало/канал)
+
+> **2026-09-25, перестройка каталога:** Donchian-модули переехали в
+> [`experiments/donchian/`](../donchian/); зеркало/канал/портфель-слой
+> (бывш. `experiments/avsr/`) теперь здесь: `risk_overlay_mirror.py`,
+> `channel_breakout.py` (LATENT PASS 5/5), `portfolio_layer.py`;
+> диагностика (_dd_diag, grid_alignment_check, sharpe_postmortem,
+> battery_v2_calibration, corr_check) — в [`experiments/debug/`](../debug/).
+> Журнальные записи и frozen-докстринги ссылаются на старые пути;
+> маппинг — [docs/EXPERIMENTS.md](../../docs/EXPERIMENTS.md).
 
 All: gross edge ≈ 0 net of costs.
 

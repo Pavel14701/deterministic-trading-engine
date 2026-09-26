@@ -14,8 +14,8 @@
 
 | Объект | Вердикт | Где | Следующий слой |
 |---|---|---|---|
-| **AVSL-cross 4H S1** | PASS 5/5, промоучен, frozen | `engine/passed/avsl_cross_s1` | live-scale: Phase A paper ≥90д/≥50 сделок (`experiments/live/`) |
-| **AVS-channel S1** | PASS 5/5, LATENT | runner `experiments/avsr/` | execution-пререг (P4-EX паттерн) до капитала; R = ширина канала, EV не сравним с AVSL напрямую |
+| **AVSL-cross 4H S1** | PASS 5/5, промоучен, frozen | `engine/passed/avsl_cross_s1` | live-scale: Phase A paper ≥90д/≥50 сделок (`experiments/infra/live/`) |
+| **AVS-channel S1** | PASS 5/5, LATENT | runner `experiments/avsl/` (channel_breakout, бывш. avsr/) | execution-пререг (P4-EX паттерн) до капитала; R = ширина канала, EV не сравним с AVSL напрямую |
 | **funding_carry_v3** | PASS с затуханием (F1 13.5% → F3 1.45%/год) | `experiments/carry/funding_carry_v3` | tradability re-validation; окно закрывается |
 
 ### Сводка вердиктов (полный текст — в журнале)

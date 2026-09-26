@@ -8,9 +8,10 @@ uv run python -m experiments.<track>.<name> [args]
 
 | трек | содержимое | README |
 |---|---|---|
-| `loaders/` | загрузчики данных и сборщики датасетов (OKX / Yahoo / Binance) | [loaders/README.md](loaders/README.md) |
+| `infra/loaders/` | загрузчики данных (OKX / Yahoo / Binance) | [infra/loaders/README.md](infra/loaders/README.md) |
 | `carry/` | funding-carry цепочка + barrier probability | [carry/README.md](carry/README.md) |
-| `avsl/` | семейство входных сигналов AVSL / Donchian | [avsl/README.md](avsl/README.md) |
+| `avsl/` | семейство AVS: AVSL-cross + зеркало/канал (LATENT) | [avsl/README.md](avsl/README.md) |
+| `donchian/` | Donchian breakout семья (закрыта; переехала из avsl/) | — |
 | `ob/` | пайплайн Order-Block | [ob/README.md](ob/README.md) |
 | `panel/` | эксперименты champion-stack (историческое) + диагностика текущей панели | [panel/README.md](panel/README.md) |
 
@@ -87,3 +88,13 @@ stocks-трансфер AVSL закрыт FAIL'ом 2026-09-25** — любой 
    своим README); строка индекса обновляется.
 6. Каждая живая/ожидающая строка здесь несёт якорь на журнал;
    без якоря строка не считается сделанной.
+
+## Инфраструктура и отладка
+
+- `infra/sharadar/` — фетчер Sharadar (READY, заблокирован: ключ не покупается)
+- `infra/live/` — live-scale паритет и пилот-трекинг ([README](infra/live/README.md))
+- `debug/` — разовые проверки/калибровка/постмортемы (без гейтов, вердиктов не дают)
+- `panel/` — HISTORICAL-архив дофиксного симулятора D.13g (IMPORT-UNSAFE, не импортировать)
+
+Полный реестр с вердиктами и маппингом старых путей:
+[../docs/EXPERIMENTS.md](../docs/EXPERIMENTS.md).

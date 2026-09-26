@@ -48,7 +48,7 @@ from engine.passed.avsl_cross_s1 import (
     resample_4h,
     s1_sizes,
 )
-from experiments.live.parity_check import (
+from experiments.infra.live.parity_check import (
     check as parity_ok,
     frozen_sha,
     load_state,

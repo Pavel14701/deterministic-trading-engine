@@ -22,7 +22,7 @@ from sklearn.isotonic import IsotonicRegression
 from engine.backtest.protocol import wf_folds
 from engine.passed.avsl_cross_s1 import atr_ind, repo_root
 from experiments.carry.funding_carry import UNIVERSE
-from experiments.loaders.load_binance import SYMBOL_ALIASES
+from experiments.infra.loaders.load_binance import SYMBOL_ALIASES
 
 REPO = repo_root()
 CACHE = REPO / "data" / "binance"

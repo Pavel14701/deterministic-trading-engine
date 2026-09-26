@@ -9,7 +9,7 @@ residual as the rank signal, long bottom-3 / short top-3 equal
 weight, held 24 bars, 10bp RT fee per basket.  Orthogonality
 read-outs vs the AVSL S1 stream and BTC returns.
 
-Run:  uv run python -m experiments.diagnostics.rsvd2_check
+Run:  uv run python -m experiments.debug.rsvd2_check
 """
 
 from __future__ import annotations

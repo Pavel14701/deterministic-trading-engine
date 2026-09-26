@@ -8,7 +8,7 @@ both; PF-G4 honest layer -- every trailing 12m window (2190
 bars) positive cumulative R.  Combination 0.5/0.5, streams
 exactly as corr_check builds them (frozen S1 sizing).
 
-Run:  python -m experiments.avsr.portfolio_layer
+Run:  python -m experiments.avsl.portfolio_layer
 """
 from __future__ import annotations
 
@@ -21,8 +21,8 @@ from engine.passed.avsl_cross_s1 import (
     repo_root,
     resample_4h,
 )
-from experiments.avsr.corr_check import _avsl_stream, _channel_stream
-from experiments.avsr.risk_overlay_mirror import (
+from experiments.debug.corr_check import _avsl_stream, _channel_stream
+from experiments.avsl.risk_overlay_mirror import (
     ANN,
     BOOT_B,
     HORIZON,

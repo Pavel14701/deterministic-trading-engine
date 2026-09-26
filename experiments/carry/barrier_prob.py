@@ -24,7 +24,7 @@ sys.path.insert(0, str(REPO))
 from engine.backtest.protocol import wf_folds
 from experiments.avsl.avsl_baseline import DAY
 from experiments.avsl.avsl_trailing import REPO, _read_okx
-from experiments.avsl.donchian_breakout import _roll
+from experiments.donchian.donchian_breakout import _roll
 from ta.src.volatility.atr import atr_ind
 
 
