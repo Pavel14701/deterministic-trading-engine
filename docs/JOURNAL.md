@@ -7595,3 +7595,87 @@ C1-C6), D1 covered call (deployable beta, не alpha-претензия).
 Wave 5 events -- НЕ открывается без готового событийного
 календаря и механизма, отличного от vol-предикторов; при 0 ALIVE
 в 14 ячейках prior событий условно тоже снижается.
+## 2026-09-26 — OPTIONS: заведена вся frozen-очередь приложения 2 (A1, E3, B1, C2, D1, C1)
+
+**A1 covered calls -- FAIL (G-D1a/b/c).** 65 legs, 1947 дней.
+Sharpe +0.27 vs +0.38 у buy-hold, DD 76.8% (beta), Calmar -0.01
+vs 0.08. Yield 3.9%/yr PASS, но capped-upside drag ~6%/год --
+overlay УХУДШАЕТ buy-hold. Согласуется с U2: call legs
+отрицательны при любом IV. `runs/covered_calls.log`
+
+**E3 event calendar -- ГОТОВО.** 111 событий (FOMC 40, Deribit
+monthly 66, upgrades 3, halvings 2) ->
+`data/events/event_calendar_2021_2026.json`. FOMC-даты из
+публичного расписания -- верифицировать перед live.
+
+**B1 wave-5 events -- INSUFFICIENT, данных мало.** 0 из 111
+событий торгуемых: IV pct>50 снял 50, отсутствие prints обоих
+ног на нужном страйке -- 52. Frozen-инструменты не покрывают
+mid-month входы. Блокер: полный fetch цепи (все страйки) --
+отдельное инвестиционное решение, не рестарт.
+`runs/wave5_events.log`
+
+**C2 options taker flow -- ЕДИНСТВЕННЫЙ нетривиальный сигнал
+дня (read-out).** 1.69M трейдов, 2129 часов с потоком. Общий
+IC(net flow, fwd 24h) = +0.018 -- ноль. Но экстремумы:
+top-10% buy-flow часы -> fwd 24h +2.78% (med +1.43), bottom-10%
+-> +0.51% (med +0.24), n=213/213. IC в обоих DVOL-режимах
+положителен (+0.013 / +0.022). ОБЯЗАТЕЛЬНО до веры: годовой
+сплит (поток сконцентрирован в ранних годах -> period bias) и
+проверка на RV-корреляцию (vol-proxy trap). Дальше -- только
+как conditional prereg с gates из карты (IC>0.05 не проходит,
+работает только extreme-conditioning).
+
+**D1 BTC/ETH IV spread -- реверсия ЕСТЬ, экономика под вопросом.**
+Spread med -13.7pt (ETH дороже), автокорр 0.971, |z60|>2 -- 11%
+дней, n=214 событий: z>2 -> 5д -0.9pt, z<-2 -> 5д +1.9pt.
+Реверсия подтверждена, но 1-2pt за 5д против double-haircut --
+prereg только с явным расчётом издержек.
+
+**C1 dealer gamma -- БЛОКИРОВАН ПО ДАННЫМ.** Deribit API отдаёт
+только текущий OI snapshot; исторического OI нет. Для historical
+GEX нужен сторонний источник. Не решается fetch'ем.
+
+Итого дня: alpha-опции подтверждено закрыты (A1 FAIL согласуется
+с conditional-диагом); живые хвосты -- C2 extreme-flow (после
+проверки period bias) и D1 spread (после расчёта издержек), оба
+-- только через conditional prereg.
+## 2026-09-26 — Блокирующие проверки C2/D1/B1-pre: C2 закрыт, D1 мёртв по costs, B1 fetch запущен
+
+`followup_checks.py` v1.0.0, один ран -> `runs/followup_checks.log`.
+
+**C2 extreme flow -- ЗАКРЫТ (year-split нестабилен).**
+Spread top10/bottom10 по годам: 2021 +9.9%, 2022 +4.7%, 2023
+-0.3%, 2024 +1.5%, 2025 +0.2%, 2026 +0.2%. Сигнал жил только в
+2021-2022. RV-контроль чистый (spearman(flow, fwd RV24) = -0.06
+-- НЕ vol-proxy), но после year-развала условный сплит тоже умирает
+(RV-hi +6.7% -- это те же 2021-22). По блокирующему правилу:
+без prereg. Направленная переменная, а не level -- но edge
+мёртв после 2022.
+
+**B1 precondition -- PASS, fetch запущен.** DVOL crush T-1 ->
+T+1 на ВСЕХ 110 событиях: mean -1.51pt, 75% событий < 0
+(expiry -1.74pt/75%, FOMC -1.38pt/75%, upgrades -5.28pt/100%,
+halving +0.8pt n=2 -- не считаем). Механизм запланированного
+разрешения неопределённости РЕАЛЕН и стабилен. По правилу
+юзера: fetch оправдан. Full monthly chain BTC (m 0.6-1.4,
+5791 инструментов из instruments_BTC.json) -- фоном,
+`runs/btc_full_fetch.log`, ~3.3ч. Оговорка для пререга: при
+2-дневном холде haircut-costs ~0.7% equity против gross
+crush-vega ~15$ на 0.1 NOTIONAL -- prereg обязан либо увеличить
+NOTIONAL/horizon, либо держать ноги до экспирации; иначе crush
+есть, а PnL нет (урок D1).
+
+**D1 BTC/ETH IV spread -- МЁРТВ по costs, заморозка без пререга.**
+Реверсия реальна, но: gross 9-19$ на событие (vega 48.7$/pt x
+0.1 NOTIONAL x 2 legs x 0.9-1.9pt) против round-trip haircut
+296$ (2 ноги x вход/выход x 25% x премия 2956$). Net -0.65%
+equity на сделку. Даже при haircut 5% -- минус. Автокорр 0.971
+(медленная реверсия) только усугубляет время под риском.
+Prior 20-25% -> 0%.
+
+Примечание к инфраструктуре: get_instruments(expired=true) без
+пагинации отдаёт только живые; полный список -- в кешe
+`data/deribit/instruments_BTC.json` (deribit_probe, пагинация).
+CRLF-баг names-файла (write_text без newline='') стрелял второй
+раз -- правило: бинарная запись списков имён.
