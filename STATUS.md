@@ -7323,3 +7323,36 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### transfer attempt requires a new data source AND a new
 #### hypothesis for WHY that universe would carry the edge.
 #### ============================================================
+####
+#### ============================================================
+#### DIAGNOSTIC on closed-family disclosure (no gates, family
+#### stocks-AVSL(12,58) stays CLOSED): long-leg concentration
+#### split -- decade x liquidity (runs/longleg_concentration.log).
+#### Proxy: trailing-252d median dollar volume, within-year
+#### cross-sectional terciles (market cap unavailable).
+####
+#### DECADE (the user's pre-HFT vs buyback test): HOMOGENEOUS.
+####   2000s +0.194R t+2.9 | 2010s +0.337R t+5.0 | 2020s
+####   +0.318R t+4.2.  The edge is NOT a 2010+ buyback/low-rate
+####   artifact -- it survives 2001-2009 (pre-QE, incl. 2002
+####   and 2008 crashes).
+#### SIZE: CONCENTRATED.  large +0.357R t+4.6, mid +0.420R
+####   t+5.2, small +0.056R t+1.2 -- edge lives in the liquid
+####   two-thirds, absent in the least-liquid tercile.  Decade
+####   x size: liquid names positive in ALL decades (2000s
+####   large t+2.8; 2010s mid t+3.9; 2020s mid t+3.7), small
+####   ~0 everywhere.
+####
+#### READ: passes the decade test (signal-like persistence),
+#### fails homogeneity on liquidity.  Two readings not yet
+#### separable: (a) real signal that lives where institutional
+#### liquidity lives; (b) structural bid on the largest names
+#### (buybacks+passive) -- BUT 2000s large t+2.8 predates the
+#### passive era, which weakens reading (b).  CAVEAT: "small"
+#### tercile here = bottom-4 of 12 MEGA-caps -- no true size
+#### spread in this universe; survivorship biases all cells.
+#### RESOLUTION PATH = Sharadar PIT: extend universe down the
+#### size curve with delisted names; if edge extends to mid/
+#### small caps PIT -- alpha; if it dies outside top-liquidity
+#### -- mega-cap bid.  Sharadar track unchanged, now MOTIVATED.
+#### ============================================================
