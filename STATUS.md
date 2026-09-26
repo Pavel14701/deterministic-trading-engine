@@ -43,6 +43,7 @@
 | Options wave-1 (A3 DVOL-фильтр, B2 risk reversal, IV-RV timer) | **FAIL / FAIL / не валидирован** — short-vol без хеджа закрыто; дальние ветки: delta-hedged (волна 4), cross-asset ETH (волна 2) | 2026-09-26 |
 | Options 1.1 delta-hedged short put | **FAIL** — VRP +8.5pt съедается гаммой; чистый VRP закрыт в этой инфраструктуре | 2026-09-26 |
 | Options wave-3 term structure (read-out на frozen-роллах) | **СТРУКТУРЫ НЕТ** — slope +1.1pt медиана, знак нестабилен, покрытие n=22; календарный пререг не пишется, волна заморожена до diag | 2026-09-26 |
+| Options conditional P&L diagnostic (14 ячеек, frozen-правила) | **0 ALIVE, все TRAP** — переменные входа предсказывают RV (rho 0.34–0.59), не P&L; **опционный трек закрыт как класс** | 2026-09-26 |
 
 ### Главная выводная линия книги
 

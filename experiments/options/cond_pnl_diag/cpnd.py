@@ -106,7 +106,7 @@ def tercile_verdict(pnl: np.ndarray, x: np.ndarray,
     """Frozen rules: ALIVE / TRAP / NULL (+ reasons)."""
     from scipy.stats import spearmanr
     out: dict = {}
-    ok = np.isfinite(x) & np.isfinite(pnl)
+    ok = np.isfinite(x) & np.isfinite(pnl) & np.isfinite(rv)
     x, pnl, years, rv = x[ok], pnl[ok], years[ok], rv[ok]
     out["n"] = int(ok.sum())
     if out["n"] < 30:
