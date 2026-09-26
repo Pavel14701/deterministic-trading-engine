@@ -7366,3 +7366,22 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### Consequence: no valid out-of-crypto long-only test will
 #### exist.  The only deployable engine remains crypto-4H.
 #### ============================================================
+
+## 2026-09-25 — Трёхуровневая структура experiments/ + docs/CORE.md
+
+Каталог приведён к конвенции **семья → эксперимент → скрипты с
+версией**: 40 папок-экспериментов (`<семья>/<эксперимент>/`), в каждой
+`EXPERIMENT.md` (статус, вердикт, доказательство, история версий);
+82 скрипта получили `__version__ = "1.0.0"` = evidence-версия (код,
+получивший зафиксированный вердикт; правки запрещены — только новая
+версия + запись). Связанные скрипты одной линии собраны в один
+эксперимент (ablation_* → avsl/decomposition; filter_f* → avsl/filters;
+funding_carry_v1/v2/v3 → carry/funding_carry_v*; и т.д.). `debug/`,
+`panel/` (HISTORICAL) и `infra/` не эксперименты — остаются как есть.
+Все перекрёстные импорты (включая engine/tests) переписаны на новые
+пути. Ядро оформлено отдельной докой `docs/CORE.md` (engine/core.py +
+battery_v2: назначение, frozen-дефолты, правило бит-в-бит
+эквивалентности).
+
+Верификация: pytest 273 passed / 2 skipped; import-check 122/122 OK;
+compileall clean.

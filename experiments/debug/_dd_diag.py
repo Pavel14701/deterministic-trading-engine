@@ -4,9 +4,9 @@ from datetime import datetime, timezone
 
 import numpy as np
 
-from experiments.avsl.avsl_cross_confirm import _collect
-from experiments.avsl.avsl_cross_confirm2 import _accrual_stream
-from experiments.avsl.avsl_cross_tf import ASSETS, MSEC_4H
+from experiments.avsl.cross_confirm.avsl_cross_confirm import _collect
+from experiments.avsl.cross_confirm.avsl_cross_confirm2 import _accrual_stream
+from experiments.avsl.cross_tf.avsl_cross_tf import ASSETS, MSEC_4H
 
 
 def main() -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from experiments.zscore.signals import (
+from experiments.zscore.entry.signals import (
     hyb1_signals,
     mom1_signals,
     mr1_signals,

@@ -5,26 +5,39 @@
 ⏸ BLOCKED (готов, не запускается).  Полные тексты вердиктов —
 `docs/JOURNAL.md`; логи — `runs/`.
 
-# Реестр экспериментов
-
 > **2026-09-25: каталог перестроен по семьям гипотез.**  Маппинг
 > старых путей (на них ссылаются журнал и frozen-докстринги):
 >
 > | старый путь | новый путь |
 > |---|---|
-> | `experiments/avsr/*` | `experiments/avsl/{channel_breakout, risk_overlay_mirror, portfolio_layer}.py` |
+> | `experiments/avsr/*` | `experiments/avsl/{channel, risk_overlay_mirror, portfolio_layer}` |
 > | `experiments/avsr/corr_check.py` | `experiments/debug/corr_check.py` |
-> | `experiments/avsl/donchian_*.py`, `quattro_donchian.py` | `experiments/donchian/` |
+> | `experiments/avsl/donchian_*.py`, `quattro_donchian.py` | `experiments/donchian/{breakout, overlay, quattro}/` |
 > | `experiments/avsl/{_dd_diag, grid_alignment_check, sharpe_postmortem, battery_v2_calibration}.py` | `experiments/debug/` |
 > | `experiments/diagnostics/*` | `experiments/debug/` |
 > | `experiments/loaders/*` | `experiments/infra/loaders/` |
 > | `experiments/sharadar/*` | `experiments/infra/sharadar/` |
 > | `experiments/live/*` | `experiments/infra/live/` |
 
-Легенда: 🟢 PASS/SURVIVOR · 🟡 PASS-латент/диагност. · ⚫ CLOSED ·
-⚪ INVALID (результат недействителен) · 🔧 INFRA (без гейтов) ·
-⏸ BLOCKED (готов, не запускается).  Полные тексты вердиктов —
-`docs/JOURNAL.md`; логи — `runs/`.
+> **2026-09-25 (позже): трёхуровневая структура.** Каждый эксперимент —
+> папка `<семья>/<эксперимент>/` c `EXPERIMENT.md` (статус, вердикт,
+> доказательство, версии) и скриптами с `__version__` (v1.0.0 =
+> evidence-версия, правки запрещены). Модульный путь изменился:
+> `experiments.<семья>.<модуль>` → `experiments.<семья>.<эксперимент>.<модуль>`
+> (например `experiments.avsl.avsl_baseline` →
+> `experiments.avsl.baseline.avsl_baseline`). Состав экспериментов:
+>
+> - `avsl/`: baseline, price_cross, trailing, wide_tp_15m, cross_tf,
+>   cross_confirm, risk_overlay 🟢, decomposition, filters, promotion,
+>   channel 🟡, portfolio_layer, extended_universe, retest, tp1, shorts
+> - `donchian/`: breakout, quattro, overlay
+> - `ob/`: detector (INFRA), ev_retest (E8 KILL)
+> - `zscore/`: entry, mfe_mae · `ttf/`: v1
+> - `carry/`: funding_carry_v1, funding_carry_v2, funding_carry_v3 🟢,
+>   barrier_prob, p4, p4_exec, prosp_v2
+> - `options/`: deribit_data (INFRA), puts_overlay, strangle_carry
+> - `fx/`: duka_data (INFRA), avsl_d1 (INVALID), avsl_4h
+> - `stocks/`: d1_transfer, long_leg_concentration
 
 ## Семьи
 

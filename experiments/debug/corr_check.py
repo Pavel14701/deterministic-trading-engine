@@ -26,8 +26,8 @@ from engine.passed.avsl_cross_s1 import (
     resample_4h,
     sized_accrual_stream,
 )
-from experiments.avsl.risk_overlay_mirror import _sizing_inputs
-from experiments.avsl.channel_breakout import collect_channel_trades
+from experiments.avsl.channel.risk_overlay_mirror import _sizing_inputs
+from experiments.avsl.channel.channel_breakout import collect_channel_trades
 
 
 def _s1_sizes_from_rv(rv: np.ndarray) -> np.ndarray:

@@ -23,15 +23,15 @@ import numpy as np
 
 from engine.passed.avsl_cross_s1 import ASSETS, MSEC_4H
 from experiments.debug.corr_check import _avsl_stream, _channel_stream
-from experiments.avsl.portfolio_layer import _grid
-from experiments.ob.ob_risk_overlay import (
+from experiments.avsl.portfolio_layer.portfolio_layer import _grid
+from experiments.ob.ev_retest.ob_risk_overlay import (
     apply_arm,
     base_trades,
     decorate,
     sizing_aux,
     stream_of,
 )
-from experiments.avsl.retest_entry import _env
+from experiments.avsl.retest.retest_entry import _env
 
 W12M = 2190
 TOP_K = 5

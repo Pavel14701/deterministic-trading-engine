@@ -30,7 +30,7 @@ from engine.infra.marketdata.binance_fetch import (
     fetch_oi_history,
 )
 from experiments import REPO
-from experiments.carry.funding_carry import UNIVERSE
+from experiments.carry.funding_carry_v1.funding_carry import UNIVERSE
 from experiments.infra.loaders.load_yf import _stats
 
 

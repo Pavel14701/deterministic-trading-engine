@@ -12,7 +12,7 @@ from engine.passed.avsl_cross_s1 import (
     SPLIT_FRAC,
     repo_root,
 )
-from experiments.avsl.tp1_checks import collect_all
+from experiments.avsl.tp1.tp1_checks import collect_all
 
 
 def lag_sum(v: np.ndarray, kmax: int) -> float:

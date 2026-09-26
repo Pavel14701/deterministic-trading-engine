@@ -1,19 +1,33 @@
 # Каталог экспериментов
 
-Каждый эксперимент — запускаемый модуль, сгруппирован по трекам:
+Структура: **семья (папка) → эксперимент (папка) → скрипты**.
+Каждый эксперимент — папка с `EXPERIMENT.md` (статус, вердикт,
+доказательство, история версий) и скриптами, помеченными
+`__version__`. Запуск:
 
 ```bash
-uv run python -m experiments.<track>.<name> [args]
+uv run python -m experiments.<семья>.<эксперимент>.<скрипт> [args]
 ```
 
-| трек | содержимое | README |
+**Правило версий:** `v1.0.0` = evidence-версия — код, получивший
+зафиксированный вердикт; изменять запрещено. Любая правка = новая
+версия скрипта + запись в таблице «История версий» в `EXPERIMENT.md`.
+Общие хелперы — `experiments/_repo.py`; диагностика — `experiments/debug/`
+(не эксперименты, реестр — в `docs/EXPERIMENTS.md`).
+
+| семья | эксперименты | README |
 |---|---|---|
-| `infra/loaders/` | загрузчики данных (OKX / Yahoo / Binance) | [infra/loaders/README.md](infra/loaders/README.md) |
-| `carry/` | funding-carry цепочка + barrier probability | [carry/README.md](carry/README.md) |
-| `avsl/` | семейство AVS: AVSL-cross + зеркало/канал (LATENT) | [avsl/README.md](avsl/README.md) |
-| `donchian/` | Donchian breakout семья (закрыта; переехала из avsl/) | — |
-| `ob/` | пайплайн Order-Block | [ob/README.md](ob/README.md) |
-| `panel/` | эксперименты champion-stack (историческое) + диагностика текущей панели | [panel/README.md](panel/README.md) |
+| `avsl/` | 16 (baseline … channel, portfolio_layer) — семейство AVS | [avsl/README.md](avsl/README.md) |
+| `donchian/` | breakout, quattro, overlay (семья закрыта) | — |
+| `carry/` | funding_carry_v1→v3, p4, prosp_v2, barrier_prob | [carry/README.md](carry/README.md) |
+| `ob/` | detector (INFRA), ev_retest (E8 KILL) | [ob/README.md](ob/README.md) |
+| `zscore/` | entry, mfe_mae | [zscore/README.md](zscore/README.md) |
+| `ttf/` | v1 | — |
+| `options/` | deribit_data, puts_overlay, strangle_carry | — |
+| `fx/` | duka_data, avsl_d1 (INVALID), avsl_4h | — |
+| `stocks/` | d1_transfer, long_leg_concentration | — |
+| `infra/` | loaders, sharadar, live (инфраструктура, не эксперименты) | [infra/loaders/README.md](infra/loaders/README.md) |
+| `panel/` | champion-stack, HISTORICAL (не импортировать) | [panel/README.md](panel/README.md) |
 
 Результаты складываются в `runs/`; каждый вердикт записывается в
 журнал **`docs/JOURNAL.md`** (бывший STATUS.md; снапшот текущего
