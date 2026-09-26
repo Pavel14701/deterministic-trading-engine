@@ -4,9 +4,9 @@
 # retry (max 4), then move on (missing files re-picked on rerun).
 set -u
 cd "$(dirname "$0")/../.."   # repo root
-OUT=data/deribit/puts_trades2
+OUT=data/deribit/strangle_trades
 mkdir -p "$OUT"
-N=0; TOTAL=$(wc -l < data/deribit/puts_subset2_names.txt)
+N=0; TOTAL=$(wc -l < data/deribit/strangle_names.txt)
 while read -r name; do
   [ -s "$OUT/$name.json" ] && continue
   N=$((N+1))
@@ -29,5 +29,5 @@ while read -r name; do
   fi
   [ $((N % 25)) -eq 0 ] && echo "$(date +%H:%M:%S) progress $N/$TOTAL"
   sleep 1.5
-done < data/deribit/puts_subset2_names.txt
+done < data/deribit/strangle_names.txt
 echo "DONE. fetched files: $(ls "$OUT" | wc -l)/$TOTAL"

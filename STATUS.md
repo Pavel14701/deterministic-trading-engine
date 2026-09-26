@@ -7248,3 +7248,43 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### MUST be frozen before the run; a copied bar-count without
 #### the calendar-equivalence check invalidates the test.
 #### ============================================================
+####
+#### ============================================================
+#### TEST A (valid transfer, prereg fc6b3aa): STOCKS AVSL(12,58)
+#### D1, calendar-matched, 2001+ regime window, battery v2.
+#### ONE-SHOT -> VERDICT: FAIL (runs/avsl_stocks_transfer.log).
+#### Family stocks-AVSL-D1(12,58) CLOSED per kill rule.
+####
+#### Portfolio (dollar-volume): Sharpe 0.11/0.11, DD 54/36%,
+#### EV +0.04R, CI includes 0 -> v1 FAIL both; G-CONC also fails
+#### (p95 13/14), ENB 11.1/11.5 (accrual streams ~independent).
+#### vol=ones control: Sharpe 0.32/0.15 -- volume input again
+#### NOT an amplifier (2nd independent config where this holds).
+####
+#### THE REAL READ-OUT (disclosure, not a family): with the
+#### VALID config the two legs finally separate cleanly --
+####   longs: EV +0.27/+0.29R, EV_orth vs SPY-30d +0.272R
+####   (t +5.2) / +0.297R (t +4.5), neg_years 3/18 and 3/9;
+####   shorts: EV -0.19/-0.22R, EV_orth -0.195/-0.219R
+####   (t -8.8 / -7.4), leg DD 94/76%.
+#### Calendar-matched AVSL longs capture equity drift that
+#### SURVIVES market-factor orthogonalization at t~+5 -- the
+#### strongest out-of-crypto signal seen in this book.  The
+#### symmetric short leg is pure poison (post-2001 drift) and
+#### single-handedly fails the portfolio.  NOTE: long EV is
+#### survivorship-biased upward (declared); borrow not modeled
+#### (short leg overstated negatively... borrow makes shorts
+#### WORSE -- direction of bias favors shorts being even more
+#### negative).
+#### Candidate recorded (NOT run, needs new prereg): long-only
+#### AVSL(12,58) stocks -- motivated by this split (unlike
+#### crypto P-L1 where shorts were diversifiers, here they are
+#### anti-diversifiers).
+####
+#### TEST B (FX 4H from yf hourly): INFEASIBLE ON FREE DATA.
+#### Measured: yf FX hourly = 730 days exactly (2024-09 ->
+#### 2026-09) -> 4H grid ~1830 bars; WARMUP 400 + HORIZON 500
+#### leaves ~930 tradable bars, no PRIMARY/F3 split possible.
+#### Valid FX 4H test requires histdata/Dukascopy/paid feed --
+#### blocked until a data source is chosen.
+#### ============================================================
