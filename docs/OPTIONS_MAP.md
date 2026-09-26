@@ -15,8 +15,8 @@ put-skew нестабилен по годам (2021 отрицательный),
 
 | # | Стратегия | Статус | Prior | Примечание |
 |---|---|---|---|---|
-| 1.4 | **A3: DVOL-фильтр short vol** | READY, волна 1 | 45% | только q4_hi — обходит decay |
-| 1.5 | IV−RV timer | READY, волна 1 (read-out) | 40% | предиктор, без гейтов |
+| 1.4 | A3: DVOL-фильтр short vol | **CLOSED (FAIL G-A1, 2026-09-26)** | — | фильтр смягчает (-41%→-15%) но знак не меняет |
+| 1.5 | IV−RV timer | **CLOSED (не валидирован, 2026-09-26)** | — | не монотонен: t3−t1 = −1.6pt |
 | 1.1 | Delta-hedged short put | BUILD (hedging engine) | 40% | только real-print legs |
 | 1.2 | Delta-hedged short straddle | BUILD | 35% | |
 | 1.3 | Var-swap replication | BUILD + chain-fetch | 35% | deep OTM нужен |
@@ -26,9 +26,9 @@ put-skew нестабилен по годам (2021 отрицательный),
 
 | # | Стратегия | Статус | Prior | Примечание |
 |---|---|---|---|---|
-| 2.1 | **B2: risk reversal** | READY, волна 1 | 40% | обе ноги favorable |
-| 2.2 | B1: short put + DVOL filter | READY, после A3/B2 | 35% | режимная ставка |
-| 2.3 | Call overwriting | против структуры (call cheap) | — | CLOSED by phase-0 |
+| 2.1 | B2: risk reversal | **CLOSED (FAIL G-B1/B5, 2026-09-26)** | — | call-leg −16.2%: cheap ≠ positive carry |
+| 2.2 | B1: short put + DVOL filter | ЗАМОРОЖЕНО до новой механики (A3/B2 FAIL) | 15% | без хеджа не открывать |
+| 2.3 | Call overwriting | CLOSED (фаза-0 + B2: call sale только ускоряет тету-дренаж в минус) | — | |
 | 2.4 | Butterfly (kurtosis) | BUILD (multi-leg) | 30% | |
 | 2.5 | Skew momentum | BUILD | 25% | |
 | 2.6 | Skew term structure | FETCH (multi-expiry) | 30% | волна 3 |

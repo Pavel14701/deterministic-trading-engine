@@ -40,6 +40,7 @@
 | FX AVSL D1 | ОТЗЫВАН (invalid transfer, timescale ×6) | 2026-09-25 |
 | Stocks AVSL D1 (12/58) | FAIL; disclosure: long EV_orth t+5.2 — декада-однороден, ликвидность-концентрирован; UNRESOLVED (Sharadar срезан) | 2026-09-25 |
 | FX AVSL 4H (валидный transfer, полный конфиг) | **FAIL** — тик-объём vs ones control исключает прокси-защиту | 2026-09-25 |
+| Options wave-1 (A3 DVOL-фильтр, B2 risk reversal, IV-RV timer) | **FAIL / FAIL / не валидирован** — short-vol без хеджа закрыто; дальние ветки: delta-hedged (волна 4), cross-asset ETH (волна 2) | 2026-09-26 |
 
 ### Главная выводная линия книги
 
