@@ -1,5 +1,10 @@
 # Карта опционных стратегий (registered backlog, 2026-09-26)
 
+> **СТАТУС 2026-09-26:** alpha-трек закрыт (conditional P&L diagnostic, 0 ALIVE).
+> Статусы/priors строк ниже НЕактуальны для prioritization; действующий
+> frozen-инвентарь оставшегося -- в приложении в конце файла.
+
+
 Реестр направлений по **источнику эджа**. Статусы: READY (данные +
 движок есть), FETCH (нужны данные), BUILD (нужен движок), EVENT
 (нужен календарь). Дисциплина: каждая стратегия — отдельный пререг
@@ -111,3 +116,59 @@ put-skew нестабилен по годам (2021 отрицательный),
 30+ стратегий × сегменты = multiple comparison. При α=0.05 и 60
 тестах ~3 ложных позитива. Решение: пререг до прогона, один ран,
 frozen гейты, failed = closed. Никаких «попробуем ещё вариант».
+
+## Приложение: инвентарь несделанного (2026-09-26, frozen)
+
+Зафиксировано после закрытия трека (conditional P&L diagnostic,
+0 ALIVE). Это КАРТА НЕСДЕЛАННОГО: каждый пункт -- либо в
+опровергнутом механизме, либо требует данных/инфры, которых нет,
+либо prior <=15%. Открытие любого пункта = новая строка с новым
+пререгом, НЕ рестарт.
+
+### A. Не тестированные стратегии
+
+| Стратегия | Prior | Почему не делали / что нужно |
+|---|---|---|
+| Covered calls (D1) | 30% (beta) | Не alpha-претензия; нужен тест vs BTC buy-hold |
+| Event-driven (halving, upgrades, FOMC) | 25-35% | Нет календаря; строить под диаг = p-hacking |
+| Options flow / dealer gamma | 20-25% | Нет order-flow данных |
+| Altcoin options (SOL, XRP) | 15% | Нет данных; Deribit fetch возможен |
+| Long options в trend | 15% | Нужен direction edge, которого нет |
+| Realized vs implied skew | 15% | После 1.1 -- тот же gamma drain |
+| Expiry pinning / max pain | 15% | Нет OI by strike |
+| Risk reversal с фильтром (B2 v2) | 15% | Обе ноги favorable, но 1.1 + 0 ALIVE |
+| Short put с фильтром (B1 v2) | 10-15% | Put rich только 2023+, режимная |
+| Ratio spreads / jade lizard / seagull / collar | 10-15% | Комбинации опровергнутых компонент |
+| Call overwriting / short call only | 10% | Продажа дешёвой премии; U2: все терцили отрицательны |
+| Butterfly / iron condor / broken wing | 10% | То же |
+| Cross-asset BTC/ETH (B4) | 10% | ETH skew режимный, пересечение богатых зон = 1 год из 6 |
+| Vol-of-vol / dispersion | 10% | Нужны инфра + данные |
+| Gamma scalping | 10% | 1.1 показал gamma drain |
+| Delta-hedged straddle (1.2) / var-swap (1.3) | 10% | Заморожены после 1.1 |
+| Calendar spreads | 10% | Wave-3 read-out: структуры нет |
+| Deribit vs other venues arb | 5% | Нет данных других venue |
+
+### B. Не сделанные диагностики
+
+PCA/факторы IV поверхности; динамика поверхности как предиктор;
+dealer gamma exposure; options taker imbalance; полная кривая
+term structure (3+ теноров); skew term structure; implied
+correlation; arbitrage-проверки поверхности; jump/tail-hedging
+cost; модель транзакционных издержек (реальные филлы/spread,
+сейчас только haircut 25%); live/paper торговля.
+
+### C. Не построенная инфраструктура
+
+Real-time options feed; execution simulator с order book;
+delta-hedging по real prints (сейчас BS-delta); multi-expiry
+fetcher; event calendar; cross-venue data.
+
+### D. Решение
+
+Опционный трек как источник **alpha** закрыт (четыре независимых
+опровержения: 1.1, wave-3 slope, eth_skew режимность, conditional
+0 ALIVE). Осталось: D1 (beta overlay, отдельное решение), события
+(только при готовом календаре + механизме, отличном от
+vol-предикторов), flow/dealer-gamma (только при появлении данных).
+Ресурсы трека сохранены: hedge engine (300 тестов), ETH trades
+327k, DVOL/RV-инфраструктура, все логи one-shot ранов.
