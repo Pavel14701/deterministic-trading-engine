@@ -3,11 +3,14 @@
 # file per instrument; skip existing.  On non-200: wait 90s and
 # retry (max 4), then move on (missing files re-picked on rerun).
 set -u
-cd "$(dirname "$0")/../.."   # repo root
+REPO="$(cd "$(dirname "$0")/../../.." && pwd)" || exit 1
+cd "$REPO" || exit 1
+echo "repo: $REPO" >&2
 OUT=data/deribit/eth_trades
 mkdir -p "$OUT"
 N=0; TOTAL=$(wc -l < data/deribit/eth_names.txt)
 while read -r name; do
+  name=${name%$""}
   [ -s "$OUT/$name.json" ] && continue
   N=$((N+1))
   end_ms=$(($(date -d "$name" +%s 2>/dev/null || echo 0)000))
