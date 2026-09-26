@@ -7402,3 +7402,38 @@ PASS 5/5, EV +0.261R, NW-Sh 1.67, DD 21.8% — порядок confirm-ных в�
 Дока docs/THEORY.md. Тесты: dsl/tests/test_theory.py,
 engine/tests/core/test_theory_runner.py.
 
+## 2026-09-26 — OPTIONS phase-0: VRP / skew stability / prints-vs-proxy (BTC)
+
+Read-out, без гейтов (спека frozen в
+`experiments/options/vol_readout/EXPERIMENT.md`, код v1.0.0, коммит
+`ca2c84b`). Полный лог: `runs/vol_readout.log`.
+
+**1. VRP есть, но затухает (crowding, как funding).** DVOL−RV30 daily:
++18.3 (2021) → +11.5 (2022) → +8.6 → +7.4 → +5.8 (2025) → **+1.4 (2026)**;
+в среднем +8.8, 81% дней >0. Концентрация по режимам: q4_hi DVOL
++15.3 pts против q2 +4.1 → DVOL-фильтр (A3) подтверждён экономически.
+По TTM: ближе к экспирации жирнее (<45d: +10.4 по prints).
+
+**2. Put-skew НЕ стабилен — frozen-таблица SKEW_PUT скрывает режимность.**
+По годам медиана iv−dvol: m 0.80-0.92 был **отрицательным в 2021**
+(−0.7..−9), rich в 2022-23, околонулевой 2024, снова rich 2025-26
+(+40..+14). Т.е. «продаём rich put wing» работало бы в 2022/2025 и
+теряло в 2021. Short-put prior снижается до режимного. Call-skew
+(95-143) — **стабильно** отрицательный по всем годам (call wing
+дешёвый всегда): leg покупки call'ов в RR подтверждена, продажа call
+wing (strangle) — систематически против структуры.
+
+**3. Per-print VRP puts**: +17..+23 pts 2021-2023, +11..+17 2024-25,
+**−5.2 в 2026 (знак перевернулся)** — окно VRP сужается, как funding_carry.
+
+**4. Prints-vs-proxy**: 93/130 frozen strangle legs (72%) имеют реальные
+prints ±1d от roll → модельный риск proxy умеренный; для delta-hedged
+фазы 2 — обязательный критерий: торговать только legs с prints,
+proxy-долю логировать.
+
+**Вердикт фазы 0**: VRP жив, но затухает и режимный (high-DVOL);
+skew-аргумент «put rich» — только с 2022+ и не универсален; call wing
+стабильно cheap. Фаза 1 допускается в порядке: A3 (DVOL-фильтр,
+экономически подтверждён) → B2 (risk reversal, обе ноги favorable) →
+B1 (short put, режимно). Каждый — отдельный пререг. Iron condor и
+short strangle — против структуры, остаются закрытыми.
