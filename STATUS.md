@@ -7288,3 +7288,38 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### Valid FX 4H test requires histdata/Dukascopy/paid feed --
 #### blocked until a data source is chosen.
 #### ============================================================
+####
+#### ============================================================
+#### TEST B (valid transfer, prereg 1912405): FX 4H, FULL config
+#### copy 70/345/400/500, Dukascopy 10 pairs 2003-2026 (grid
+#### 40032 bars), battery v2.  ONE-SHOT -> VERDICT: FAIL
+#### (runs/fx_avsl_4h.log).  Family FX-AVSL-4H CLOSED per kill
+#### rule.
+####
+#### PRIMARY (tick-volume): Sharpe 0.01 / -0.66, DD 95/99%,
+#### EV -0.00/-0.08R, pos 5/10 and 1/10.  BOTH legs dead:
+#### longs -0.01/-0.04R, shorts +0.00/-0.12R.  9081 trades.
+#### CONTROL (vol=ones): Sharpe -0.17/-0.29, EV -0.03/-0.05R --
+#### SAME OR WORSE.  Tick-volume proxy is NOT the explanation:
+#### the engine itself does not transfer to FX 4H.  This was
+#### the last plausible data-quality defense of FX.
+#### ENB 9.9 (accrual streams ~independent across pairs);
+#### conc p50 8-9 (G-CONC fails) -- regime clustering is a
+#### property of the cross-entry geometry itself, present in
+#### every universe tested.
+#### DISCLOSURE: EV_orth NaN -- factor-grid mismatch (DXY daily
+#### dates vs 4H bar keys) broke the read-out; per one-shot
+#### discipline NOT rerun.  Verdict unaffected (v1 failed on
+#### Sharpe/DD/EV/pos regardless).
+####
+#### UNIVERSALITY PROGRAM -- FINAL STATE (valid tests only):
+####   crypto 4H 70/345      PASS  (deployable, promoted)
+####   stocks D1  12/58      FAIL  (long-leg EV_orth t+5.2
+####                                disclosure only)
+####   FX 4H      70/345     FAIL  (outright, volume ruled out)
+#### AVSL edge is CRYPTO-4H-SPECIFIC: confirmed on two valid
+#### out-of-crypto tests with correct scaling.  The promoted
+#### book remains the only engine with evidence.  Any future
+#### transfer attempt requires a new data source AND a new
+#### hypothesis for WHY that universe would carry the edge.
+#### ============================================================
