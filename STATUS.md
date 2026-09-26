@@ -7356,3 +7356,13 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### small caps PIT -- alpha; if it dies outside top-liquidity
 #### -- mega-cap bid.  Sharadar track unchanged, now MOTIVATED.
 #### ============================================================
+####
+#### ============================================================
+#### DECISION (user, 2026-09-25): SHARADAR TRACK SKIPPED -- no
+#### API key will be purchased.  The mega-cap-bid vs alpha
+#### question on the stocks long-leg disclosure is CLOSED AS
+#### UNRESOLVED (honestly recorded, not answered).  Fetcher
+#### stays in repo (47c0ae7) in case this changes.
+#### Consequence: no valid out-of-crypto long-only test will
+#### exist.  The only deployable engine remains crypto-4H.
+#### ============================================================
