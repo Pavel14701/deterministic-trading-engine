@@ -7186,3 +7186,65 @@ cadence + the Phase B adjudication of the DD convention finding.
 #### Next (if any): 4H equity intraday data (paid) would be
 #### needed for a real test; not scheduled.  No family opened.
 #### ============================================================
+####
+#### ============================================================
+#### METHODOLOGICAL CORRECTION (user-identified, 2026-09-25):
+#### FX-AVSL one-shot FAIL and the stocks screen are INVALID
+#### as AVSL-transfer tests.  Appended to the trail; original
+#### entries above are NOT edited (append-only discipline).
+####
+#### CORE ERROR -- config copy instead of timescale scaling:
+#### AVSL(70,345) on crypto 4H = fast 11.7d / slow 57.5d
+#### calendar horizon.  On D1 the SAME bars = 70d / 345d --
+#### 6x slower.  Both out-of-crypto runs tested a 6x-slower
+#### AVSL-shaped signal, not AVSL.  Other defects, in order
+#### of importance:
+####   (2) split regime heterogeneity: stocks PRIMARY ~1962-90
+####       (pre-electronic) vs F3 1990-2026 = two markets; FX
+####       split ~1996-2014 vs 2014-26 = pre/post trend-decay
+####       eras.  Not holdouts.
+####   (3) gap/session handling absent: overnight+weekend gaps
+####       inside ATR14 and rolling windows; closing auction
+####       print != continuous price discovery (crypto-4H
+####       assumption baked into the engine input).
+####   (4) sizing ANN: runs used ANN=365 (declared in prereg),
+####       correct ~252/260 -> sqrt(365/252) ~1.2x vol error.
+####       SECONDARY to the timescale error (not 2.95x -- the
+####       4H ANN was never used on D1).
+####   (5) fees 0.5bp RT unrealistic for equities (spread+borrow
+####       +impact 3-10bp) and optimistic for FX crosses.
+####   (6) HORIZON 100d vs crypto 100x4h ~17d -- same 6x skew.
+####
+#### CORRECTION PROPAGATES TO THE CRYPTO-1D PRIOR: decomposition
+#### E2 ("identical pipeline at 1D is dead") ran 70/345 bars at
+#### 1D = 24x timescale.  "AVSL dead at 1D" was never tested;
+#### tested was "the unscaled config is dead at 1D".  The FX
+#### prereg cited that prior as motivation -- the motivation
+#### was itself an invalid transfer.
+####
+#### SURVIVES (untouched):
+####   - crypto 4H target-config results (all verdicts,
+####     promotion, mirror/shorts findings, FAIL-CORR);
+####   - battery v2 calibration (crypto-internal);
+####   - the volume-insensitivity reading WITHIN the (invalid)
+####     D1 config: internal control, says nothing about AVSL.
+####
+#### WITHDRAWN: "AVSL is crypto-specific" / "geometry does not
+#### transfer".  Status after correction: NO valid out-of-crypto
+#### test of AVSL exists.  AVSL universality is UNRESOLVED.
+####
+#### DECLARED VALID-TEST CANDIDATES (none run, none preregged):
+####   A) stocks D1, AVSL(12,58) (calendar-matched), ANN 252,
+####      fees 3-5bp, gap-aware ATR, regime-homogeneous split;
+####   B) FX 4H resampled from yf hourly (config 70/345 kept,
+####      24/5 session gaps documented), volume = tick-volume
+####      proxy, documented;
+####   C) futures 4H (ES/CL/GC, CME): centralized real volume,
+####      23/5, fat tails -- structurally closest to crypto 4H;
+####      strongest transfer test available.
+####
+#### NEW RULE for any future transfer prereg: a config-mapping
+#### table (bars x bar-length = calendar horizon, per segment)
+#### MUST be frozen before the run; a copied bar-count without
+#### the calendar-equivalence check invalidates the test.
+#### ============================================================
