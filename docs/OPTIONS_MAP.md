@@ -47,7 +47,7 @@ put-skew нестабилен по годам (2021 отрицательный),
 
 | # | Стратегия | Статус | Prior |
 |---|---|---|---|
-| 4.1 | **B4: BTC puts / ETH calls** | FETCH ETH trades (~1–2ч) | 40% |
+| 4.1 | **B4: BTC puts / ETH calls** | READ-OUT DONE, пререг отложен | 15% | rich-зона ETH put m0.60–0.75 только 2023+ (+10..15pt); после FAIL 1.1 нужен явный механизм |
 | 4.2 | BTC vol / ETH vol spread | FETCH | 35% |
 | 4.3 | Cross-skew divergence | FETCH | 35% |
 | 4.4 | Vega-neutral short vol | FETCH + BUILD | 30% |
