@@ -25,5 +25,7 @@ def merge(cur: str) -> None:
           "| last close", out[-1][4])
 
 
-merge("BTC")
-merge("ETH")
+if __name__ == "__main__":
+    merge("BTC")
+    merge("ETH")
+

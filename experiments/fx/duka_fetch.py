@@ -56,7 +56,14 @@ def fetch_pair(name: str, instr, out, start_year: int = 2003) -> None:
                 datetime(year + 1, 1, 1),
             )
             if len(df):
-                parts.append(df.reset_index())
+                idx = df.index
+                if getattr(idx, "tz", None) is not None:
+                    idx = idx.tz_localize(None)
+                parts.append({
+                    "timestamp": idx.to_numpy(),
+                    **{c: df[c].to_numpy(dtype="float64")
+                       for c in ("open", "high", "low", "close",
+                                 "volume")}})
             print(f"{name}: {year} rows {len(df)}", flush=True)
         except Exception as e:  # noqa: BLE001 -- log and continue
             print(f"{name}: {year} FAIL {type(e).__name__} {e}",
@@ -65,11 +72,7 @@ def fetch_pair(name: str, instr, out, start_year: int = 2003) -> None:
     if not parts:
         print(f"{name}: EMPTY", flush=True)
         return
-    full = pl.from_pandas(parts[0]) if not isinstance(parts[0], pl.DataFrame) \
-        else parts[0]
-    for d in parts[1:]:
-        nxt = d if isinstance(d, pl.DataFrame) else pl.from_pandas(d)
-        full = pl.concat([full, nxt])
+    full = pl.concat([pl.DataFrame(d) for d in parts])
     ts = full["timestamp"]
     full = (full.with_columns(pl.col("timestamp")
                               .dt.replace_time_zone(None))
